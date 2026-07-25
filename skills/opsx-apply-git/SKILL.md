@@ -1,0 +1,119 @@
+---
+name: opsx-apply-git
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR after the last group. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks.
+---
+
+Implement the next run from an OpenSpec change inside this project's git
+workflow and review gates — not just checking task boxes.
+
+**One run per invocation.** A "run" is either an autonomous batch of
+consecutive `isolated` groups or a single `judgement-heavy` group. Work the
+run to completion, then stop and report — do not start the next run in the
+same session. If the run finished the last pending group, continue straight
+to archiving (step 5) instead of stopping at the report.
+
+## 0. Read the harness docs first
+
+Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in
+the target repo (written by `init-harness`) before touching any code — they
+are the source of truth for branch naming, commit format, and gate order.
+
+## 1. Determine the parent branch and detect the project
+
+1. `git branch --show-current` — this should be the parent feature branch
+   already active, never `main`/`master`. If it looks like a leftover group
+   branch, stop and ask which branch is the real parent.
+2. Detect package manager (lockfile) and framework (`next.config.*` vs
+   `vite.config.*`) the same way `init-harness` does — every verification
+   command below depends on getting this right, not on assuming `yarn`.
+
+## 2. Standard OpenSpec selection and context
+
+1. Select the change (explicit name, inferred, or ask via `AskUserQuestion`).
+2. `openspec status --change "<name>" --json` for schema and progress.
+3. `openspec instructions apply --change "<name>" --json` for context files
+   and the task list.
+4. Read every file under `contextFiles`.
+
+## 3. Work the next run: isolated batch, or one judgement-heavy group
+
+A "group" is a numbered `##` heading in `tasks.md`, not a sub-task. Read the
+`<!-- isolated -->` / `<!-- judgement-heavy -->` marks `spec-review` wrote.
+**An unmarked group counts as judgement-heavy** — never auto-run an
+unclassified group.
+
+### Case A — first pending group is isolated: autonomous batch
+
+1. Sync the parent (`git fetch origin && git pull --ff-only`, skip if no
+   upstream yet), cut one batch branch off it
+   (`<type>/<change>-isolated`, per git-conventions.md naming).
+2. For each isolated group in turn: implement its sub-tasks (minimal,
+   focused; mark `- [ ]` → `- [x]`). If a design decision surfaces mid-group,
+   the classification was wrong — stop, leave it uncommitted, tell the user.
+3. Once green (its own verification + lint), run the per-group gates (§4),
+   commit the group on the batch branch.
+4. Next pending group: isolated → continue the loop; judgement-heavy or none
+   left → end the batch, go to §4.8.
+5. Any mid-batch pause (CONFIRMED finding, error, ambiguity) stops the batch
+   where it is — report and wait, never commit a half-finished group.
+
+### Case B — first pending group is judgement-heavy: one group, human in the loop
+
+1. Sync the parent, cut a single group branch off it, named for the group.
+2. Announce why it's judgement-heavy. Implement with the standard
+   guardrails, but pause and ask on every design decision or ambiguity.
+3. Once green, run §4 for this one group, then go to §4.8.
+
+## 4. Review + commit each group, push + PR once per run
+
+Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
+
+1. Review the group's diff (`git status -s`, `git diff --stat`) — confirm
+   scope, no unrelated files.
+2. Determine if this is the last group (any `- [ ]` left elsewhere in
+   `tasks.md`?). Remember the answer for steps 3, 6, and 4.11.
+3. **Last group + touched user-facing UI** → run **`web-qa`** (Gate 3)
+   before code-review, using the detected framework's dev-server command.
+   Must-pass with a fix loop (see that skill). Skip to 4.4 otherwise.
+4. Run **`code-review`** (Gate 4) against the group's diff (incl. any web-qa
+   fixes). CONFIRMED → pause and ask fix-now-or-commit-anyway. Clean/
+   PLAUSIBLE → continue.
+5. If the group's tasks touched tests, run **`test-coverage`** (Gate 5)
+   against the same diff, using the detected test runner and the coverage
+   threshold `init-harness` recorded. Same pause behavior.
+6. **Last group** → run **`harness-review`** (Gate 6) before committing. On
+   an approved finding, apply and commit it separately
+   (`chore: harness review — <summary>`) before step 7.
+7. Commit the group's own implementation (Conventional Commits, per
+   git-conventions.md) — do not wait to be asked, this is the documented
+   override for group boundaries. If the pre-commit hook fails, fix the
+   root cause and recommit, never `--no-verify`. In a batch, loop back to
+   §3 Case A step 2 for the next group; 4.8-4.11 only run once the batch ends.
+8. Push the run's branch (`git push -u origin <branch>`).
+9. Ensure the parent branch exists on `origin` (push it first if local-only).
+10. Open one PR from the run's branch into the parent (`gh pr create`),
+    covering every group in this run. **Judgement-heavy run** → lead the PR
+    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
+    open — the human owns the merge.
+11. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
+    invocation re-syncs the parent from `origin` (only picks up this run's
+    work once its PR is merged). **No tasks remain** → continue to step 5.
+
+## 5. Auto-archive when the last group just landed
+
+1. Cut the archive branch off *this run's* branch (not the parent — the
+   parent doesn't contain this run yet): `git checkout -b chore/archive-<change-name>`.
+2. Run `openspec archive <change-name>` (or the vendored
+   `openspec-archive-change` skill if present).
+3. Commit the archive move (`chore: archive <change-name>`) — this is a
+   second, narrower override of "never commit without being asked," same
+   justification as step 4.7.
+4. Push the archive branch, open a PR into the parent. Leave it open.
+5. Report the full session: every group completed with PR URLs, final
+   `N/N tasks complete`, archive location, archive PR URL.
+
+## Exceptions
+
+- An unrelated fix found mid-task can land as its own focused commit.
+- Destructive/history-rewriting git operations are never part of this
+  flow — stop and ask if something goes wrong.

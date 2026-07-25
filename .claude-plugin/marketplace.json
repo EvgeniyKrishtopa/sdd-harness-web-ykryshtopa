@@ -1,0 +1,14 @@
+{
+  "name": "sdd-harness-web-ykryshtopa",
+  "owner": {
+    "name": "Evgen Spinto",
+    "url": "https://github.com/EvgeniyKrishtopa"
+  },
+  "plugins": [
+    {
+      "name": "sdd-harness-web-ykryshtopa",
+      "source": ".",
+      "description": "Spec-driven OpenSpec harness for web projects (Vite or Next.js): 6 automated review gates, branch-per-group git workflow, framework/package-manager detection."
+    }
+  ]
+}
