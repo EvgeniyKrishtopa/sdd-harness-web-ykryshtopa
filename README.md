@@ -56,15 +56,21 @@ skills and agents do. `/init-harness` does not copy them into your project's
 
 ### Permissions and `.claudeignore` — what's actually enforced
 
-- **`permissions.deny`** (in `.claude/settings.json`) is the real,
-  un-bypassable block — secrets (`.env`), destructive commands (`rm -rf`),
-  and all four package managers' install commands stay denied regardless of
-  which one this repo uses. This is Claude Code's own officially-supported
-  mechanism.
+- **`permissions.deny`** (in `.claude/settings.json`) is Claude Code's own
+  officially-supported enforcement mechanism, and it's the layer that blocks
+  secrets (`.env`), destructive commands (`rm -rf` and its common variants),
+  and all four package managers' install commands regardless of which one
+  this repo uses. It is only as strong as `allow` is narrow, though: `allow`
+  is checked first, and a broad `allow` entry (a bare `Write`, an unscoped
+  `Bash(cat:*)` or `Bash(node -e:*)`) grants the call before `deny` ever gets
+  a say, silently defeating any `deny` rule it overlaps with. This plugin's
+  `allow` list is deliberately narrow — no generic file-write or arbitrary-code
+  primitives — specifically so that `deny` isn't bypassable in practice, not
+  because `deny` is inherently un-bypassable on its own.
 - **`.claudeignore`** is *not* a native Claude Code file — there's no
   built-in reader for it. This plugin makes it real by pairing it with a
   `PreToolUse` hook (in `hooks/hooks.json`) that reads it and denies matching
-  `Read`/`Grep` calls. Treat it as a noise-reduction convenience layer
+  `Read`/`Grep`/`Glob` calls. Treat it as a noise-reduction convenience layer
   (build output, coverage, lockfiles) — not where secrets protection lives.
   See `skills/init-harness/references/claudeignore-template.md` for the full
   reasoning.
