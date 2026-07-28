@@ -83,9 +83,12 @@ Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
 4. Run **`code-review`** (Gate 4) against the group's diff (incl. any web-qa
    fixes). CONFIRMED → pause and ask fix-now-or-commit-anyway. Clean/
    PLAUSIBLE → continue.
-5. If the group's tasks touched tests, run **`test-coverage`** (Gate 5)
-   against the same diff, using the detected test runner and the coverage
-   threshold `init-harness` recorded. Same pause behavior.
+5. Unless the group's diff is docs/config-only, run **`test-coverage`**
+   (Gate 5) against the same diff, using the detected test runner and the
+   coverage threshold `init-harness` recorded — this runs precisely when a
+   group touched source code, whether or not it also touched tests, since a
+   group that shipped source changes with no tests is what this gate exists
+   to catch. Same pause behavior.
 6. **Last group** → run **`harness-review`** (Gate 6) before committing. On
    an approved finding, apply and commit it separately
    (`chore: harness review — <summary>`) before step 7.
