@@ -45,14 +45,19 @@ Gate 4.
    servers) silently bump to the next free port when the configured one is
    taken, e.g. `5173` busy → `5174`, and print the real address to stdout on
    startup (`Local: http://localhost:5174/`). Poll the background process's
-   output for that line and parse the live URL out of it. Handing the
-   manifest's `devServerUrl` to the reviewer unconditionally risks QA-ing a
-   stale server left over from a previous session on the configured port,
-   while this change's own server sits untested on the port it actually
-   bound.
+   output for that line and parse the live URL out of it, bounded to ~30s at
+   1-2s intervals. Handing the manifest's `devServerUrl` to the reviewer
+   unconditionally risks QA-ing a stale server left over from a previous
+   session on the configured port, while this change's own server sits
+   untested on the port it actually bound. If the expected startup line
+   never appears in that window (crash, unfamiliar dev-server output
+   format), stop, tear down (below), and report the captured stdout/stderr
+   as a Gate 3 failure rather than guessing at a URL.
 5. Poll the real URL for a `2xx`/HTML response before handing off to the
-   reviewer — don't let the QA pass start against a server that's still
-   compiling.
+   reviewer, bounded to ~60s at 1-2s intervals — don't let the QA pass start
+   against a server that's still compiling, but also don't let a server that
+   never comes up hang the gate forever. If the timeout is hit, tear down
+   (below) and report it as a Gate 3 failure.
 
 ## Action
 
@@ -80,13 +85,16 @@ Gate 4.
      exception is an explicit human "proceed anyway," recorded in the
      group's commit body.
 
-## Tear down the dev server once the gate concludes
+## Tear down the dev server whenever this gate exits
 
-Once the fix loop settles (all-PASS, or an explicit human override), stop
-the background dev server using the PID/job id captured at startup (e.g.
-`kill <pid>`). Do this regardless of outcome — a server left running past
-this gate leaks a process for the rest of the session and can collide with
-whatever the next gate or group needs on the same port.
+Stop the background dev server using the PID/job id captured at startup
+(e.g. `kill <pid>`) on **every** exit path out of this gate, not only the
+happy one: the fix loop settling (all-PASS, or an explicit human override),
+a startup/health-check timeout (steps 4-5 above), or the
+`web-qa-manual-tester` subagent erroring out before producing a verdict. A
+server left running past this gate leaks a process for the rest of the
+session and can collide with whatever the next gate or group needs on the
+same port.
 
 ## Log this gate's run
 
