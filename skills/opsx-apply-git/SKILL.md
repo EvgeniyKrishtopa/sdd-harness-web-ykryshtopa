@@ -47,10 +47,35 @@ A "group" is a numbered `##` heading in `tasks.md`, not a sub-task. Read the
 **An unmarked group counts as judgement-heavy** — never auto-run an
 unclassified group.
 
+### Syncing the parent (used by both cases below)
+
+`git fetch origin && git pull --ff-only` (skip entirely if the parent has no
+upstream yet) is the happy path. It fails as soon as a previous run's PR was
+merged with squash or rebase — common defaults on many repos — because the
+parent's local history no longer has a commit that's an ancestor of
+`origin/<parent>`, so a fast-forward is impossible even though nothing was
+actually lost. Don't treat that failure as a hard stop without checking which
+case it is:
+
+1. Run `git fetch origin`, then `git pull --ff-only`.
+2. On failure, inspect `git log --oneline <parent>..origin/<parent>`. If it
+   shows a single squashed commit (or a rebased sequence) that supersedes
+   exactly what this branch already has — i.e. the previous run's PR landed
+   and the local `<parent>` is just stale, not genuinely diverged — this is
+   the squash/rebase-merge case.
+3. In that case, propose `git reset --hard origin/<parent>` to the user and
+   get **explicit confirmation** before running it. This discards the local
+   parent's history in favor of `origin`'s, which is safe here only because
+   the squashed/rebased commit already contains everything the local branch
+   had — but it's still destructive and must never run without that
+   confirmation (#18).
+4. If the divergence doesn't look like a squash/rebase of already-merged
+   work (e.g. genuinely conflicting commits from elsewhere), stop and ask —
+   don't guess at a merge or rebase yourself.
+
 ### Case A — first pending group is isolated: autonomous batch
 
-1. Sync the parent (`git fetch origin && git pull --ff-only`, skip if no
-   upstream yet), cut one batch branch off it
+1. Sync the parent (see above), cut one batch branch off it
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: implement its sub-tasks (minimal,
    focused; mark `- [ ]` → `- [x]`). If a design decision surfaces mid-group,
@@ -64,7 +89,8 @@ unclassified group.
 
 ### Case B — first pending group is judgement-heavy: one group, human in the loop
 
-1. Sync the parent, cut a single group branch off it, named for the group.
+1. Sync the parent (see above), cut a single group branch off it, named for
+   the group.
 2. Announce why it's judgement-heavy. Implement with the standard
    guardrails, but pause and ask on every design decision or ambiguity.
 3. Once green, run §4 for this one group, then go to §4.8.
