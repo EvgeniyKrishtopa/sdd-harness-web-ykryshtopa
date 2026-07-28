@@ -1,6 +1,6 @@
 ---
 name: opsx-apply-git
-description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR after the last group. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks.
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks.
 ---
 
 Implement the next run from an OpenSpec change inside this project's git
@@ -10,7 +10,9 @@ workflow and review gates — not just checking task boxes.
 consecutive `isolated` groups or a single `judgement-heavy` group. Work the
 run to completion, then stop and report — do not start the next run in the
 same session. If the run finished the last pending group, continue straight
-to archiving (step 5) instead of stopping at the report.
+into archiving (step 5) instead of stopping at the report — but step 5
+itself may need to stop and wait there for a human to merge the run's PR
+first (see below).
 
 ## 0. Read the harness docs first
 
@@ -145,10 +147,22 @@ Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
     invocation re-syncs the parent from `origin` (only picks up this run's
     work once its PR is merged). **No tasks remain** → continue to step 5.
 
-## 5. Auto-archive when the last group just landed
+## 5. Auto-archive once the run's own PR has merged
 
-1. Cut the archive branch off *this run's* branch (not the parent — the
-   parent doesn't contain this run yet): `git checkout -b chore/archive-<change-name>`.
+Archiving mutates the parent branch's `openspec/changes/` tree. Doing that
+before the run's own PR (opened in step 4.10) has merged opens a second PR
+into the same parent whose content depends on the first — if the run's PR
+is later rejected or reworked, an already-opened archive PR would have
+archived a change that was never actually accepted (#19).
+
+1. Check whether the run's PR has merged: `gh pr view <branch-or-number>
+   --json state,mergedAt --jq .state`. If it isn't `MERGED` yet, stop here
+   and report — the change is fully implemented and its PR is open, but
+   archiving waits on that merge; re-run this step (or the whole skill)
+   once a human has merged it. Once it's `MERGED`, sync the parent (see the
+   syncing procedure in §3 — the same squash/rebase-merge case can apply
+   here too) and cut the archive branch off the now-current parent tip,
+   which contains this run's work: `git checkout -b chore/archive-<change-name>`.
 2. Run `openspec archive <change-name>` (or the vendored
    `openspec-archive-change` skill if present).
 3. Commit the archive move (`chore: archive <change-name>`) — this is a
