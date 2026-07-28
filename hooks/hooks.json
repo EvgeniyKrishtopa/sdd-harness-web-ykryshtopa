@@ -28,12 +28,12 @@
         ]
       },
       {
-        "matcher": "Read|Grep",
+        "matcher": "Read|Grep|Glob",
         "hooks": [
           {
             "type": "command",
             "statusMessage": "Checking .claudeignore...",
-            "command": "f=$(jq -r '.tool_input.file_path // .tool_input.path // empty'); if [ -z \"$f\" ] || [ ! -f .claudeignore ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; exit 0; fi; rel=\"$f\"; case \"$rel\" in /*) rel=\"${rel#$PWD/}\";; esac; while IFS= read -r pat; do case \"$pat\" in ''|'#'*) continue;; esac; case \"$rel\" in $pat|$pat/*|*/$pat|*/$pat/*|$pat*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked by .claudeignore pattern: %s\"}}' \"$pat\"; exit 0;; esac; done < .claudeignore; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_input.path // empty'); if [ -z \"$f\" ] || [ ! -f .claudeignore ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; exit 0; fi; rel=\"$f\"; case \"$rel\" in /*) rel=\"${rel#$PWD/}\";; esac; while IFS= read -r pat; do pat=$(printf '%s' \"$pat\" | tr -d '\\r'); case \"$pat\" in ''|'#'*) continue;; esac; case \"$rel\" in $pat|$pat/*|*/$pat|*/$pat/*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked by .claudeignore pattern: %s\"}}' \"$pat\"; exit 0;; esac; done < .claudeignore; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
           }
         ]
       }

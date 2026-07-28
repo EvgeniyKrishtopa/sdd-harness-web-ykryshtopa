@@ -26,6 +26,16 @@ whose target path matches a pattern.
 Don't rely on `.claudeignore` alone for anything that must never be read —
 put that in `permissions.deny` instead, where init-harness already writes it.
 
+The guard hook matches `Read`, `Grep`, and `Glob` calls, but only when the
+call carries an explicit `file_path`/`path`. A `Grep` or `Glob` invoked over
+the whole repo with no `path` argument has nothing for the hook to compare
+against `.claudeignore`, so it silently allows and recurses into ignored
+directories anyway — the hook can't see the tool's output, only its input,
+so there's no point after the fact to filter results either. This is a
+known gap, not a bug to route around with heuristics: it's consistent with
+`.claudeignore` being a noise-reduction convenience, not an enforcement
+boundary.
+
 ## Template written to the target repo's `.claudeignore`
 
 ```
