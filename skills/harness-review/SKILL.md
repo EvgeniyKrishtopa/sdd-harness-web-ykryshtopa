@@ -30,3 +30,31 @@ auto-applied.
   the group's own implementation commit.
 - **Clean, or the user declines every suggestion** — proceed straight to the
   group's own commit.
+
+## Log this gate's run
+
+After the outcome above, append one line to `.claude/harness-log.jsonl` in
+the target repo (create the file if it doesn't exist yet) — a plain shell
+append, 0 model tokens:
+
+```bash
+mkdir -p .claude
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "-" \
+  --arg gate "harness-review" \
+  --arg verdict "<clean|plausible|confirmed>" \
+  --argjson durationMs <elapsed-ms> \
+  --arg model "<model harness-reviewer actually ran on>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  >> .claude/harness-log.jsonl
+```
+
+Fill in the change slug, the verdict this run resolved to (`confirmed` if
+any finding was raised regardless of whether the user chose to apply it),
+the wall-clock time spent, and the model `harness-reviewer` ran on (`group`
+is `-`: this gate runs at change scope). If `jq` isn't available, construct
+the equivalent JSON line with `printf` instead. A failed log write never
+blocks the gate — note it in the report and move on; this is a diagnostic
+aid, not part of the pass/fail logic.

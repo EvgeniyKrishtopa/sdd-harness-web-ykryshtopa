@@ -57,3 +57,32 @@ Gate 4.
   4. Do not proceed to Gate 4 past a FAIL on the default path. The only
      exception is an explicit human "proceed anyway," recorded in the
      group's commit body.
+
+## Log this gate's run
+
+After the fix loop settles (all-PASS, or an explicit human override), append
+one line to `.claude/harness-log.jsonl` in the target repo (create the file
+if it doesn't exist yet) — a plain shell append, 0 model tokens:
+
+```bash
+mkdir -p .claude
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "-" \
+  --arg gate "web-qa" \
+  --arg verdict "<clean|confirmed|skipped>" \
+  --argjson durationMs <elapsed-ms> \
+  --arg model "<model web-qa-manual-tester actually ran on>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  >> .claude/harness-log.jsonl
+```
+
+Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
+any FAIL found along the way (even if later fixed and re-passed), or
+`skipped` when this gate wasn't applicable; the wall-clock time across the
+whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
+this gate covers the whole change, triggered on the last group). If `jq`
+isn't available, construct the equivalent JSON line with `printf` instead.
+A failed log write never blocks the gate — note it in the report and move
+on; this is a diagnostic aid, not part of the pass/fail logic.

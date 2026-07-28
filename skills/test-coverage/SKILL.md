@@ -35,3 +35,30 @@ criteria as context.
 - **Clean, or PLAUSIBLE-only** — proceed to Gate 6 if this is the last group
   with pending tasks in the whole change; otherwise commit the group and
   continue the batch (see `opsx-apply-git`).
+
+## Log this gate's run
+
+Whether this gate ran or was skipped (the group touched no tests), append
+one line to `.claude/harness-log.jsonl` in the target repo (create the file
+if it doesn't exist yet) — a plain shell append, 0 model tokens:
+
+```bash
+mkdir -p .claude
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "<group-number>" \
+  --arg gate "test-coverage" \
+  --arg verdict "<clean|plausible|confirmed|skipped>" \
+  --argjson durationMs <elapsed-ms-or-0-if-skipped> \
+  --arg model "<model test-coverage-reviewer actually ran on, or empty if skipped>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  >> .claude/harness-log.jsonl
+```
+
+Fill in the change slug, the group number, the verdict (`skipped` if the
+group touched no tests and the reviewer never ran), the wall-clock time
+spent, and the model used. If `jq` isn't available, construct the
+equivalent JSON line with `printf` instead. A failed log write never blocks
+the gate — note it in the report and move on; this is a diagnostic aid, not
+part of the pass/fail logic.
