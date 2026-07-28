@@ -27,16 +27,12 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash(openspec:*)",
       "Bash(pkill -f:*)",
       "Bash(cd:*)",
-      "Bash(curl:*)",
-      "Bash(node -p:*)",
-      "Bash(node -e:*)",
+      "Bash(curl -s http://localhost:*)",
       "Bash(which:*)",
-      "Bash(cat:*)",
       "Bash(mkdir:*)",
       "Bash(echo:*)",
       "Bash(sleep:*)",
       "Bash(kill:*)",
-      "Bash(for *)",
       "Bash(git commit -m *)",
       "Bash(git checkout *)",
       "Bash(git status:*)",
@@ -44,9 +40,12 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash(git fetch:*)",
       "Bash(git pull --ff-only:*)",
       "Bash(git ls-remote:*)",
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(git log:*)",
       "Bash(gh pr create:*)",
-      "Write",
-      "Edit",
       "Write(./.claude/docs/**)",
       "Edit(./.claude/docs/**)",
       "Write(./.claude/skills/**)",
@@ -90,7 +89,18 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   these permission entries.
 - `{{BUILD_DIR}}` is `dist` for Vite, `.next` for Next.js — read the detected
   framework from Step 1, don't hardcode one.
-- This `permissions.deny` list is the actually-enforced, un-bypassable
-  mechanism for hard blocks (secrets, destructive commands). It is not the
-  same thing as the `.claudeignore` file from Step 7 below — see that step's
-  notes for why both exist.
+- This `permissions.deny` list is only as strong as `allow` is narrow: a
+  broad `allow` entry defeats every `deny` rule it overlaps with, since
+  Claude Code doesn't enforce `deny` against a tool call that `allow`
+  already grants. It is not the same thing as the `.claudeignore` file from
+  Step 7 below — see that step's notes for why both exist.
+- `allow` deliberately excludes `Bash(node -e:*)`, `Bash(node -p:*)`,
+  `Bash(cat:*)`, `Bash(for *)`, and bare `Write`/`Edit`: each is a generic
+  enough primitive to read or overwrite any file in the repo — including
+  `.env`, `.git/hooks/*`, and `.claude/settings.json` itself — which routes
+  straight around the `deny` list above and the scoped `Write(...)`/
+  `Edit(...)` entries. If an agent needs to read a file, it has the `Read`
+  tool (subject to `deny`); it doesn't need `cat` or `node -e` as well.
+- `Bash(curl:*)` is narrowed to `Bash(curl -s http://localhost:*)` — the only
+  legitimate use in this harness is polling the local dev server in `web-qa`.
+  An unscoped `curl` is an exfiltration channel to any host.
