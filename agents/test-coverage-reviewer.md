@@ -25,8 +25,9 @@ the core behavior is covered.
 3. Assertions actually verify behavior (output values, state changes,
    calls-with-arguments) rather than just "didn't throw."
 4. The diff doesn't reduce the project's coverage number below its
-   configured threshold (read from `vite.config.ts`/`jest.config.*`, or
-   `.harness/config.json` if present — never assume a fixed percentage).
+   configured threshold (read `coverageThreshold` from
+   `.claude/harness.json` — never assume a fixed percentage or re-read
+   `vite.config.ts`/`jest.config.*` directly).
 
 ## Output
 
