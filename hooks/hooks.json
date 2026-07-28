@@ -8,7 +8,7 @@
           {
             "type": "agent",
             "if": "Bash(git commit:*)",
-            "model": "claude-fable-5",
+            "model": "claude-opus-5",
             "timeout": 120,
             "statusMessage": "Reviewing staged diff for architecture risks...",
             "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If that's empty — e.g. the commit uses `-a`/`-am` and stages straight from the working tree instead of the index — fall back to `git diff HEAD` so an unstaged commit doesn't skip review just because the staged diff was empty. If both are empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
