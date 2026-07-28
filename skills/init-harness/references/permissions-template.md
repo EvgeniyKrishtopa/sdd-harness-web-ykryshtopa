@@ -83,6 +83,11 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   **regardless of which one this project actually uses** (defense in depth —
   an agent can't route around the install-command block by invoking a
   different package manager than the one detected).
+- `Bash(npx openspec:*)` / `Bash(openspec:*)` match the CLI **binary** name,
+  which is `openspec` regardless of package name. The npm package installed
+  in Step 2 is `@fission-ai/openspec` (the bare `openspec` package is an
+  unrelated empty squatter) — that only affects the install command, not
+  these permission entries.
 - `{{BUILD_DIR}}` is `dist` for Vite, `.next` for Next.js — read the detected
   framework from Step 1, don't hardcode one.
 - This `permissions.deny` list is the actually-enforced, un-bypassable

@@ -20,15 +20,25 @@ Run this once per repository, before using any other skill in this plugin.
 This harness is built on OpenSpec (spec-driven development CLI) — it is not
 optional or assumed to already be present.
 
-1. Check whether `openspec` is already a devDependency or globally
-   available (`npx openspec --version`).
+The npm package to install is **`@fission-ai/openspec`** — the bare
+`openspec` package name is an unrelated empty squatter package (published as
+`0.0.0`, no functionality). Both packages happen to expose a binary named
+`openspec`, so once installed the CLI is invoked the same way either way;
+the difference only matters at install time.
+
+1. Check whether `@fission-ai/openspec` is already a devDependency (grep
+   `package.json`).
 2. If not present, install it as a devDependency using the detected package
-   manager (`yarn add -D openspec` / `npm install -D openspec` /
-   `pnpm add -D openspec`).
-3. Run `npx openspec init` in the repo root if `openspec/` doesn't already
+   manager (`yarn add -D @fission-ai/openspec` /
+   `npm install -D @fission-ai/openspec` / `pnpm add -D @fission-ai/openspec`).
+3. Verify the install actually worked — run `npx openspec --version` and
+   confirm it prints a real semver, not an empty string or an error. Don't
+   just check the binary exists; the squatter package can resolve a bare
+   `openspec` install to a no-op binary with no visible failure.
+4. Run `npx openspec init` in the repo root if `openspec/` doesn't already
    exist. This creates the `openspec/` workspace (specs, changes,
    instructions) that every gate and the `opsx-*` skills read from.
-4. If `openspec/` already exists, run `npx openspec doctor` instead to
+5. If `openspec/` already exists, run `npx openspec doctor` instead to
    confirm it's healthy rather than re-initializing over existing work.
 
 ## Step 3 — ask the user for the coverage threshold
