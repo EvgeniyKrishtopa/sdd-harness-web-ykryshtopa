@@ -7,7 +7,7 @@
         "hooks": [
           {
             "type": "agent",
-            "if": "Bash(git commit *)",
+            "if": "Bash(git commit:*)",
             "model": "claude-fable-5",
             "timeout": 120,
             "statusMessage": "Reviewing staged diff for architecture risks...",
@@ -15,13 +15,13 @@
           },
           {
             "type": "command",
-            "if": "Bash(git merge *)",
+            "if": "Bash(git merge:*)",
             "statusMessage": "Checking merge target branch...",
             "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Merging into %s requires confirmation.\"}}' \"$branch\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
           },
           {
             "type": "command",
-            "if": "Bash(git push *)",
+            "if": "Bash(git push:*)",
             "statusMessage": "Checking push target and flags...",
             "command": "cmd=$(jq -r '.tool_input.command // empty'); branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Pushing while on %s requires confirmation.\"}}' \"$branch\"; elif echo \"$cmd\" | grep -qE -- '(^|[[:space:]])(--force([[:space:]=]|$)|--force-with-lease|-f([[:space:]]|$))|\\bmain\\b|\\bmaster\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Force-push or a push targeting main/master requires confirmation.\"}}'; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
           }
