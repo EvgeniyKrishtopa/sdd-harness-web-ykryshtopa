@@ -11,6 +11,16 @@ harness bug twice in one session: a skill description goes stale, or two
 docs describing the same workflow drift apart, and nobody notices until an
 agent follows the wrong one.
 
+## Bash scope
+
+The `Bash` tool here is for read-only inspection only — `git log`,
+`git blame`, `wc -l` (the CLAUDE.md/AGENTS.md line-count check below),
+`grep -c`, and equivalents, wherever `Read`/`Grep`/`Glob` alone can't
+answer the question. Never use it to write, install, or mutate anything —
+the repository, the filesystem, or git history. Every finding here gets
+shown to the user with a suggested fix for them to apply (see Output
+below) — never applied by you.
+
 ## Priority checklist
 
 1. **Stale claims** — does `CLAUDE.md`/`AGENTS.md` describe a command, file,
@@ -45,6 +55,14 @@ project:
    language?
 8. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
    it actually needs (read-only agents should never carry `Write`/`Edit`)?
+   If an agent declared read-only still carries `Bash` (this plugin's own
+   agents do, since git history/coverage inspection needs it — there's no
+   agent-level way to scope `Bash` to a command allowlist the way
+   `permissions.deny`/`allowed-tools` can), does that agent's own prompt
+   have a "Bash scope" section stating what it's for and that write/install/
+   mutate commands are off-limits? A `Bash`-carrying agent with no such
+   section is the exact "read-only" claim not backed by anything but
+   good faith that this check exists to catch.
 
 ## Output
 
