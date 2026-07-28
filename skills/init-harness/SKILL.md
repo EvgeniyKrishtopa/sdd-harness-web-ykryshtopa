@@ -41,70 +41,17 @@ the difference only matters at install time.
 5. If `openspec/` already exists, run `npx openspec doctor` instead to
    confirm it's healthy rather than re-initializing over existing work.
 
-## Step 3 — ask the user for the coverage threshold
+## Step 3 — install a native git pre-commit hook (not just Claude Code hooks)
 
-Ask what minimum test-coverage percentage to enforce (statements/lines/
-functions). Default to 80% if they have no preference — do not hardcode a
-number without asking; different projects have different baselines.
+This plugin's Claude Code hooks (see Step 6) only fire when **Claude itself**
+runs `git commit` through the Bash tool — they do nothing if the human
+commits directly from a terminal with no agent involved. That gap needs its
+own, independent safety net: a real git pre-commit hook, so bad commits are
+blocked regardless of who or what is committing.
 
-## Step 4 — write the harness docs
-
-Write `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`
-into the target repo (see `references/git-conventions-template.md` and
-`references/review-gates-template.md` in this skill for the content to
-adapt — fill in the detected package manager's commands and the chosen
-coverage threshold rather than copying placeholders verbatim).
-
-## Step 5 — generate hooks.json
-
-Copy this plugin's `hooks/hooks.json` into the target repo's
-`.claude/settings.json` (merge into existing `hooks` key if one already
-exists — never overwrite a project's existing hooks wholesale), substituting
-the detected package manager's typecheck/lint commands for the placeholder
-commands in the template.
-
-## Step 6 — merge permissions allow/deny into `.claude/settings.json`
-
-`hooks.json` alone doesn't cover what Claude is and isn't allowed to run or
-read — that's a separate `"permissions"` key (sibling of `"hooks"`, same
-file). Merge `references/permissions-template.md`'s `allow`/`deny` arrays
-into the target repo's `.claude/settings.json`, substituting the detected
-package manager, build-output directory (`dist` for Vite, `.next` for
-Next.js), and lockfile — never overwrite an existing `permissions` block,
-merge and de-duplicate entries into it instead. This is the actually-enforced
-mechanism for hard blocks (secrets, destructive commands) — see that file's
-notes on why the three non-detected package managers' install commands stay
-denied regardless of which one this project uses.
-
-## Step 7 — write `.claudeignore` and its enforcement hook
-
-The user may expect a `.claudeignore` file the way `.gitignore` works.
-**Be upfront that this isn't an official Claude Code mechanism** — Claude
-Code has no built-in reader for a file of this name; Anthropic's guidance is
-to use `permissions.deny` (step 6) instead. This plugin makes the file
-meaningful anyway by pairing it with a `PreToolUse` hook (already in this
-plugin's `hooks/hooks.json`, matcher `Read|Grep`) that reads `.claudeignore`
-and denies matching reads — see `references/claudeignore-template.md` for
-the full explanation and the template content.
-
-1. Write `.claudeignore` from that template (substituting build dir and
-   lockfile same as step 6) — or append missing lines if one already exists.
-2. Confirm the `Read|Grep` hook from `hooks/hooks.json` was included in
-   step 5's merge (it lives in the same file, so this should already be
-   covered — just don't drop it if the target repo's existing `hooks.json`
-   required a manual merge).
-3. When reporting in step 9, state plainly that `.claudeignore` is a
-   convenience/noise-reduction layer enforced by this plugin's own hook, not
-   a Claude Code native feature, and that secrets/destructive-command
-   protection lives in `permissions.deny` instead.
-
-## Step 8 — install a native git pre-commit hook (not just Claude Code hooks)
-
-`hooks/hooks.json` above only fires when **Claude itself** runs `git commit`
-through the Bash tool — it does nothing if the human commits directly from
-a terminal with no agent involved. That gap needs its own, independent
-safety net: a real git pre-commit hook, so bad commits are blocked
-regardless of who or what is committing.
+Do this now, before Step 7 writes `permissions.deny` — that step denies
+`npm install`/`add` and equivalents, which would block installing Husky if
+done afterward.
 
 1. If Husky isn't already a devDependency, install it
    (`yarn add -D husky` / `npm install -D husky` / `pnpm add -D husky`) and
@@ -120,16 +67,77 @@ regardless of who or what is committing.
    if the mapping isn't obvious.)
 3. Do not overwrite an existing `.husky/pre-commit` that already has content
    — read it first, and only append/merge the missing checks in, the same
-   "never clobber existing config" rule as step 5's hooks.json merge.
+   "never clobber existing config" rule used for merges later in this skill.
 4. Confirm the hook is executable (`chmod +x .husky/pre-commit` if needed).
+
+## Step 4 — ask the user for the coverage threshold
+
+Ask what minimum test-coverage percentage to enforce (statements/lines/
+functions). Default to 80% if they have no preference — do not hardcode a
+number without asking; different projects have different baselines.
+
+## Step 5 — write the harness docs
+
+Write `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`
+into the target repo (see `references/git-conventions-template.md` and
+`references/review-gates-template.md` in this skill for the content to
+adapt — fill in the detected package manager's commands and the chosen
+coverage threshold rather than copying placeholders verbatim).
+
+## Step 6 — generate hooks.json
+
+Copy this plugin's `hooks/hooks.json` into the target repo's
+`.claude/settings.json` (merge into existing `hooks` key if one already
+exists — never overwrite a project's existing hooks wholesale), substituting
+the detected package manager's typecheck/lint commands for the placeholder
+commands in the template.
+
+## Step 7 — merge permissions allow/deny into `.claude/settings.json`
+
+`hooks.json` alone doesn't cover what Claude is and isn't allowed to run or
+read — that's a separate `"permissions"` key (sibling of `"hooks"`, same
+file). Merge `references/permissions-template.md`'s `allow`/`deny` arrays
+into the target repo's `.claude/settings.json`, substituting the detected
+package manager, build-output directory (`dist` for Vite, `.next` for
+Next.js), and lockfile — never overwrite an existing `permissions` block,
+merge and de-duplicate entries into it instead. This is the actually-enforced
+mechanism for hard blocks (secrets, destructive commands) — see that file's
+notes on why the three non-detected package managers' install commands stay
+denied regardless of which one this project uses.
+
+By this point Steps 2 and 3 have already installed OpenSpec and Husky, so
+denying further ad-hoc installs here doesn't block anything this skill still
+needs to do.
+
+## Step 8 — write `.claudeignore` and its enforcement hook
+
+The user may expect a `.claudeignore` file the way `.gitignore` works.
+**Be upfront that this isn't an official Claude Code mechanism** — Claude
+Code has no built-in reader for a file of this name; Anthropic's guidance is
+to use `permissions.deny` (Step 7) instead. This plugin makes the file
+meaningful anyway by pairing it with a `PreToolUse` hook (already in this
+plugin's `hooks/hooks.json`, matcher `Read|Grep`) that reads `.claudeignore`
+and denies matching reads — see `references/claudeignore-template.md` for
+the full explanation and the template content.
+
+1. Write `.claudeignore` from that template (substituting build dir and
+   lockfile same as Step 7) — or append missing lines if one already exists.
+2. Confirm the `Read|Grep` hook from `hooks/hooks.json` was included in
+   Step 6's merge (it lives in the same file, so this should already be
+   covered — just don't drop it if the target repo's existing `hooks.json`
+   required a manual merge).
+3. When reporting in Step 9, state plainly that `.claudeignore` is a
+   convenience/noise-reduction layer enforced by this plugin's own hook, not
+   a Claude Code native feature, and that secrets/destructive-command
+   protection lives in `permissions.deny` instead.
 
 ## Step 9 — report
 
 Summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
 list the files written — including confirming the native pre-commit hook is
-now in place (step 8), separately from the Claude Code `hooks.json` merge
-(step 5), and the permissions/`.claudeignore` distinction from steps 6-7 (what
+now in place (Step 3), separately from the Claude Code `hooks.json` merge
+(Step 6), and the permissions/`.claudeignore` distinction from Steps 7-8 (what
 `permissions.deny` actually enforces vs. what the `.claudeignore` guard hook
 covers). Tell the user their harness is ready and that `opsx-propose-review`
 is the next command to run when they want to start their first spec-driven
