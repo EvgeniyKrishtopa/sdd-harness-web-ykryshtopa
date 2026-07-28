@@ -15,16 +15,26 @@ Run this once per repository, before using any other skill in this plugin.
    ask the user — do not guess a framework onto a project that has neither.
 3. **Test runner**: check devDependencies for `vitest` or `jest`.
 
-## Step 2 — install and initialize OpenSpec
+## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
 This harness is built on OpenSpec (spec-driven development CLI) — it is not
-optional or assumed to already be present.
+optional or assumed to already be present. It is also built against
+OpenSpec's **Expanded** workflow set, not the default **Core** profile — see
+below for why that distinction matters and how to get there safely.
 
 The npm package to install is **`@fission-ai/openspec`** — the bare
 `openspec` package name is an unrelated empty squatter package (published as
 `0.0.0`, no functionality). Both packages happen to expose a binary named
 `openspec`, so once installed the CLI is invoked the same way either way;
 the difference only matters at install time.
+
+### 2a — prerequisite
+
+Check the Node version (`node --version`): OpenSpec requires **Node >=
+20.19.0**. If it's older, stop and tell the user to upgrade Node before
+continuing — don't attempt the install against an unsupported runtime.
+
+### 2b — install and initialize
 
 1. Check whether `@fission-ai/openspec` is already a devDependency (grep
    `package.json`).
@@ -40,6 +50,79 @@ the difference only matters at install time.
    instructions) that every gate and the `opsx-*` skills read from.
 5. If `openspec/` already exists, run `npx openspec doctor` instead to
    confirm it's healthy rather than re-initializing over existing work.
+
+### 2c — check and, if needed, upgrade the workflow profile
+
+`openspec init` sets up the **Core** profile (`propose`, `explore`, `apply`,
+`update`, `sync`, `archive`). This harness's gates need the **Expanded**
+workflow set (adds `new`, `continue`, `ff`, `bulk-archive`, `verify`,
+`onboard`) — Gate 1 (`architecture-review`) is designed to fire once
+`design.md` is done but before specs/tasks are drafted, and Gate 2
+(`spec-review`) waits for every artifact's step-by-step completion. Neither
+point of insertion exists in Core's single-shot `propose` flow.
+
+There is no literal `"expanded"` profile value — in OpenSpec's config schema
+`profile` is the enum `core | custom`. Expanded is expressed as
+`profile: "custom"` plus the full `workflows` list. The CLI derives
+`profile` automatically from which workflows are selected.
+
+**This setting is global, not per-project.** It lives in
+`~/.config/openspec/config.json` (or `$XDG_CONFIG_HOME/openspec/config.json`),
+not anywhere inside this repo. That means: it isn't committed, a teammate
+cloning this repo won't have it just because the repo does, CI never has it
+unless configured separately, and changing it on this machine affects
+**every other OpenSpec project** the user has, not just this one. Because of
+that blast radius, never change it silently.
+
+1. Run `npx openspec config list` and read the current `profile`.
+2. If it's already `custom` with the full workflow list, skip to 2d
+   (verification) — nothing to change.
+3. If it's `core`, explain to the user, plainly, before doing anything:
+   - this harness requires the Expanded workflow set to work as designed;
+   - the setting is global to their machine, not scoped to this repo;
+   - it will change OpenSpec's behavior in their other OpenSpec projects too.
+   Then offer two ways to proceed, and let the user pick:
+   - **Default**: ask the user to run `npx openspec config profile`
+     themselves in their own terminal (it's an interactive multi-select —
+     not something to drive non-interactively through the agent's Bash
+     tool) and select the full workflow set, then confirm back when done.
+   - **Direct write**: only with the user's explicit go-ahead, write
+     `~/.config/openspec/config.json` directly with:
+     ```json
+     {
+       "profile": "custom",
+       "delivery": "both",
+       "workflows": ["propose", "explore", "new", "continue", "apply",
+                     "update", "ff", "sync", "archive", "bulk-archive",
+                     "verify", "onboard"],
+       "featureFlags": {}
+     }
+     ```
+   Do not pick a path or write this file without the user's explicit
+   confirmation — this is someone's global environment, not project state.
+4. Once the profile is set, run `npx openspec update` in the repo root to
+   apply the new workflow selection to this project's `openspec/` instructions.
+
+### 2d — verify, and stop loudly if it didn't take
+
+Re-run `npx openspec config list` and confirm `new`, `continue`, and `verify`
+are present in the workflow list. If the profile is still `core` — **stop
+the whole init-harness run here** with a clear message explaining that the
+gates in `review-gates.md` are designed around the Expanded lifecycle and
+will not trigger correctly under Core. Do not continue installation on a
+silent fallback to Core.
+
+### 2e — record the outcome
+
+Once Expanded is confirmed, record the fact in `.claude/harness.json` in the
+target repo (create the file with just this key if it doesn't exist yet —
+a later step in this harness's evolution will add more fields to the same
+file):
+```json
+{ "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] } }
+```
+This lets `harness-review` (Gate 6) notice later if someone runs
+`openspec config reset` and silently drops the project back to Core.
 
 ## Step 3 — install a native git pre-commit hook (not just Claude Code hooks)
 

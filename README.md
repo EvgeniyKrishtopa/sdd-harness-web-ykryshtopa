@@ -11,6 +11,22 @@ A Claude Code plugin extracting a proven OpenSpec review harness (originally
 built for a Vite + React 19 + Redux Toolkit project) into a portable,
 framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
+## Requirements
+
+- **Node >= 20.19.0** — required by OpenSpec.
+- **OpenSpec in Expanded (`custom`) profile, not the default Core profile.**
+  This harness's gates are designed around OpenSpec's Expanded workflow set
+  (`new`, `continue`, `verify`, ...), not the single-shot `propose` flow that
+  Core ships with. `/init-harness` checks this and offers to switch it for
+  you (see Step 2 of `skills/init-harness/SKILL.md`) — but be aware that
+  **this setting lives in `~/.config/openspec/config.json`, a global,
+  per-machine file, not anything committed to this repository.** That means:
+  - it is **not** portable between machines or teammates — everyone who
+    works on this repo needs to set it up on their own machine once;
+  - CI runners won't have it unless you configure it there separately;
+  - switching it affects every other OpenSpec project on that machine, not
+    just this one.
+
 ## Install
 
 ```
