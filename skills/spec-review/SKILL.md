@@ -33,3 +33,31 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
   relevant artifact(s) before declaring the change ready for implementation.
 - **Clean, or PLAUSIBLE-only** — declare the change ready for implementation.
   The classification is still recorded either way.
+
+## Log this gate's run
+
+After delivering the verdict above, append one line to
+`.claude/harness-log.jsonl` in the target repo (create the file if it
+doesn't exist yet) — a plain shell append, 0 model tokens:
+
+```bash
+mkdir -p .claude
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "-" \
+  --arg gate "spec-review" \
+  --arg verdict "<clean|plausible|confirmed>" \
+  --argjson durationMs <elapsed-ms> \
+  --arg model "<model spec-reviewer actually ran on>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  >> .claude/harness-log.jsonl
+```
+
+Fill in the change slug, the verdict this run resolved to, the wall-clock
+time spent from delegating to `spec-reviewer` to receiving its response, and
+the model it actually ran on (`group` is `-`: this gate runs at change
+scope). If `jq` isn't available, construct the equivalent JSON line with
+`printf` instead. A failed log write never blocks the gate — note it in the
+report and move on; this is a diagnostic aid, not part of the pass/fail
+logic.

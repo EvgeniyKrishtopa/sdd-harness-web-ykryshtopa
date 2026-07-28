@@ -1,62 +1,65 @@
 {
-  "PreToolUse": [
-    {
-      "matcher": "Bash",
-      "hooks": [
-        {
-          "type": "agent",
-          "if": "Bash(git commit *)",
-          "model": "claude-fable-5",
-          "timeout": 120,
-          "statusMessage": "Reviewing staged diff for architecture risks...",
-          "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `agents/architecture-reviewer.md` from this plugin and follow its criteria exactly.\n2. Run `git diff --cached`. If empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
-        },
-        {
-          "type": "command",
-          "if": "Bash(git merge *)",
-          "statusMessage": "Checking merge target branch...",
-          "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Merging into %s requires confirmation.\"}}' \"$branch\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
-        },
-        {
-          "type": "command",
-          "if": "Bash(git push *)",
-          "statusMessage": "Checking push target and flags...",
-          "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Pushing while on %s requires confirmation.\"}}' \"$branch\"; elif echo \"$ARGUMENTS\" | grep -qE -- '(^|[[:space:]])(--force([[:space:]=]|$)|--force-with-lease|-f([[:space:]]|$))|\\bmain\\b|\\bmaster\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Force-push or a push targeting main/master requires confirmation.\"}}'; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
-        }
-      ]
-    },
-    {
-      "matcher": "Read|Grep",
-      "hooks": [
-        {
-          "type": "command",
-          "statusMessage": "Checking .claudeignore...",
-          "command": "f=$(jq -r '.tool_input.file_path // .tool_input.path // empty'); if [ -z \"$f\" ] || [ ! -f .claudeignore ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; exit 0; fi; rel=\"$f\"; case \"$rel\" in /*) rel=\"${rel#$PWD/}\";; esac; while IFS= read -r pat; do case \"$pat\" in ''|'#'*) continue;; esac; case \"$rel\" in $pat|$pat/*|*/$pat|*/$pat/*|$pat*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked by .claudeignore pattern: %s\"}}' \"$pat\"; exit 0;; esac; done < .claudeignore; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
-        }
-      ]
-    }
-  ],
-  "PostToolUse": [
-    {
-      "matcher": "Edit|Write",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) if [ -f next.config.js ] || [ -f next.config.ts ] || [ -f next.config.mjs ]; then cmd='npx tsc --noEmit'; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; echo \"$output\" | tail -10; exit $code;; *) exit 0;; esac",
-          "timeout": 60,
-          "statusMessage": "Typechecking..."
-        }
-      ]
-    }
-  ],
-  "SessionStart": [
-    {
-      "hooks": [
-        {
-          "type": "command",
-          "command": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi"
-        }
-      ]
-    }
-  ]
+  "description": "sdd-harness-web-ykryshtopa review gates: commit/merge/push guards, .claudeignore enforcement, typecheck-on-edit, session context banner",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "agent",
+            "if": "Bash(git commit *)",
+            "model": "claude-fable-5",
+            "timeout": 120,
+            "statusMessage": "Reviewing staged diff for architecture risks...",
+            "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git merge *)",
+            "statusMessage": "Checking merge target branch...",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Merging into %s requires confirmation.\"}}' \"$branch\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
+          },
+          {
+            "type": "command",
+            "if": "Bash(git push *)",
+            "statusMessage": "Checking push target and flags...",
+            "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Pushing while on %s requires confirmation.\"}}' \"$branch\"; elif echo \"$ARGUMENTS\" | grep -qE -- '(^|[[:space:]])(--force([[:space:]=]|$)|--force-with-lease|-f([[:space:]]|$))|\\bmain\\b|\\bmaster\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Force-push or a push targeting main/master requires confirmation.\"}}'; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "statusMessage": "Checking .claudeignore...",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_input.path // empty'); if [ -z \"$f\" ] || [ ! -f .claudeignore ]; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; exit 0; fi; rel=\"$f\"; case \"$rel\" in /*) rel=\"${rel#$PWD/}\";; esac; while IFS= read -r pat; do case \"$pat\" in ''|'#'*) continue;; esac; case \"$rel\" in $pat|$pat/*|*/$pat|*/$pat/*|$pat*) printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"Blocked by .claudeignore pattern: %s\"}}' \"$pat\"; exit 0;; esac; done < .claudeignore; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) if [ -f next.config.js ] || [ -f next.config.ts ] || [ -f next.config.mjs ]; then cmd='npx tsc --noEmit'; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; echo \"$output\" | tail -10; exit $code;; *) exit 0;; esac",
+            "timeout": 60,
+            "statusMessage": "Typechecking..."
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi"
+          }
+        ]
+      }
+    ]
+  }
 }

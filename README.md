@@ -11,6 +11,22 @@ A Claude Code plugin extracting a proven OpenSpec review harness (originally
 built for a Vite + React 19 + Redux Toolkit project) into a portable,
 framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
+## Requirements
+
+- **Node >= 20.19.0** — required by OpenSpec.
+- **OpenSpec in Expanded (`custom`) profile, not the default Core profile.**
+  This harness's gates are designed around OpenSpec's Expanded workflow set
+  (`new`, `continue`, `verify`, ...), not the single-shot `propose` flow that
+  Core ships with. `/init-harness` checks this and offers to switch it for
+  you (see Step 2 of `skills/init-harness/SKILL.md`) — but be aware that
+  **this setting lives in `~/.config/openspec/config.json`, a global,
+  per-machine file, not anything committed to this repository.** That means:
+  - it is **not** portable between machines or teammates — everyone who
+    works on this repo needs to set it up on their own machine once;
+  - CI runners won't have it unless you configure it there separately;
+  - switching it affects every other OpenSpec project on that machine, not
+    just this one.
+
 ## Install
 
 ```
@@ -26,12 +42,17 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 Detects your framework, package manager, and test runner; installs and
 initializes OpenSpec; asks for your coverage threshold; writes
 `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`; merges
-`hooks.json` and a full `permissions` allow/deny list into your
-`.claude/settings.json`; writes `.claudeignore` plus its enforcement hook;
-installs a native git pre-commit hook via Husky (`.husky/pre-commit`) that
-runs typecheck + lint + test:coverage on every commit — independent of
-Claude Code's own hooks, so it still blocks bad commits made without any
-agent involved.
+a full `permissions` allow/deny list into your `.claude/settings.json`;
+writes `.claudeignore` plus its enforcement hook; installs a native git
+pre-commit hook via Husky (`.husky/pre-commit`) that runs typecheck + lint +
+test:coverage on every commit — independent of Claude Code's own hooks, so
+it still blocks bad commits made without any agent involved.
+
+This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
+merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
+automatically to any repo where the plugin is enabled, the same way its
+skills and agents do. `/init-harness` does not copy them into your project's
+`.claude/settings.json` — there is nothing to install for that layer.
 
 ### Permissions and `.claudeignore` — what's actually enforced
 
