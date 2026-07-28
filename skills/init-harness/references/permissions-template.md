@@ -56,6 +56,11 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Read(**/.env.*)",
       "Bash(cat .env:*)",
       "Bash(rm -rf:*)",
+      "Bash(rm -fr:*)",
+      "Bash(rm -r -f:*)",
+      "Bash(find . -delete:*)",
+      "Bash(git clean:*)",
+      "Bash(git reset --hard:*)",
       "Bash(npm install:*)",
       "Bash(npm i:*)",
       "Bash(pnpm add:*)",
@@ -104,3 +109,12 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
 - `Bash(curl:*)` is narrowed to `Bash(curl -s http://localhost:*)` — the only
   legitimate use in this harness is polling the local dev server in `web-qa`.
   An unscoped `curl` is an exfiltration channel to any host.
+- `Bash(rm -rf:*)` alone doesn't catch `rm -fr`, `rm -r -f`, `find . -delete`,
+  or `git clean`/`git reset --hard` — added as explicit entries. This is
+  still prefix matching, not semantic analysis: `Bash` deny rules match the
+  start of the command string, so e.g. `find . -type f -delete` (flag before
+  `-delete`) or `rm --recursive --force` slip past the literal forms above.
+  Treat this whole `Bash` deny list as a speed bump that catches the common
+  spellings, not a sandbox that catches every equivalent invocation — a
+  determined or careless agent can still construct a destructive command
+  these entries don't match.
