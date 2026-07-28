@@ -92,5 +92,5 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   framework from Step 1, don't hardcode one.
 - This `permissions.deny` list is the actually-enforced, un-bypassable
   mechanism for hard blocks (secrets, destructive commands). It is not the
-  same thing as the `.claudeignore` file from Step 8 below — see that step's
+  same thing as the `.claudeignore` file from Step 7 below — see that step's
   notes for why both exist.

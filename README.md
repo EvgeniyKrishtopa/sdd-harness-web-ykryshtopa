@@ -26,12 +26,17 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 Detects your framework, package manager, and test runner; installs and
 initializes OpenSpec; asks for your coverage threshold; writes
 `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`; merges
-`hooks.json` and a full `permissions` allow/deny list into your
-`.claude/settings.json`; writes `.claudeignore` plus its enforcement hook;
-installs a native git pre-commit hook via Husky (`.husky/pre-commit`) that
-runs typecheck + lint + test:coverage on every commit — independent of
-Claude Code's own hooks, so it still blocks bad commits made without any
-agent involved.
+a full `permissions` allow/deny list into your `.claude/settings.json`;
+writes `.claudeignore` plus its enforcement hook; installs a native git
+pre-commit hook via Husky (`.husky/pre-commit`) that runs typecheck + lint +
+test:coverage on every commit — independent of Claude Code's own hooks, so
+it still blocks bad commits made without any agent involved.
+
+This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
+merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
+automatically to any repo where the plugin is enabled, the same way its
+skills and agents do. `/init-harness` does not copy them into your project's
+`.claude/settings.json` — there is nothing to install for that layer.
 
 ### Permissions and `.claudeignore` — what's actually enforced
 
