@@ -202,7 +202,7 @@ The user may expect a `.claudeignore` file the way `.gitignore` works.
 Code has no built-in reader for a file of this name; Anthropic's guidance is
 to use `permissions.deny` (Step 6) instead. This plugin makes the file
 meaningful anyway by pairing it with a `PreToolUse` hook (already active via
-this plugin's `hooks/hooks.json`, matcher `Read|Grep` — see the note in
+this plugin's `hooks/hooks.json`, matcher `Read|Grep|Glob` — see the note in
 Step 6, nothing to install here) that reads `.claudeignore` and denies
 matching reads — see `references/claudeignore-template.md` for the full
 explanation and the template content.
