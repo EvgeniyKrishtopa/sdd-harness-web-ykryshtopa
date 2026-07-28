@@ -168,6 +168,21 @@ into the target repo (see `references/git-conventions-template.md` and
 adapt — fill in the detected package manager's commands and the chosen
 coverage threshold rather than copying placeholders verbatim).
 
+Do not silently overwrite either file on a re-run of this skill — the same
+"never clobber existing config" rule this skill already applies to hooks
+(Step 3), permissions (Step 6), `.claudeignore` (Step 7), and CLAUDE.md
+(Step 9) also applies here, even though these two are fully generated files
+rather than merge targets. If a file already exists, read it first:
+- If its content is identical to what this step would generate (modulo the
+  substituted package-manager commands and coverage threshold), there's
+  nothing to do — leave it.
+- If it differs — a changed coverage threshold, a package-manager switch,
+  or hand-edits the user made to the doc directly — tell the user
+  specifically what's different and ask before overwriting. Never replace a
+  file the user may have customized without them seeing what would change.
+- Only write straight over the file with no confirmation when it doesn't
+  exist yet.
+
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
 This plugin's `hooks/hooks.json` (commit gate, merge/push guards,
