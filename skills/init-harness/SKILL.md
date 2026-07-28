@@ -7,13 +7,13 @@ Run this once per repository, before using any other skill in this plugin.
 
 ## Step 1 — detect the project
 
-1. **Package manager**: check for `yarn.lock` → yarn, `package-lock.json` →
-   npm, `pnpm-lock.yaml` → pnpm. If none exist yet, ask the user which one
-   they want.
-2. **Framework**: check for `next.config.js`/`.ts`/`.mjs` → Next.js;
-   otherwise `vite.config.js`/`.ts` → Vite. If neither is found, stop and
-   ask the user — do not guess a framework onto a project that has neither.
-3. **Test runner**: check devDependencies for `vitest` or `jest`.
+Follow `references/stack-detection.md` for the full procedure: package
+manager (lockfile), framework (config file, including the `vite.config.mts`/
+`.mjs` and `next.config.mjs` variants), test runner, build output directory,
+default dev server URL, and the script-name mapping. This is the single
+detection procedure every other skill and hook defers to via the manifest
+Step 8 writes below — don't inline a shorter or different version of it here
+or anywhere else.
 
 ## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
