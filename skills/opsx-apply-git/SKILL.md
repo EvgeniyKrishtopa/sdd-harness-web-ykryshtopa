@@ -60,20 +60,28 @@ actually lost. Don't treat that failure as a hard stop without checking which
 case it is:
 
 1. Run `git fetch origin`, then `git pull --ff-only`.
-2. On failure, inspect `git log --oneline <parent>..origin/<parent>`. If it
-   shows a single squashed commit (or a rebased sequence) that supersedes
-   exactly what this branch already has — i.e. the previous run's PR landed
-   and the local `<parent>` is just stale, not genuinely diverged — this is
-   the squash/rebase-merge case.
-3. In that case, propose `git reset --hard origin/<parent>` to the user and
-   get **explicit confirmation** before running it. This discards the local
-   parent's history in favor of `origin`'s, which is safe here only because
-   the squashed/rebased commit already contains everything the local branch
-   had — but it's still destructive and must never run without that
+2. On failure, check **both** directions before concluding anything:
+   `git log --oneline <parent>..origin/<parent>` (what's new upstream) *and*
+   `git log --oneline origin/<parent>..<parent>` (what's local-only, not on
+   `origin` at all). The squash/rebase-merge case is specifically: the first
+   command shows a single squashed commit (or rebased sequence) that
+   supersedes exactly what this branch already had, **and** the second
+   command is empty — no local-only commits exist for `reset --hard` to
+   discard. If the second command shows anything, this isn't the safe case:
+   there's un-pushed local work that `reset --hard` would destroy, even if
+   the first command also looks like a clean squash.
+3. Only when the local-only side is empty, propose `git reset --hard
+   origin/<parent>` to the user and get **explicit confirmation** before
+   running it. This is the one documented, narrowly-scoped exception to this
+   skill's rule against destructive/history-rewriting operations (see
+   Exceptions below) — it's safe here only because the squashed/rebased
+   commit already contains everything the local branch had and nothing
+   local-only would be lost, and it must never run without that
    confirmation (#18).
-4. If the divergence doesn't look like a squash/rebase of already-merged
-   work (e.g. genuinely conflicting commits from elsewhere), stop and ask —
-   don't guess at a merge or rebase yourself.
+4. If the divergence doesn't match that exact shape — local-only commits
+   exist, the upstream side doesn't look like a clean squash/rebase, or
+   anything else is ambiguous — stop and ask. Don't guess at a merge, rebase,
+   or reset yourself.
 
 ### Case A — first pending group is isolated: autonomous batch
 
@@ -155,14 +163,23 @@ into the same parent whose content depends on the first — if the run's PR
 is later rejected or reworked, an already-opened archive PR would have
 archived a change that was never actually accepted (#19).
 
-1. Check whether the run's PR has merged: `gh pr view <branch-or-number>
-   --json state,mergedAt --jq .state`. If it isn't `MERGED` yet, stop here
-   and report — the change is fully implemented and its PR is open, but
-   archiving waits on that merge; re-run this step (or the whole skill)
-   once a human has merged it. Once it's `MERGED`, sync the parent (see the
-   syncing procedure in §3 — the same squash/rebase-merge case can apply
-   here too) and cut the archive branch off the now-current parent tip,
-   which contains this run's work: `git checkout -b chore/archive-<change-name>`.
+1. Check the run's PR state: `gh pr view <branch-or-number> --json state
+   --jq .state`. Three outcomes, not two:
+   - **`MERGED`** → sync the parent (see the syncing procedure in §3 — the
+     same squash/rebase-merge case can apply here too) and cut the archive
+     branch off the now-current parent tip, which contains this run's work:
+     `git checkout -b chore/archive-<change-name>`.
+   - **`OPEN`** → stop here and report — the change is fully implemented and
+     its PR is open, but archiving waits on that merge. To resume once a
+     human has merged it, re-invoke `opsx-apply-git` on **this run's own
+     branch** (not the parent, and not a fresh checkout) so it lands back on
+     this same archiving step rather than tripping step 1's "leftover group
+     branch" guard in §1, which fires when the checked-out branch isn't the
+     current run's own branch.
+   - **`CLOSED`** (and not merged) → the run's PR was rejected or reworked.
+     Do **not** wait for a merge that isn't coming — stop and ask the human
+     what to do with the change instead (re-open, rework, or abandon the
+     archive entirely).
 2. Run `openspec archive <change-name>` (or the vendored
    `openspec-archive-change` skill if present).
 3. Commit the archive move (`chore: archive <change-name>`) — this is a
@@ -175,5 +192,10 @@ archived a change that was never actually accepted (#19).
 ## Exceptions
 
 - An unrelated fix found mid-task can land as its own focused commit.
-- Destructive/history-rewriting git operations are never part of this
-  flow — stop and ask if something goes wrong.
+- Destructive/history-rewriting git operations are never part of this flow
+  — stop and ask if something goes wrong. The **only** exception is the
+  confirmed `git reset --hard origin/<parent>` in the squash/rebase-merge
+  recovery above (§3), and only under the exact narrow conditions and
+  explicit human confirmation described there — it is not a general license
+  to reset, and nothing else in this flow rewrites history or discards
+  commits.
