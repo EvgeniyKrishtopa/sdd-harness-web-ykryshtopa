@@ -18,19 +18,19 @@ Only when the change touched user-facing UI/flows. If the diff is
 config/docs/CI-only, this gate is not applicable — say so and go straight to
 Gate 4.
 
-## Detect the framework before starting the dev server
+## Read the stack manifest before starting the dev server
 
-1. Check for `next.config.js`/`next.config.ts`/`next.config.mjs` → Next.js
-   project: start with `next dev` (default port 3000, or read `-p` from an
-   existing script in `package.json`).
-2. Otherwise check for `vite.config.js`/`vite.config.ts` → Vite project:
-   start with `vite` / `npm run dev` (default port 5173).
-3. Use whichever package manager's lockfile is present (`yarn.lock` →
-   `yarn dev`, `package-lock.json` → `npm run dev`, `pnpm-lock.yaml` →
-   `pnpm dev`) rather than assuming one.
-4. Confirm the dev server is actually up (poll the root URL) before handing
-   off to the reviewer — don't let the QA pass silently test against a dead
-   server.
+1. Read `.claude/harness.json` (written by `init-harness`) for `framework`,
+   `runCmd`, `scripts.dev`, and `devServerUrl`. Do not re-detect the
+   framework from config files or the package manager from lockfiles — that
+   duplicated logic is exactly what caused this skill to drift out of sync
+   with `init-harness` before (it didn't know about `next.config.mjs`). If
+   the manifest is missing, stop and tell the user to run `init-harness`
+   first — see `skills/init-harness/references/stack-detection.md` for what
+   it detects.
+2. Start the dev server with `<runCmd> <scripts.dev>` (e.g. `yarn dev`,
+   `npm run dev`, `pnpm dev`) and poll `devServerUrl` before handing off to
+   the reviewer — don't let the QA pass silently test against a dead server.
 
 ## Action
 
