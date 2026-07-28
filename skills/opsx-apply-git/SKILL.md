@@ -29,8 +29,8 @@ are the source of truth for branch naming, commit format, and gate order.
    command below depends on these, not on assuming `yarn`/Vite. Do not
    re-detect the stack from lockfiles or config files. If the manifest is
    missing, stop and tell the user to run `init-harness` first — see
-   `skills/init-harness/references/stack-detection.md` for what it detects
-   and why this skill doesn't duplicate that logic.
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
+   for what it detects and why this skill doesn't duplicate that logic.
 
 ## 2. Standard OpenSpec selection and context
 

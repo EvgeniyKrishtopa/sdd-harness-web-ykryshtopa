@@ -19,7 +19,7 @@ report looks like and how to run one (`vitest run --coverage` vs
 `jest --coverage`), and the recorded threshold rather than a fixed
 percentage or a re-read of `vite.config.ts`/`jest.config.*`. If the manifest
 is missing, stop and tell the user to run `init-harness` first — see
-`skills/init-harness/references/stack-detection.md`.
+`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`.
 
 ## Action
 

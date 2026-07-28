@@ -26,8 +26,9 @@ Gate 4.
    duplicated logic is exactly what caused this skill to drift out of sync
    with `init-harness` before (it didn't know about `next.config.mjs`). If
    the manifest is missing, stop and tell the user to run `init-harness`
-   first — see `skills/init-harness/references/stack-detection.md` for what
-   it detects.
+   first — see
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
+   for what it detects.
 2. Start the dev server with `<runCmd> <scripts.dev>` (e.g. `yarn dev`,
    `npm run dev`, `pnpm dev`) and poll `devServerUrl` before handing off to
    the reviewer — don't let the QA pass silently test against a dead server.
