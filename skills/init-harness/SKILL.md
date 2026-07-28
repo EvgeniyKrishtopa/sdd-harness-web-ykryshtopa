@@ -1,6 +1,6 @@
 ---
 name: init-harness
-description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, merges permissions and .claudeignore into the target repo, and installs a native git pre-commit hook (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
+description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs a native git pre-commit hook (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
 ---
 
 Run this once per repository, before using any other skill in this plugin.
@@ -279,7 +279,49 @@ Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be
 determined, ask the user rather than guessing.
 
-## Step 9 — report
+## Step 9 — create or append CLAUDE.md's harness pointer block
+
+`.claude/docs/*.md` (Step 5) is **not** loaded into context automatically the
+way `CLAUDE.md`/`AGENTS.md` is. Without a pointer from the root instruction
+file, no session ever reads `git-conventions.md` or `review-gates.md` unless
+`opsx-apply-git` happens to read them itself — and more importantly, this
+user's global instructions only recognize an auto-commit override
+("commit without being asked") when it is *referenced from the project's
+CLAUDE.md*. `opsx-apply-git` §4.7 and §5.3 rely on `git-conventions.md`
+being exactly that override, at group and archive boundaries. Without this
+step, that override is undiscoverable, and a fresh session should fall back
+to asking before every commit instead of trusting it.
+
+1. Check for `CLAUDE.md`, or `AGENTS.md` if that's what this project already
+   uses instead. If **neither exists**, create a minimal `CLAUDE.md`
+   containing just the block below.
+2. If **one already exists**, append the block below to the end of it —
+   never overwrite or reorder existing content, the same merge rule used for
+   every other file this skill touches.
+3. Block content (prefer `@`-imports if the target Claude Code version
+   supports them; otherwise plain links, one line of explanation each — do
+   not leave literal placeholder text):
+
+   ```markdown
+   ## Harness (sdd-harness-web-ykryshtopa)
+
+   - @.claude/docs/git-conventions.md — branch/commit conventions. This is
+     also the documented authorization for `opsx-apply-git` to commit
+     automatically at task-group and archive boundaries (its §4.7/§5.3) —
+     without this reference, that override isn't discoverable and shouldn't
+     be assumed.
+   - @.claude/docs/review-gates.md — the six automated review gates and
+     their order.
+   - @.claude/harness.json — detected stack (framework, package manager,
+     test runner, coverage threshold). Every skill and hook in this harness
+     reads from here; do not re-detect any of it.
+   ```
+
+4. Keep the block short. Gate 6 (`harness-review`) already checks that the
+   root instruction file stays under roughly 200 lines — this step should
+   never be the reason that budget gets exceeded.
+
+## Step 10 — report
 
 Summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
@@ -288,7 +330,9 @@ now in place (Step 3), noting that this plugin's Claude Code hooks are
 already active with nothing to install (Step 6), the
 permissions/`.claudeignore` distinction from Steps 6-7 (what
 `permissions.deny` actually enforces vs. what the `.claudeignore` guard hook
-covers), and that `.claude/harness.json` (Step 8) is now the source every
-other skill reads for stack details. Tell the user their harness is ready and
-that `opsx-propose-review` is the next command to run when they want to
-start their first spec-driven change.
+covers), that `.claude/harness.json` (Step 8) is now the source every other
+skill reads for stack details, and whether `CLAUDE.md`/`AGENTS.md` (Step 9)
+was created or appended to — say plainly that this is required for the
+auto-commit override at group/archive boundaries to apply. Tell the user
+their harness is ready and that `opsx-propose-review` is the next command to
+run when they want to start their first spec-driven change.
