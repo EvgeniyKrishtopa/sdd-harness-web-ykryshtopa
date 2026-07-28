@@ -83,12 +83,27 @@ Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
 4. Run **`code-review`** (Gate 4) against the group's diff (incl. any web-qa
    fixes). CONFIRMED → pause and ask fix-now-or-commit-anyway. Clean/
    PLAUSIBLE → continue.
-5. If the group's tasks touched tests, run **`test-coverage`** (Gate 5)
-   against the same diff, using the detected test runner and the coverage
-   threshold `init-harness` recorded. Same pause behavior.
+5. Unless the group's diff is docs/config-only, run **`test-coverage`**
+   (Gate 5) against the same diff, using the detected test runner and the
+   coverage threshold `init-harness` recorded — this runs precisely when a
+   group touched source code, whether or not it also touched tests, since a
+   group that shipped source changes with no tests is what this gate exists
+   to catch. Same pause behavior.
 6. **Last group** → run **`harness-review`** (Gate 6) before committing. On
-   an approved finding, apply and commit it separately
-   (`chore: harness review — <summary>`) before step 7.
+   an approved finding, apply the fix and commit it separately — never
+   `git commit -a`/`-am`, which would sweep in the group's own
+   not-yet-committed implementation still sitting in the working tree. Stage
+   **exactly the files the fix touched** with explicit paths
+   (`git add <the-touched-file(s)>`), never a directory shorthand like
+   `.claude/` that could also pick up unrelated uncommitted changes the
+   group's own implementation left under the same directory. Gate 6's scope
+   bounds where those files can come from — `CLAUDE.md`/`AGENTS.md`,
+   `.claude/harness.json`, `.claude/settings.json`, `.claude/docs/**`,
+   `.husky/**`, plus this plugin's own `skills/`/`agents/` when its own repo
+   is what's under review — but the `git add` itself always lists the
+   specific file(s), e.g.
+   `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
+   Do this before step 7.
 7. Commit the group's own implementation (Conventional Commits, per
    git-conventions.md) — do not wait to be asked, this is the documented
    override for group boundaries. If the pre-commit hook fails, fix the

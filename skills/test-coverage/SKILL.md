@@ -8,8 +8,10 @@ Run **Gate 5** of this project's review pipeline: test-coverage review.
 ## Trigger
 
 Gate 4 is clean (or the user explicitly chose to proceed anyway) for a group
-whose tasks included test creation or updates. Skipped entirely if the group
-touched no tests.
+whose diff touched application source code or tests. Skipped only when the
+group's diff is docs/config-only (no source or test files changed) — a group
+that shipped source changes with zero test coverage is exactly the case this
+gate exists to catch, not a reason to skip it.
 
 ## Read the test runner and threshold from the stack manifest
 

@@ -7,21 +7,21 @@
         "hooks": [
           {
             "type": "agent",
-            "if": "Bash(git commit *)",
+            "if": "Bash(git commit:*)",
             "model": "claude-fable-5",
             "timeout": 120,
             "statusMessage": "Reviewing staged diff for architecture risks...",
-            "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
+            "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If that's empty — e.g. the commit uses `-a`/`-am` and stages straight from the working tree instead of the index — fall back to `git diff HEAD` so an unstaged commit doesn't skip review just because the staged diff was empty. If both are empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
           },
           {
             "type": "command",
-            "if": "Bash(git merge *)",
+            "if": "Bash(git merge:*)",
             "statusMessage": "Checking merge target branch...",
             "command": "branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Merging into %s requires confirmation.\"}}' \"$branch\"; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
           },
           {
             "type": "command",
-            "if": "Bash(git push *)",
+            "if": "Bash(git push:*)",
             "statusMessage": "Checking push target and flags...",
             "command": "cmd=$(jq -r '.tool_input.command // empty'); branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null); if [ \"$branch\" = \"main\" ] || [ \"$branch\" = \"master\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Pushing while on %s requires confirmation.\"}}' \"$branch\"; elif echo \"$cmd\" | grep -qE -- '(^|[[:space:]])(--force([[:space:]=]|$)|--force-with-lease|-f([[:space:]]|$))|\\bmain\\b|\\bmaster\\b'; then echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Force-push or a push targeting main/master requires confirmation.\"}}'; else echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'; fi"
           }
@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) runCmd=''; tcScript=''; if [ -f .claude/harness.json ]; then out=$(jq -r '[(.runCmd // \"\"), (.scripts.typecheck // \"\")] | @tsv' .claude/harness.json); runCmd=$(printf '%s' \"$out\" | cut -f1); tcScript=$(printf '%s' \"$out\" | cut -f2); fi; if [ -n \"$runCmd\" ] && [ -n \"$tcScript\" ]; then cmd=\"$runCmd $tcScript\"; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; echo \"$output\" | tail -10; exit $code;; *) exit 0;; esac",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) [ -f tsconfig.json ] || exit 0; runCmd=''; tcScript=''; if [ -f .claude/harness.json ]; then out=$(jq -r '[(.runCmd // \"\"), (.scripts.typecheck // \"\")] | @tsv' .claude/harness.json); runCmd=$(printf '%s' \"$out\" | cut -f1); tcScript=$(printf '%s' \"$out\" | cut -f2); fi; if [ -n \"$runCmd\" ] && [ -n \"$tcScript\" ]; then cmd=\"$runCmd $tcScript\"; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; if [ $code -ne 0 ]; then echo \"$output\" | tail -10 >&2; exit 2; fi; exit 0;; *) exit 0;; esac",
             "timeout": 60,
             "statusMessage": "Typechecking..."
           }
