@@ -209,7 +209,7 @@ explanation and the template content.
 
 1. Write `.claudeignore` from that template (substituting build dir and
    lockfile same as Step 6) — or append missing lines if one already exists.
-2. When reporting in Step 8, state plainly that `.claudeignore` is a
+2. When reporting in Step 10, state plainly that `.claudeignore` is a
    convenience/noise-reduction layer enforced by this plugin's own hook, not
    a Claude Code native feature, and that secrets/destructive-command
    protection lives in `permissions.deny` instead.

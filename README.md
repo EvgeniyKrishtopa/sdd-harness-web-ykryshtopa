@@ -41,12 +41,18 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
 Detects your framework, package manager, and test runner; installs and
 initializes OpenSpec; asks for your coverage threshold; writes
-`.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`; merges
-a full `permissions` allow/deny list into your `.claude/settings.json`;
-writes `.claudeignore` plus its enforcement hook; installs a native git
-pre-commit hook via Husky (`.husky/pre-commit`) that runs typecheck + lint +
-test:coverage on every commit — independent of Claude Code's own hooks, so
-it still blocks bad commits made without any agent involved.
+`.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`; writes
+`.claude/harness.json` — the single machine-readable manifest every other
+skill and hook in this plugin reads instead of re-detecting your stack;
+creates or appends a short pointer block in `CLAUDE.md`/`AGENTS.md` so that
+those docs (and the auto-commit override they define) are actually
+discoverable — Claude Code doesn't load `.claude/docs/*.md` into context on
+its own the way it loads `CLAUDE.md`; merges a full `permissions` allow/deny
+list into your `.claude/settings.json`; writes `.claudeignore` plus its
+enforcement hook; installs a native git pre-commit hook via Husky
+(`.husky/pre-commit`) that runs typecheck + lint + test:coverage on every
+commit — independent of Claude Code's own hooks, so it still blocks bad
+commits made without any agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
 merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
