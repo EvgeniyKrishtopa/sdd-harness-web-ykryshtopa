@@ -49,10 +49,11 @@ those docs (and the auto-commit override they define) are actually
 discoverable — Claude Code doesn't load `.claude/docs/*.md` into context on
 its own the way it loads `CLAUDE.md`; merges a full `permissions` allow/deny
 list into your `.claude/settings.json`; writes `.claudeignore` plus its
-enforcement hook; installs a native git pre-commit hook via Husky
-(`.husky/pre-commit`) that runs typecheck + lint + test:coverage on every
-commit — independent of Claude Code's own hooks, so it still blocks bad
-commits made without any agent involved.
+enforcement hook; installs native git hooks via Husky — `.husky/pre-commit`
+(typecheck + lint + `lint-staged`, kept fast since it fires once per task
+group) and `.husky/pre-push` (the full `test:coverage` run) — independent
+of Claude Code's own hooks, so bad commits and pushes are still blocked
+even with no agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
 merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
