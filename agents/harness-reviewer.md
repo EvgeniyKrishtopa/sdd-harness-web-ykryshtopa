@@ -1,6 +1,6 @@
 ---
 name: harness-reviewer
-description: Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/agents/, .claude/skills/, .claude/docs/) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
+description: Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/agents/, .claude/skills/, .claude/docs/) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
 tools: Read, Grep, Glob, Bash
 model: claude-fable-5
 ---
@@ -28,9 +28,14 @@ agent follows the wrong one.
    other on gate order, naming, and behavior? This project has shipped the
    exact same drift bug twice in one session before — treat this check as
    load-bearing, not optional.
-6. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
+6. **Stack manifest drift** — does `.claude/harness.json` still match the
+   project (script names, coverage threshold, package manager, framework)?
+   Has any skill grown its own "check for next.config/vite.config/lockfile"
+   logic instead of reading that manifest — the exact class of drift this
+   manifest exists to prevent?
+7. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
    it actually needs (read-only agents should never carry `Write`/`Edit`)?
-7. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
+8. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
    never by hand)?
 
