@@ -90,8 +90,13 @@ Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
    group that shipped source changes with no tests is what this gate exists
    to catch. Same pause behavior.
 6. **Last group** → run **`harness-review`** (Gate 6) before committing. On
-   an approved finding, apply and commit it separately
-   (`chore: harness review — <summary>`) before step 7.
+   an approved finding, apply the fix and commit it separately, staged
+   narrowly to the harness paths it touched — never `git commit -a`/`-am`,
+   which would sweep in the group's own not-yet-committed implementation
+   still sitting in the working tree:
+   `git add .claude/ CLAUDE.md AGENTS.md .husky/ && git commit -m "chore: harness review — <summary>"`
+   (narrow the `git add` paths further to whatever the approved fix actually
+   touched, e.g. just `.husky/pre-commit` for a hook-only fix) before step 7.
 7. Commit the group's own implementation (Conventional Commits, per
    git-conventions.md) — do not wait to be asked, this is the documented
    override for group boundaries. If the pre-commit hook fails, fix the
