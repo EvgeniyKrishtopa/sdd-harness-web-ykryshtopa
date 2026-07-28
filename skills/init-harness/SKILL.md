@@ -1,19 +1,19 @@
 ---
 name: init-harness
-description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, merges permissions and .claudeignore into the target repo, and installs a native git pre-commit hook (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
+description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs a native git pre-commit hook (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
 ---
 
 Run this once per repository, before using any other skill in this plugin.
 
 ## Step 1 — detect the project
 
-1. **Package manager**: check for `yarn.lock` → yarn, `package-lock.json` →
-   npm, `pnpm-lock.yaml` → pnpm. If none exist yet, ask the user which one
-   they want.
-2. **Framework**: check for `next.config.js`/`.ts`/`.mjs` → Next.js;
-   otherwise `vite.config.js`/`.ts` → Vite. If neither is found, stop and
-   ask the user — do not guess a framework onto a project that has neither.
-3. **Test runner**: check devDependencies for `vitest` or `jest`.
+Follow `references/stack-detection.md` for the full procedure: package
+manager (lockfile), framework (config file, including the `vite.config.mts`/
+`.mjs` and `next.config.mjs` variants), test runner, build output directory,
+default dev server URL, and the script-name mapping. This is the single
+detection procedure every other skill and hook defers to via the manifest
+Step 8 writes below — don't inline a shorter or different version of it here
+or anywhere else.
 
 ## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
@@ -116,8 +116,8 @@ silent fallback to Core.
 
 Once Expanded is confirmed, record the fact in `.claude/harness.json` in the
 target repo (create the file with just this key if it doesn't exist yet —
-a later step in this harness's evolution will add more fields to the same
-file):
+Step 8 below fills in the rest of the manifest around it; never overwrite
+this key when that step runs):
 ```json
 { "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] } }
 ```
@@ -209,20 +209,130 @@ explanation and the template content.
 
 1. Write `.claudeignore` from that template (substituting build dir and
    lockfile same as Step 6) — or append missing lines if one already exists.
-2. When reporting in Step 8, state plainly that `.claudeignore` is a
+2. When reporting in Step 10, state plainly that `.claudeignore` is a
    convenience/noise-reduction layer enforced by this plugin's own hook, not
    a Claude Code native feature, and that secrets/destructive-command
    protection lives in `permissions.deny` instead.
 
-## Step 8 — report
+## Step 8 — write the full stack manifest: `.claude/harness.json`
+
+This is the single machine-readable source of truth every other skill
+(`opsx-apply-git`, `web-qa`, `test-coverage`, `harness-review`) and this
+plugin's `PostToolUse` typecheck hook read instead of re-detecting the stack
+themselves. Merge into the file Step 2e already started (it may already
+contain just the `openspec` key) — never overwrite that key, only add the
+rest around it:
+
+```json
+{
+  "version": 1,
+  "framework": "vite",
+  "packageManager": "yarn",
+  "runCmd": "yarn",
+  "testRunner": "vitest",
+  "buildDir": "dist",
+  "lockfile": "yarn.lock",
+  "coverageThreshold": 80,
+  "scripts": {
+    "dev": "dev",
+    "typecheck": "typecheck",
+    "lint": "lint",
+    "testCoverage": "test:coverage"
+  },
+  "devServerUrl": "http://localhost:5173",
+  "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
+  "models": {
+    "architecture": "claude-fable-5",
+    "spec": "claude-fable-5",
+    "webQa": "claude-fable-5",
+    "code": "claude-fable-5",
+    "testCoverage": "claude-fable-5",
+    "harness": "claude-fable-5",
+    "default": "claude-fable-5"
+  }
+}
+```
+
+Field notes:
+- `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
+  values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
+  Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
+  `pnpm-lock.yaml` was found).
+- `runCmd` — the command prefix used to invoke a `package.json` script
+  (`yarn`, `npm run`, or `pnpm`).
+- `scripts.*` — the actual script **keys** that exist in this project's
+  `package.json` for `dev`, `typecheck`, `lint`, and the coverage-mode test
+  run — never invented names. Ask the user if a mapping isn't obvious, the
+  same rule Step 3's Husky hook already follows.
+- `coverageThreshold` — the number chosen in Step 4.
+- `devServerUrl` — the dev server's root URL: `http://localhost:3000`
+  (Next.js default) or `http://localhost:5173` (Vite default), unless an
+  existing `dev` script already pins a different port with `-p`/`--port`.
+- `openspec` — already written by Step 2e; carry it over unchanged.
+- `models` — one entry per review-gate agent plus a `default` fallback,
+  seeded from whatever model each `agents/*.md` currently declares in its
+  frontmatter. No skill reads this key yet to actually pick a model — this
+  stage only makes the setting machine-readable; per-gate model selection
+  is a later stage's work.
+
+Every field must be a real detected or user-confirmed value. Never leave a
+literal placeholder token in the written file — if a value can't be
+determined, ask the user rather than guessing.
+
+## Step 9 — create or append CLAUDE.md's harness pointer block
+
+`.claude/docs/*.md` (Step 5) is **not** loaded into context automatically the
+way `CLAUDE.md`/`AGENTS.md` is. Without a pointer from the root instruction
+file, no session ever reads `git-conventions.md` or `review-gates.md` unless
+`opsx-apply-git` happens to read them itself — and more importantly, this
+user's global instructions only recognize an auto-commit override
+("commit without being asked") when it is *referenced from the project's
+CLAUDE.md*. `opsx-apply-git` §4.7 and §5.3 rely on `git-conventions.md`
+being exactly that override, at group and archive boundaries. Without this
+step, that override is undiscoverable, and a fresh session should fall back
+to asking before every commit instead of trusting it.
+
+1. Check for `CLAUDE.md`, or `AGENTS.md` if that's what this project already
+   uses instead. If **neither exists**, create a minimal `CLAUDE.md`
+   containing just the block below.
+2. If **one already exists**, append the block below to the end of it —
+   never overwrite or reorder existing content, the same merge rule used for
+   every other file this skill touches.
+3. Block content (prefer `@`-imports if the target Claude Code version
+   supports them; otherwise plain links, one line of explanation each — do
+   not leave literal placeholder text):
+
+   ```markdown
+   ## Harness (sdd-harness-web-ykryshtopa)
+
+   - @.claude/docs/git-conventions.md — branch/commit conventions. This is
+     also the documented authorization for `opsx-apply-git` to commit
+     automatically at task-group and archive boundaries (its §4.7/§5.3) —
+     without this reference, that override isn't discoverable and shouldn't
+     be assumed.
+   - @.claude/docs/review-gates.md — the six automated review gates and
+     their order.
+   - @.claude/harness.json — detected stack (framework, package manager,
+     test runner, coverage threshold). Every skill and hook in this harness
+     reads from here; do not re-detect any of it.
+   ```
+
+4. Keep the block short. Gate 6 (`harness-review`) already checks that the
+   root instruction file stays under roughly 200 lines — this step should
+   never be the reason that budget gets exceeded.
+
+## Step 10 — report
 
 Summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
 list the files written — including confirming the native pre-commit hook is
 now in place (Step 3), noting that this plugin's Claude Code hooks are
-already active with nothing to install (Step 6), and the
+already active with nothing to install (Step 6), the
 permissions/`.claudeignore` distinction from Steps 6-7 (what
 `permissions.deny` actually enforces vs. what the `.claudeignore` guard hook
-covers). Tell the user their harness is ready and that `opsx-propose-review`
-is the next command to run when they want to start their first spec-driven
-change.
+covers), that `.claude/harness.json` (Step 8) is now the source every other
+skill reads for stack details, and whether `CLAUDE.md`/`AGENTS.md` (Step 9)
+was created or appended to — say plainly that this is required for the
+auto-commit override at group/archive boundaries to apply. Tell the user
+their harness is ready and that `opsx-propose-review` is the next command to
+run when they want to start their first spec-driven change.

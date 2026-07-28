@@ -1,6 +1,6 @@
 ---
 name: harness-review
-description: Reviews CLAUDE.md/AGENTS.md, .claude/agents/, .claude/skills/, and .claude/docs/ for stale claims and drift from authoring best practices. Use before a final task group's commit, or whenever the harness setup changes.
+description: Reviews CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/agents/, .claude/skills/, and .claude/docs/ for stale claims and drift from authoring best practices. Use before a final task group's commit, or whenever the harness setup changes.
 ---
 
 Run **Gate 6** of this project's review pipeline: harness review — the only
@@ -14,9 +14,13 @@ Gate 4, if Gate 5 didn't apply) passes — but before that group's own commit.
 ## Action
 
 Delegate to the `harness-reviewer` subagent (`Agent` tool), scoped to the
-whole harness (`CLAUDE.md`/`AGENTS.md`, `.claude/agents/`, `.claude/skills/`,
-`.claude/docs/`), naming the change so the reviewer can check for anything
-the change's implementation should have updated in the harness but didn't.
+whole harness (`CLAUDE.md`/`AGENTS.md`, `.claude/harness.json`,
+`.claude/agents/`, `.claude/skills/`, `.claude/docs/`), naming the change so
+the reviewer can check for anything the change's implementation should have
+updated in the harness but didn't — including whether `.claude/harness.json`
+still matches reality (e.g. a new script name, a changed coverage threshold,
+a package-manager switch) and whether any skill has grown its own stack
+re-detection instead of reading that manifest.
 
 ## This gate does not follow the CONFIRMED/PLAUSIBLE pause rule
 

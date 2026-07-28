@@ -18,14 +18,19 @@ Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in
 the target repo (written by `init-harness`) before touching any code — they
 are the source of truth for branch naming, commit format, and gate order.
 
-## 1. Determine the parent branch and detect the project
+## 1. Determine the parent branch and read the stack manifest
 
 1. `git branch --show-current` — this should be the parent feature branch
    already active, never `main`/`master`. If it looks like a leftover group
    branch, stop and ask which branch is the real parent.
-2. Detect package manager (lockfile) and framework (`next.config.*` vs
-   `vite.config.*`) the same way `init-harness` does — every verification
-   command below depends on getting this right, not on assuming `yarn`.
+2. Read `.claude/harness.json` (written by `init-harness`) for
+   `packageManager`, `runCmd`, `framework`, `testRunner`, `buildDir`,
+   `scripts`, `devServerUrl`, and `coverageThreshold` — every verification
+   command below depends on these, not on assuming `yarn`/Vite. Do not
+   re-detect the stack from lockfiles or config files. If the manifest is
+   missing, stop and tell the user to run `init-harness` first — see
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
+   for what it detects and why this skill doesn't duplicate that logic.
 
 ## 2. Standard OpenSpec selection and context
 

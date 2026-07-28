@@ -44,7 +44,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) if [ -f next.config.js ] || [ -f next.config.ts ] || [ -f next.config.mjs ]; then cmd='npx tsc --noEmit'; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; echo \"$output\" | tail -10; exit $code;; *) exit 0;; esac",
+            "command": "f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); case \"$f\" in *.ts|*.tsx) runCmd=''; tcScript=''; if [ -f .claude/harness.json ]; then out=$(jq -r '[(.runCmd // \"\"), (.scripts.typecheck // \"\")] | @tsv' .claude/harness.json); runCmd=$(printf '%s' \"$out\" | cut -f1); tcScript=$(printf '%s' \"$out\" | cut -f2); fi; if [ -n \"$runCmd\" ] && [ -n \"$tcScript\" ]; then cmd=\"$runCmd $tcScript\"; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; echo \"$output\" | tail -10; exit $code;; *) exit 0;; esac",
             "timeout": 60,
             "statusMessage": "Typechecking..."
           }

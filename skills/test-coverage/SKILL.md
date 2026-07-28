@@ -11,16 +11,15 @@ Gate 4 is clean (or the user explicitly chose to proceed anyway) for a group
 whose tasks included test creation or updates. Skipped entirely if the group
 touched no tests.
 
-## Detect the test runner and threshold before reviewing
+## Read the test runner and threshold from the stack manifest
 
-1. Check `package.json` devDependencies for `vitest` or `jest` — use
-   whichever is present to know what a coverage report looks like and how
-   to run one (`vitest run --coverage` vs `jest --coverage`).
-2. Read the coverage threshold from this project's config (`vite.config.ts`
-   `test.coverage.thresholds`, or `jest.config.*` `coverageThreshold`, or
-   `.harness/config.json` if `init-harness` wrote one — see that skill).
-   Never assume a fixed percentage; the threshold is per-project, set at
-   `init-harness` time.
+Read `.claude/harness.json` (written by `init-harness`) for `testRunner` and
+`coverageThreshold` — use whichever runner is named to know what a coverage
+report looks like and how to run one (`vitest run --coverage` vs
+`jest --coverage`), and the recorded threshold rather than a fixed
+percentage or a re-read of `vite.config.ts`/`jest.config.*`. If the manifest
+is missing, stop and tell the user to run `init-harness` first — see
+`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`.
 
 ## Action
 
