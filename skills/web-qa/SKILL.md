@@ -18,7 +18,7 @@ Only when the change touched user-facing UI/flows. If the diff is
 config/docs/CI-only, this gate is not applicable — say so and go straight to
 Gate 4.
 
-## Read the stack manifest before starting the dev server
+## Read the stack manifest, then run the dev server as a scoped background process
 
 1. Read `.claude/harness.json` (written by `init-harness`) for `framework`,
    `runCmd`, `scripts.dev`, and `devServerUrl`. Do not re-detect the
@@ -29,9 +29,30 @@ Gate 4.
    first — see
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
    for what it detects.
-2. Start the dev server with `<runCmd> <scripts.dev>` (e.g. `yarn dev`,
-   `npm run dev`, `pnpm dev`) and poll `devServerUrl` before handing off to
-   the reviewer — don't let the QA pass silently test against a dead server.
+2. Confirm Playwright's browsers are installed before starting anything:
+   `npx playwright install --with-deps chromium` (add other engines only if
+   this change's flows need them). On a machine that already has them this
+   is a fast no-op; skipping it means Gate 3 fails on a missing browser
+   binary instead of on an actual app defect.
+3. Start the dev server **in the background** (`run_in_background` on the
+   Bash tool, or the run harness's background-job equivalent) — never
+   foreground, since `<runCmd> <scripts.dev>` (e.g. `yarn dev`, `npm run
+   dev`, `pnpm dev`) is a long-lived process that would otherwise block the
+   rest of this gate. Keep its stdout readable and note its PID/job id for
+   teardown below.
+4. **Read the actual URL the dev server printed** — don't treat
+   `devServerUrl` from the manifest as authoritative. Vite (and other dev
+   servers) silently bump to the next free port when the configured one is
+   taken, e.g. `5173` busy → `5174`, and print the real address to stdout on
+   startup (`Local: http://localhost:5174/`). Poll the background process's
+   output for that line and parse the live URL out of it. Handing the
+   manifest's `devServerUrl` to the reviewer unconditionally risks QA-ing a
+   stale server left over from a previous session on the configured port,
+   while this change's own server sits untested on the port it actually
+   bound.
+5. Poll the real URL for a `2xx`/HTML response before handing off to the
+   reviewer — don't let the QA pass start against a server that's still
+   compiling.
 
 ## Action
 
@@ -58,6 +79,14 @@ Gate 4.
   4. Do not proceed to Gate 4 past a FAIL on the default path. The only
      exception is an explicit human "proceed anyway," recorded in the
      group's commit body.
+
+## Tear down the dev server once the gate concludes
+
+Once the fix loop settles (all-PASS, or an explicit human override), stop
+the background dev server using the PID/job id captured at startup (e.g.
+`kill <pid>`). Do this regardless of outcome — a server left running past
+this gate leaks a process for the rest of the session and can collide with
+whatever the next gate or group needs on the same port.
 
 ## Log this gate's run
 
