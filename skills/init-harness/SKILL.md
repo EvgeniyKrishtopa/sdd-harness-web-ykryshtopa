@@ -242,13 +242,13 @@ rest around it:
   "devServerUrl": "http://localhost:5173",
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
-    "architecture": "claude-fable-5",
-    "spec": "claude-fable-5",
-    "webQa": "claude-fable-5",
-    "code": "claude-fable-5",
-    "testCoverage": "claude-fable-5",
-    "harness": "claude-fable-5",
-    "default": "claude-fable-5"
+    "architecture": "claude-opus-5",
+    "spec": "claude-sonnet-5",
+    "webQa": "claude-haiku-4-5",
+    "code": "claude-sonnet-5",
+    "testCoverage": "claude-haiku-4-5",
+    "harness": "claude-haiku-4-5",
+    "default": "claude-sonnet-5"
   }
 }
 ```
@@ -269,11 +269,15 @@ Field notes:
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
 - `openspec` — already written by Step 2e; carry it over unchanged.
-- `models` — one entry per review-gate agent plus a `default` fallback,
-  seeded from whatever model each `agents/*.md` currently declares in its
-  frontmatter. No skill reads this key yet to actually pick a model — this
-  stage only makes the setting machine-readable; per-gate model selection
-  is a later stage's work.
+- `models` — one entry per review-gate agent plus a `default` fallback. Seed
+  it with the values shown above, not with whatever each `agents/*.md`
+  currently declares in its own frontmatter — every gate skill
+  (`architecture-review`, `spec-review`, `code-review`, `test-coverage`,
+  `harness-review`, `web-qa`) reads its own key from this manifest and
+  passes it as the `Agent` tool's `model` override, so this is the actual
+  place a user changes which model a gate runs on, not the agent files
+  themselves. Only depart from the seeded defaults if the user asks for a
+  different tier or doesn't have access to one of these models.
 
 Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be

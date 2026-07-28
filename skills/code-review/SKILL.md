@@ -16,7 +16,12 @@ passed or been ruled not applicable.
 
 1. Run `git diff --stat` and `git diff` against the group's uncommitted
    changes (including any web-qa fixes Gate 3 introduced on the last group).
-2. Delegate to the `code-reviewer` subagent (`Agent` tool) with that diff.
+2. Read `.claude/harness.json`'s `models.code` key (written by
+   `init-harness`) and pass it as the `model` parameter when delegating to
+   the `code-reviewer` subagent (`Agent` tool) with that diff — overriding
+   the agent's own frontmatter default for this run. If the manifest or the
+   key is missing, fall back to the agent's own default; never block the
+   gate on a missing override.
 3. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 

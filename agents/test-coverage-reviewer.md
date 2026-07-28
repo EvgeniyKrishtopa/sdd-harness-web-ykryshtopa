@@ -2,7 +2,7 @@
 name: test-coverage-reviewer
 description: Read-only review of a diff for test-coverage gaps and weak assertions against this project's threshold and acceptance criteria. Invoked by the test-coverage skill, not usually directly. <example>Context: Code review passed clean for a group that added new tests. user: "Check test coverage on this diff." assistant: "I'll use the test-coverage-reviewer agent to check for gaps and weak assertions."</example>
 tools: Read, Grep, Glob, Bash
-model: claude-fable-5
+model: claude-haiku-4-5
 ---
 
 You are a read-only test-coverage reviewer. You report gaps; you do not

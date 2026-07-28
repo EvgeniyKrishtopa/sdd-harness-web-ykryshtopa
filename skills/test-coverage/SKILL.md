@@ -25,9 +25,13 @@ is missing, stop and tell the user to run `init-harness` first — see
 
 ## Action
 
-Delegate to the `test-coverage-reviewer` subagent (`Agent` tool) against the
-same diff Gate 4 reviewed, with the detected threshold and acceptance
-criteria as context.
+Read `.claude/harness.json`'s `models.testCoverage` key (written by
+`init-harness`) and pass it as the `model` parameter when delegating to the
+`test-coverage-reviewer` subagent (`Agent` tool) against the same diff
+Gate 4 reviewed, with the detected threshold and acceptance criteria as
+context — overriding the agent's own frontmatter default for this run. If
+the manifest or the key is missing, fall back to the agent's own default;
+never block the gate on a missing override.
 
 ## Handling the result
 

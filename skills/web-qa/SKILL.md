@@ -61,12 +61,16 @@ Gate 4.
 
 ## Action
 
-1. Delegate to the `web-qa-manual-tester` subagent (`Agent` tool), which
-   drives the **Playwright MCP server** (`mcp__playwright__*` tools —
-   navigate, click, fill, snapshot via the accessibility tree, screenshot)
-   against the running dev server. Scope its flows to the *whole change's*
-   diff against the parent branch, not just the last group, so the final
-   pass covers everything the change touched.
+1. Read `.claude/harness.json`'s `models.webQa` key (written by
+   `init-harness`) and pass it as the `model` parameter when delegating to
+   the `web-qa-manual-tester` subagent (`Agent` tool) — overriding the
+   agent's own frontmatter default for this run. If the manifest or the key
+   is missing, fall back to the agent's own default; never block the gate on
+   a missing override. The subagent drives the **Playwright MCP server**
+   (`mcp__playwright__*` tools — navigate, click, fill, snapshot via the
+   accessibility tree, screenshot) against the running dev server. Scope its
+   flows to the *whole change's* diff against the parent branch, not just
+   the last group, so the final pass covers everything the change touched.
 2. The subagent relays a per-flow PASS/FAIL report.
 
 ## This is a must-pass gate with a fix loop, not CONFIRMED/PLAUSIBLE

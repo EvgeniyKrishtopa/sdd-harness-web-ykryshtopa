@@ -13,7 +13,12 @@ Gate 4, if Gate 5 didn't apply) passes — but before that group's own commit.
 
 ## Action
 
-Delegate to the `harness-reviewer` subagent (`Agent` tool), scoped to the
+Read `.claude/harness.json`'s `models.harness` key (written by
+`init-harness`) and pass it as the `model` parameter when delegating to the
+`harness-reviewer` subagent (`Agent` tool) — overriding the agent's own
+frontmatter default for this run. If the manifest or the key is missing,
+fall back to the agent's own default; never block the gate on a missing
+override. Scope the review to the
 paths `init-harness` actually writes into a target repo — `CLAUDE.md`/
 `AGENTS.md`, `.claude/harness.json`, `.claude/settings.json`,
 `.claude/docs/**`, `.husky/**` — plus `${CLAUDE_PLUGIN_ROOT}/skills/` and
