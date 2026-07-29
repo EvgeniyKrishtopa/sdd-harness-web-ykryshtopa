@@ -136,18 +136,31 @@ implement unattended is reviewed as one unit too, not group-by-group.
 1. **Trivial-diff pre-filter (0 tokens)** — before spawning `code-review` at
    all, check the run's cumulative diff (`git diff <parent>..HEAD`, the same
    diff step 2 below would review) against `.claude/harness.json`'s
-   `trivialDiffThreshold` / `trivialDiffPaths` (seeded by `init-harness`;
-   defaults 10 changed lines / `*.md`, `*.css`, `*.svg`, `public/**`):
+   `trivialDiffThreshold` / `trivialDiffPaths` (seeded by `init-harness`).
+   Read them explicitly — don't assume the seeded defaults are still what's
+   in the manifest — and fail closed to those same defaults (10 changed
+   lines / `*.md`, `*.css`, `*.svg`, `public/**`) if either key is missing
+   or the manifest can't be parsed, rather than guessing or skipping the
+   check entirely:
    ```bash
+   threshold=$(jq -r '.trivialDiffThreshold // 10' .claude/harness.json 2>/dev/null)
+   [ -n "$threshold" ] || threshold=10
+   globs=$(jq -r '.trivialDiffPaths[]? // empty' .claude/harness.json 2>/dev/null)
+   [ -n "$globs" ] || globs='*.md
+   *.css
+   *.svg
+   public/**'
    stat=$(git diff --shortstat <parent>..HEAD)
    ins=$(printf '%s' "$stat" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+')
    del=$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+')
    lines=$(( ${ins:-0} + ${del:-0} ))
    ```
-   If `lines` is under the threshold **and** every path in `git diff
-   --name-only <parent>..HEAD` matches one of `trivialDiffPaths` (a shell
-   glob `case` per file — a single path outside the trivial set disqualifies
-   the whole run), skip the `code-review` delegation entirely
+   (python3/node fallback if `jq` isn't available, same pattern as this
+   project's hooks.) If `lines` is under `threshold` **and** every path from
+   `git diff --name-only <parent>..HEAD` matches one of the `$globs` lines
+   (loop each changed file through a `case "$f" in $g) ... esac` against
+   each glob line — a single path outside the trivial set disqualifies the
+   whole run), skip the `code-review` delegation entirely
    (cost-optimization #36): a 3-line CSS tweak or a typo fix in a `.md` file
    doesn't need a full review pass. This must stay a deterministic shell
    check — never "ask the model if this looks trivial," which would spend
