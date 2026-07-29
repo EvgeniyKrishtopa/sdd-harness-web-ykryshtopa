@@ -141,9 +141,13 @@ skills above, not usually directly.
 ## MCP servers
 
 - **playwright** (`@playwright/mcp`) — drives a real browser for Gate 3.
-- **sequential-thinking** — structured, revisable reasoning, used by
-  `architecture-review`, `spec-review`, and `opsx-propose-review` on
-  non-trivial changes.
+
+This plugin previously also shipped a `sequential-thinking` MCP server for
+`architecture-review` and `spec-review`'s non-trivial-change reasoning.
+Removed: modern Claude models have native extended thinking that covers the
+same step-by-step reasoning in one pass, without the added round-trip cost
+of an external sequential-thinking tool call per "thought" (cost-optimization
+#39).
 
 ## Design principle
 

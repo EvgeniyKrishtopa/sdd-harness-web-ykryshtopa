@@ -20,10 +20,13 @@ the agent's own default — a missing override never blocks the gate.
    the note above), pointing it at the design artifact's path — it reviews
    the *proposed* architecture, not a diff, because none exists yet at this
    point in the workflow.
-3. Use the `sequential-thinking` MCP tool if the design is non-trivial
-   (multiple layers, a new cross-cutting concern, a data-flow change) — work
-   through the boundary/coupling implications step by step before handing a
-   verdict to the user, rather than pattern-matching a snap judgment.
+3. If the design is non-trivial (multiple layers, a new cross-cutting
+   concern, a data-flow change), think through the boundary/coupling
+   implications step by step before handing a verdict to the user, rather
+   than pattern-matching a snap judgment — native extended thinking covers
+   this in one pass; the `sequential-thinking` MCP server this project used
+   to require for it is redundant with that and has been removed
+   (cost-optimization #39).
 
 ## When invoked against a diff
 

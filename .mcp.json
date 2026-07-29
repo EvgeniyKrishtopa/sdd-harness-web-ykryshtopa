@@ -2,9 +2,5 @@
   "playwright": {
     "command": "npx",
     "args": ["-y", "@playwright/mcp@0.0.78"]
-  },
-  "sequential-thinking": {
-    "command": "npx",
-    "args": ["-y", "@modelcontextprotocol/server-sequential-thinking"]
   }
 }
