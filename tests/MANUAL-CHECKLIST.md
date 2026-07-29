@@ -144,7 +144,13 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
 
-## 6. Gate 4 — code-review
+## 6-7. Gate 4 + Gate 5 — code-review (merged, one delegation, #33)
+
+Both gates are now one delegation to the `code-reviewer` subagent, returning
+a two-section report — the checks below still verify each gate's own
+behavior independently, just within that single spawn.
+
+Gate 4 section:
 
 1. Run it against a diff with one planted, unambiguous bug (e.g. an
    off-by-one) — confirm CONFIRMED, with file/line and the concrete
@@ -153,32 +159,88 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
    — confirm PLAUSIBLE, and confirm PLAUSIBLE-only never blocks the commit.
 3. Confirm the model used matches `.claude/harness.json`'s `models.code`
    key, not whatever the agent's own frontmatter default is (override the
-   manifest value and confirm the override actually takes effect).
+   manifest value and confirm the override actually takes effect). There is
+   no separate `models.testCoverage` key any more — the Gate 5 section runs
+   on this same model.
 4. Confirm `--fix` applies a finding only after explicit confirmation, not
    automatically.
 
-## 7. Gate 5 — test-coverage
+Gate 5 section:
 
-1. Add source code with **no** accompanying test changes in the same group
-   — confirm the gate fires (source-only should trigger it, not just
+5. Add source code with **no** accompanying test changes in the same group
+   — confirm the section fires (source-only should trigger it, not just
    tests-only — this is #10's fix).
-2. Add only test changes with no source changes — confirm it also fires.
-3. Add neither (e.g. a comment-only or doc-only diff) — confirm it's
-   skipped.
-4. Drop coverage below the fixture's configured `coverageThreshold` on
-   purpose — confirm the gate reports the gap against that exact number,
+6. Add only test changes with no source changes — confirm it also fires.
+7. Add neither (e.g. a comment-only or doc-only diff) — confirm the report
+   states the Gate 5 section is not applicable, and confirm the agent still
+   ran (Gate 4 doesn't skip) rather than the whole delegation being skipped.
+8. Drop coverage below the fixture's configured `coverageThreshold` on
+   purpose — confirm the report states the gap against that exact number,
    not a hardcoded default.
+9. Confirm one CONFIRMED finding in *either* section pauses before push —
+   test this separately for a Gate-4-only CONFIRMED and a Gate-5-only
+   CONFIRMED, since a bug that only pauses on one section but not the other
+   would silently reduce the merged gate's coverage relative to the two
+   separate gates it replaced.
+
+Review-depth-by-classification (#34):
+
+10. Run an autonomous batch of 3+ `isolated` groups — confirm `code-review`
+    spawns exactly **once** for the whole batch, against the cumulative
+    diff of all groups' commits (`git diff <parent>..HEAD`), not once per
+    group. Each group should still get its own commit (check `git log
+    --oneline` on the batch branch — one commit per group), just without a
+    per-group review spawn.
+11. Run a single `judgement-heavy` group — confirm `code-review` still
+    spawns once, against that one group's diff (a judgement-heavy run is
+    already "a batch of one," so this should look identical to before #34).
+12. Plant a CONFIRMED finding in a *non-last* group of an isolated batch —
+    confirm it only surfaces after the whole batch is committed (at the
+    batch-level `code-review` pass), and confirm its fix lands as a new
+    commit appended to the batch branch, not an amend of that earlier
+    group's own commit.
+
+Trivial-diff pre-filter (#36):
+
+13. Make a run whose entire cumulative diff is a 3-line `.md` edit — confirm
+    `code-review` never spawns at all, and `.claude/harness-log.jsonl` gets
+    both the `code-review` and `test-coverage` lines written directly by
+    `opsx-apply-git` with `"verdict":"skipped"`.
+14. Make a run that's still `.md`-only but exceeds `trivialDiffThreshold`
+    (default 10) changed lines — confirm the pre-filter does NOT skip it
+    (line-count check, not just path check).
+15. Make a run that's under the line threshold but touches one `.ts`/`.tsx`
+    file alongside `.md` files — confirm the pre-filter does NOT skip it
+    (a single non-trivial path disqualifies the whole run).
+16. Edit `.claude/harness.json`'s `trivialDiffThreshold` down to `0` —
+    confirm even a 1-line `.md` diff now runs the full `code-review`
+    delegation, proving the threshold is actually read from the manifest
+    and not hardcoded.
 
 ## 8. Gate 6 — harness-review
 
 1. Edit `.claude/docs/review-gates.md` by hand to say something false
    about a gate's trigger, then run this gate on the last group of an
-   unrelated change — confirm it flags the drift.
+   unrelated change — confirm it flags the drift (this run touches
+   `.claude/`, so the precondition in #4 below should let it run at all).
 2. Re-run the Gate-1-negative-test scenario (`openspec config reset`) and
    confirm this gate also independently notices the profile regression,
    not only `init-harness`'s own check.
 3. Confirm every finding is shown with a suggested fix regardless of
    verdict, and nothing is auto-applied without the human choosing to.
+
+Precondition (#35):
+
+4. Run a change whose diff touches only application source/test files —
+   nothing under `CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, no
+   `package.json` script/dependency change — confirm `harness-reviewer`
+   never spawns for it, and `.claude/harness-log.jsonl` gets a
+   `"gate":"harness-review","verdict":"skipped"` line written directly by
+   `opsx-apply-git` (not by the harness-review skill, which never ran).
+5. Run a change that only adds a `package.json` script (no `.claude/`/
+   `.husky/`/`CLAUDE.md` touched) — confirm the precondition still fires
+   and `harness-reviewer` runs, since a script/dependency change is the
+   other half of the precondition, not just harness-path changes.
 
 ---
 

@@ -27,9 +27,11 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    decide how far it can proceed autonomously. An unmarked group is treated
    as `judgement-heavy` downstream — never let a group run unattended if
    nobody classified it.
-3. If the change is non-trivial (many groups, cross-cutting groups), use the
-   `sequential-thinking` MCP tool to work through the isolated vs
-   judgement-heavy call per group explicitly, rather than eyeballing it.
+3. If the change is non-trivial (many groups, cross-cutting groups), think
+   through the isolated vs judgement-heavy call per group explicitly, rather
+   than eyeballing it — native extended thinking covers this in one pass; the
+   `sequential-thinking` MCP server this project used to require for it is
+   redundant with that and has been removed (cost-optimization #39).
 
 ## Handling the result
 

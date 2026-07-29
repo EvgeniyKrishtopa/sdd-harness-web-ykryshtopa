@@ -1,17 +1,15 @@
 {
-  "description": "sdd-harness-web-ykryshtopa review gates: commit/merge/push guards, .claudeignore enforcement, typecheck-on-edit, session context banner",
+  "description": "sdd-harness-web-ykryshtopa review gates: commit/merge/push guards, .claudeignore enforcement, typecheck-before-stop, session context banner",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Bash",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "if": "Bash(git commit:*)",
-            "model": "claude-opus-5",
-            "timeout": 120,
-            "statusMessage": "Reviewing staged diff for architecture risks...",
-            "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If that's empty — e.g. the commit uses `-a`/`-am` and stages straight from the working tree instead of the index — fall back to `git diff HEAD` so an unstaged commit doesn't skip review just because the staged diff was empty. If both are empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
+            "statusMessage": "Checking staged diff for secrets, size, and protected-branch commits...",
+            "command": "default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@'); branch=$(git symbolic-ref --short -q HEAD 2>/dev/null); protected=\"${default:-main}\"; if [ -z \"$branch\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Detached HEAD: cannot verify this is not the protected branch, confirm before committing.\"}}'; exit 0; fi; if [ \"$branch\" = \"$protected\" ] || { [ -z \"$default\" ] && [ \"$branch\" = \"master\" ]; }; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Committing directly on %s requires confirmation.\"}}' \"$branch\"; exit 0; fi; diff=$(git diff --cached); stat=$(git diff --cached --shortstat); if [ -z \"$diff\" ]; then diff=$(git diff HEAD); stat=$(git diff HEAD --shortstat); fi; scan=$(printf '%s\\n' \"$diff\" | grep -vE 'process\\.env|import\\.meta\\.env|os\\.environ|ENV\\['); if printf '%s' \"$scan\" | grep -qEi -- '-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|(secret|api)_?key[[:space:]]*[:=][[:space:]]*[\"'\"'\"']?[A-Za-z0-9/+_.-]{16,}|password[[:space:]]*[:=][[:space:]]*[^[:space:]]{8,}'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Staged diff matches a secret-like pattern (API key, private key block, or hardcoded password). Confirm before committing.\"}}'; exit 0; fi; ins=$(printf '%s' \"$stat\" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+'); del=$(printf '%s' \"$stat\" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+'); lines=$(( ${ins:-0} + ${del:-0} )); if [ \"$lines\" -gt 500 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Large commit (%s changed lines) - confirm this is intentional.\"}}' \"$lines\"; exit 0; fi; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
           },
           {
             "type": "command",
@@ -38,15 +36,14 @@
         ]
       }
     ],
-    "PostToolUse": [
+    "Stop": [
       {
-        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "if command -v jq >/dev/null 2>&1; then f=$(jq -r '.tool_input.file_path // .tool_response.filePath // empty'); elif command -v python3 >/dev/null 2>&1; then f=$(python3 -c 'import json,sys;d=json.load(sys.stdin);print(d.get(\"tool_input\",{}).get(\"file_path\") or d.get(\"tool_response\",{}).get(\"filePath\") or \"\")'); elif command -v node >/dev/null 2>&1; then f=$(node -e 'let s=\"\";process.stdin.on(\"data\",c=>s+=c);process.stdin.on(\"end\",()=>{let j={};try{j=JSON.parse(s)}catch(e){}process.stdout.write((j.tool_input&&j.tool_input.file_path)||(j.tool_response&&j.tool_response.filePath)||\"\")})'); else f=\"\"; fi; case \"$f\" in *.ts|*.tsx) [ -f tsconfig.json ] || exit 0; runCmd=''; tcScript=''; if [ -f .claude/harness.json ]; then if command -v jq >/dev/null 2>&1; then out=$(jq -r '[(.runCmd // \"\"), (.scripts.typecheck // \"\")] | @tsv' .claude/harness.json); elif command -v python3 >/dev/null 2>&1; then out=$(python3 -c 'import json;d=json.load(open(\".claude/harness.json\"));print(str(d.get(\"runCmd\") or \"\")+chr(9)+str((d.get(\"scripts\") or {}).get(\"typecheck\") or \"\"))'); elif command -v node >/dev/null 2>&1; then out=$(node -e 'const fs=require(\"fs\");const d=JSON.parse(fs.readFileSync(\".claude/harness.json\",\"utf8\"));process.stdout.write((d.runCmd||\"\")+\"\\t\"+((d.scripts&&d.scripts.typecheck)||\"\"))'); else out=\"\"; fi; runCmd=$(printf '%s' \"$out\" | cut -f1); tcScript=$(printf '%s' \"$out\" | cut -f2); fi; if [ -n \"$runCmd\" ] && [ -n \"$tcScript\" ]; then cmd=\"$runCmd $tcScript\"; else cmd='npx tsc --noEmit'; fi; output=$($cmd 2>&1); code=$?; if [ $code -ne 0 ]; then echo \"$output\" | tail -10 >&2; exit 2; fi; exit 0;; *) exit 0;; esac",
-            "timeout": 60,
-            "statusMessage": "Typechecking..."
+            "command": "[ -f tsconfig.json ] || exit 0; runCmd=''; tcScript=''; if [ -f .claude/harness.json ]; then if command -v jq >/dev/null 2>&1; then out=$(jq -r '[(.runCmd // \"\"), (.scripts.typecheck // \"\")] | @tsv' .claude/harness.json); elif command -v python3 >/dev/null 2>&1; then out=$(python3 -c 'import json;d=json.load(open(\".claude/harness.json\"));print(str(d.get(\"runCmd\") or \"\")+chr(9)+str((d.get(\"scripts\") or {}).get(\"typecheck\") or \"\"))'); elif command -v node >/dev/null 2>&1; then out=$(node -e 'const fs=require(\"fs\");const d=JSON.parse(fs.readFileSync(\".claude/harness.json\",\"utf8\"));process.stdout.write((d.runCmd||\"\")+\"\\t\"+((d.scripts&&d.scripts.typecheck)||\"\"))'); else out=\"\"; fi; runCmd=$(printf '%s' \"$out\" | cut -f1); tcScript=$(printf '%s' \"$out\" | cut -f2); fi; if [ -n \"$runCmd\" ] && [ -n \"$tcScript\" ]; then cmd=\"$runCmd $tcScript\"; else cmd='npx tsc --noEmit --incremental'; fi; output=$($cmd 2>&1); code=$?; if [ $code -ne 0 ]; then echo \"$output\" | tail -20 >&2; exit 2; fi; exit 0",
+            "timeout": 120,
+            "statusMessage": "Typechecking before stopping..."
           }
         ]
       }

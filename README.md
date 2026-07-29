@@ -2,8 +2,9 @@
 
 Spec-driven OpenSpec harness for web projects — **Vite or Next.js**, either
 package manager (yarn/npm/pnpm), either test runner (Vitest/Jest). Six
-automated review gates, a branch-per-group git workflow, and a scaffolder
-that detects your stack instead of assuming one.
+automated review gates (five agent delegations — Gate 4 and Gate 5 share
+one, see Components below), a branch-per-group git workflow, and a
+scaffolder that detects your stack instead of assuming one.
 
 ## What this is
 
@@ -55,8 +56,8 @@ group) and `.husky/pre-push` (the full `test:coverage` run) — independent
 of Claude Code's own hooks, so bad commits and pushes are still blocked
 even with no agent involved.
 
-This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
-merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
+This plugin's own Claude Code hooks (`hooks/hooks.json` — commit/merge/push
+guards, `.claudeignore` enforcement, typecheck-before-stop) apply
 automatically to any repo where the plugin is enabled, the same way its
 skills and agents do. `/init-harness` does not copy them into your project's
 `.claude/settings.json` — there is nothing to install for that layer.
@@ -88,8 +89,10 @@ skills and agents do. `/init-harness` does not copy them into your project's
 2. `/opsx-apply-git` — implement the next run: an autonomous batch of
    `isolated` groups to one PR, or one `judgement-heavy` group with you in
    the loop.
-3. Gates 3-6 (`web-qa` → `code-review` → `test-coverage` → `harness-review`)
-   run automatically before each group's commit, per
+3. Each group implements and commits as it goes; Gates 3-6 (`web-qa` →
+   `code-review` [Gate 4 + Gate 5 in one delegation] → `harness-review`) run
+   automatically once per run, after every group in it is already
+   committed and before push — not once per group — per
    `.claude/docs/review-gates.md`.
 4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
    from that merge.
@@ -106,11 +109,10 @@ skills and agents do. `/init-harness` does not copy them into your project's
 | `architecture-review` | 1 | Boundary/coupling risk on `design.md` or a diff |
 | `spec-review` | 2 | Artifact consistency + isolated/judgement-heavy classification |
 | `web-qa` | 3 | Real-browser QA via Playwright MCP, must-pass with a fix loop |
-| `code-review` | 4 | Correctness bugs + simplification |
-| `test-coverage` | 5 | Coverage gaps against your configured threshold |
+| `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 
-Six matching read-only subagents live in `agents/` and are invoked by the
+Five matching read-only subagents live in `agents/` and are invoked by the
 skills above, not usually directly.
 
 ## Command names
@@ -141,9 +143,29 @@ skills above, not usually directly.
 ## MCP servers
 
 - **playwright** (`@playwright/mcp`) — drives a real browser for Gate 3.
-- **sequential-thinking** — structured, revisable reasoning, used by
-  `architecture-review`, `spec-review`, and `opsx-propose-review` on
-  non-trivial changes.
+  This is the only MCP server this plugin ships, and it stays resident for
+  the whole session even though only Gate 3 ever calls it — there is no
+  supported way, as of Claude Code 2.1.220, for a plugin's `.mcp.json` to
+  load a server conditionally per-skill or per-gate; servers listed there
+  attach for the session's lifetime once enabled. Two things narrow the
+  actual cost, though: (1) Claude Code 2.1.x defers MCP tool schemas
+  (`ToolSearch`) rather than loading all ~12 of Playwright's tools into
+  context up front, so the static footprint is smaller than a naive count
+  suggests; (2) `npx` resolves an already-cached/locally-installed package
+  without a registry round-trip, so a project that installs
+  `@playwright/mcp` as a devDependency (rather than relying on `npx -y` to
+  fetch it fresh) avoids the network check on session start. Neither
+  eliminates the server being resident for gates 1/2/4/5/6, which never
+  touch a browser — if a session is known not to run `web-qa`, disable the
+  server for it via `/mcp` (or remove/comment the entry from `.mcp.json` in
+  a project fork) rather than leaving it attached by default.
+
+This plugin previously also shipped a `sequential-thinking` MCP server for
+`architecture-review` and `spec-review`'s non-trivial-change reasoning.
+Removed: modern Claude models have native extended thinking that covers the
+same step-by-step reasoning in one pass, without the added round-trip cost
+of an external sequential-thinking tool call per "thought" (cost-optimization
+#39).
 
 ## Design principle
 

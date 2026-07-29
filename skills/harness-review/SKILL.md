@@ -1,6 +1,6 @@
 ---
 name: harness-review
-description: Reviews CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, and .husky/** for stale claims and drift from authoring best practices — plus this plugin's own skills/ and agents/ when its own repo is what's being reviewed. Use before a final task group's commit, or whenever the harness setup changes.
+description: Reviews CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, and .husky/** for stale claims and drift from authoring best practices — plus this plugin's own skills/ and agents/ when its own repo is what's being reviewed. Use before pushing a run whose diff touched the harness itself, or whenever the harness setup changes.
 ---
 
 Run **Gate 6** of this project's review pipeline: harness review — the only
@@ -8,8 +8,16 @@ gate scoped to the harness configuration itself, not the application code.
 
 ## Trigger
 
-The *last* OpenSpec task group with pending tasks, right after Gate 5 (or
-Gate 4, if Gate 5 didn't apply) passes — but before that group's own commit.
+The run covering the *last* OpenSpec task group with pending tasks, right
+after `code-review` (Gate 4 + Gate 5, merged into one delegation — see that
+skill) passes, whether or not the diff needed the Gate 5 section — every
+group in the run is already committed by this point (`opsx-apply-git` §3),
+so this runs once per run, not once per group. Also gated by a 0-token
+precondition in `opsx-apply-git` §4 step 3 (cost-optimization #35): this
+delegation only runs at all if that run's diff touched
+`CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, or `package.json`'s
+scripts/dependencies changed. Most runs touch neither and skip this
+delegation entirely.
 
 ## Action
 
@@ -40,10 +48,12 @@ suggested fix, and the user chooses what to apply. Nothing is silently
 auto-applied.
 
 - **A finding the user approves** — apply the fix and commit it as its own
-  commit on the group branch (`chore: harness review — <summary>`), *before*
-  the group's own implementation commit.
-- **Clean, or the user declines every suggestion** — proceed straight to the
-  group's own commit.
+  commit on the run's branch (`chore: harness review — <summary>`). Every
+  group in the run is already committed by this point, so there's no
+  ordering constraint forcing this ahead of a group's own commit — it
+  simply lands as the next commit before push.
+- **Clean, or the user declines every suggestion** — proceed straight to
+  push.
 
 ## Log this gate's run
 
@@ -68,7 +78,11 @@ printf '%s\n' "$(jq -nc \
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
 the wall-clock time spent, and the model `harness-reviewer` ran on (`group`
-is `-`: this gate runs at change scope). If `jq` isn't available, construct
-the equivalent JSON line with `printf` instead. A failed log write never
+is `-`: this gate runs at change scope). A fourth verdict value,
+`skipped`, also appears under `"gate":"harness-review"` in this log — but
+is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
+precondition finds nothing to review and this delegation never runs at all
+(cost-optimization #35). If `jq` isn't available, construct the equivalent
+JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic
 aid, not part of the pass/fail logic.

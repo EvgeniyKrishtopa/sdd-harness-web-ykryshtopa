@@ -139,7 +139,7 @@ Do this now, before Step 6 writes `permissions.deny` — that step denies
 tools if done afterward.
 
 Split the checks by cost, matched to how often each hook fires: this
-harness commits once per `tasks.md` group (`opsx-apply-git` §4.7), so a
+harness commits once per `tasks.md` group (`opsx-apply-git` §3), so a
 full `test:coverage` run on every `pre-commit` turns into minutes of wait
 on every group — multiplied across a whole change. `pre-commit` stays fast
 (typecheck + lint + lint-staged); the full coverage run moves to
@@ -210,8 +210,8 @@ rather than merge targets. If a file already exists, read it first:
 
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
-This plugin's `hooks/hooks.json` (commit gate, merge/push guards,
-`.claudeignore` enforcement, typecheck-on-edit, session banner) is loaded
+This plugin's `hooks/hooks.json` (commit/merge/push guards,
+`.claudeignore` enforcement, typecheck-before-stop, session banner) is loaded
 automatically for this repo as soon as the plugin is enabled — the same way
 its skills and agents are. There is nothing to copy or merge for hooks; do
 not write a `hooks` key into the target repo's own `.claude/settings.json`,
@@ -257,8 +257,8 @@ explanation and the template content.
 ## Step 8 — write the full stack manifest: `.claude/harness.json`
 
 This is the single machine-readable source of truth every other skill
-(`opsx-apply-git`, `web-qa`, `test-coverage`, `harness-review`) and this
-plugin's `PostToolUse` typecheck hook read instead of re-detecting the stack
+(`opsx-apply-git`, `web-qa`, `code-review`, `harness-review`) and this
+plugin's `Stop` typecheck hook read instead of re-detecting the stack
 themselves. Merge into the file Step 2e already started (it may already
 contain just the `openspec` key) — never overwrite that key, only add the
 rest around it:
@@ -280,13 +280,14 @@ rest around it:
     "testCoverage": "test:coverage"
   },
   "devServerUrl": "http://localhost:5173",
+  "trivialDiffThreshold": 10,
+  "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
     "webQa": "claude-haiku-4-5",
     "code": "claude-sonnet-5",
-    "testCoverage": "claude-haiku-4-5",
     "harness": "claude-haiku-4-5",
     "default": "claude-sonnet-5"
   }
@@ -308,15 +309,27 @@ Field notes:
 - `devServerUrl` — the dev server's root URL: `http://localhost:3000`
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
+- `trivialDiffThreshold` / `trivialDiffPaths` — seed with the values shown
+  above; don't ask the user for these unless they raise it. `code-review`
+  (Gate 4+5) skips itself, at zero model cost, for a run whose cumulative
+  diff changes fewer than `trivialDiffThreshold` lines (`git diff
+  --shortstat`) **and** every changed path matches one of
+  `trivialDiffPaths` (cost-optimization #36) — a 3-line CSS tweak or a typo
+  fix in a `.md` file doesn't need a full review pass. A user who wants a
+  stricter or looser bar edits this manifest directly; there's no separate
+  prompt for it.
 - `openspec` — already written by Step 2e; carry it over unchanged.
 - `models` — one entry per review-gate agent plus a `default` fallback. Seed
   it with the values shown above, not with whatever each `agents/*.md`
   currently declares in its own frontmatter — every gate skill
-  (`architecture-review`, `spec-review`, `code-review`, `test-coverage`,
-  `harness-review`, `web-qa`) reads its own key from this manifest and
-  passes it as the `Agent` tool's `model` override, so this is the actual
-  place a user changes which model a gate runs on, not the agent files
-  themselves. Only depart from the seeded defaults if the user asks for a
+  (`architecture-review`, `spec-review`, `code-review`, `harness-review`,
+  `web-qa`) reads its own key from this manifest and passes it as the
+  `Agent` tool's `model` override, so this is the actual place a user
+  changes which model a gate runs on, not the agent files themselves. There
+  is no separate `testCoverage` key: Gate 5 (test-coverage) is folded into
+  the same `code-review` delegation as Gate 4 (cost-optimization #33), so it
+  runs on `models.code`. Only depart from the seeded defaults if the user
+  asks for a
   different tier or doesn't have access to one of these models.
 
 Every field must be a real detected or user-confirmed value. Never leave a
@@ -331,7 +344,7 @@ file, no session ever reads `git-conventions.md` or `review-gates.md` unless
 `opsx-apply-git` happens to read them itself — and more importantly, this
 user's global instructions only recognize an auto-commit override
 ("commit without being asked") when it is *referenced from the project's
-CLAUDE.md*. `opsx-apply-git` §4.7 and §5.3 rely on `git-conventions.md`
+CLAUDE.md*. `opsx-apply-git` §3 and §5.3 rely on `git-conventions.md`
 being exactly that override, at group and archive boundaries. Without this
 step, that override is undiscoverable, and a fresh session should fall back
 to asking before every commit instead of trusting it.
@@ -351,7 +364,7 @@ to asking before every commit instead of trusting it.
 
    - @.claude/docs/git-conventions.md — branch/commit conventions. This is
      also the documented authorization for `opsx-apply-git` to commit
-     automatically at task-group and archive boundaries (its §4.7/§5.3) —
+     automatically at task-group and archive boundaries (its §3/§5.3) —
      without this reference, that override isn't discoverable and shouldn't
      be assumed.
    - @.claude/docs/review-gates.md — the six automated review gates and

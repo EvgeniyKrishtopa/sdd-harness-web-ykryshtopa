@@ -34,6 +34,16 @@ Gate 4.
    this change's flows need them). On a machine that already has them this
    is a fast no-op; skipping it means Gate 3 fails on a missing browser
    binary instead of on an actual app defect.
+
+   This plugin's Playwright **MCP server** (distinct from the `playwright`
+   test/browser-automation package, if the project also has that as a test
+   dependency) stays resident for the whole session per `.mcp.json`,
+   regardless of whether this gate ever runs — there's no supported
+   per-gate MCP toggle in this Claude Code version. If this project runs
+   this gate often, install `@playwright/mcp` as a devDependency so `npx`
+   resolves it locally instead of doing a registry check on every session
+   start; if it rarely touches user-facing UI, the README recommends
+   disabling the server via `/mcp` for sessions that won't use it.
 3. Start the dev server **in the background** (`run_in_background` on the
    Bash tool, or the run harness's background-job equivalent) — never
    foreground, since `<runCmd> <scripts.dev>` (e.g. `yarn dev`, `npm run
@@ -82,9 +92,9 @@ Gate 4.
      as a defect, though the app must still degrade gracefully.
   2. For a genuine failure, suggest a concrete fix and get the user's
      approval before changing anything.
-  3. Apply the approved fix — it folds into this group's own diff, so Gate 4
-     and Gate 5 review it too — and re-run `web-qa` on the affected flow(s).
-     Repeat until all-PASS.
+  3. Apply the approved fix — it folds into this group's own diff, so
+     `code-review` (Gate 4 + Gate 5) reviews it too — and re-run `web-qa` on
+     the affected flow(s). Repeat until all-PASS.
   4. Do not proceed to Gate 4 past a FAIL on the default path. The only
      exception is an explicit human "proceed anyway," recorded in the
      group's commit body.
