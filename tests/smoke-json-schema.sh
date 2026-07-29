@@ -111,7 +111,7 @@ sys.exit(0 if isinstance(p, list) and len(p) > 0 and all(isinstance(x, dict) and
     node) node -e '
 const d = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
 const p = d.plugins;
-process.exit(Array.isArray(p) && p.length > 0 && p.every(x => x && "name" in x && "source" in x) ? 0 : 1);
+process.exit(Array.isArray(p) && p.length > 0 && p.every(x => x && typeof x === "object" && "name" in x && "source" in x) ? 0 : 1);
 ' "$f" ;;
     none) grep -q '"plugins"' "$f" && grep -q '"source"' "$f" ;;
   esac
@@ -191,11 +191,14 @@ echo
 echo "-- Frontmatter --"
 
 # Print the lines strictly between the file's first "---" and the next "---".
+# Prints nothing if the frontmatter is never closed by a second "---" —
+# an unterminated block is not valid frontmatter, not a pass.
 extract_frontmatter() {
   awk '
     NR == 1 && $0 == "---" { infm = 1; next }
-    infm && $0 == "---" { exit }
-    infm { print }
+    infm && $0 == "---" { closed = 1; exit }
+    infm { buf[n++] = $0 }
+    END { if (closed) for (i = 0; i < n; i++) print buf[i] }
   ' "$1"
 }
 
