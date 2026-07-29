@@ -139,7 +139,7 @@ Do this now, before Step 6 writes `permissions.deny` — that step denies
 tools if done afterward.
 
 Split the checks by cost, matched to how often each hook fires: this
-harness commits once per `tasks.md` group (`opsx-apply-git` §4.6), so a
+harness commits once per `tasks.md` group (`opsx-apply-git` §3), so a
 full `test:coverage` run on every `pre-commit` turns into minutes of wait
 on every group — multiplied across a whole change. `pre-commit` stays fast
 (typecheck + lint + lint-staged); the full coverage run moves to
@@ -333,7 +333,7 @@ file, no session ever reads `git-conventions.md` or `review-gates.md` unless
 `opsx-apply-git` happens to read them itself — and more importantly, this
 user's global instructions only recognize an auto-commit override
 ("commit without being asked") when it is *referenced from the project's
-CLAUDE.md*. `opsx-apply-git` §4.6 and §5.3 rely on `git-conventions.md`
+CLAUDE.md*. `opsx-apply-git` §3 and §5.3 rely on `git-conventions.md`
 being exactly that override, at group and archive boundaries. Without this
 step, that override is undiscoverable, and a fresh session should fall back
 to asking before every commit instead of trusting it.
@@ -353,7 +353,7 @@ to asking before every commit instead of trusting it.
 
    - @.claude/docs/git-conventions.md — branch/commit conventions. This is
      also the documented authorization for `opsx-apply-git` to commit
-     automatically at task-group and archive boundaries (its §4.6/§5.3) —
+     automatically at task-group and archive boundaries (its §3/§5.3) —
      without this reference, that override isn't discoverable and shouldn't
      be assumed.
    - @.claude/docs/review-gates.md — the six automated review gates and

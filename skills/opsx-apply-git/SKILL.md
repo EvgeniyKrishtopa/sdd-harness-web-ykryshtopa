@@ -90,12 +90,25 @@ case it is:
 2. For each isolated group in turn: implement its sub-tasks (minimal,
    focused; mark `- [ ]` → `- [x]`). If a design decision surfaces mid-group,
    the classification was wrong — stop, leave it uncommitted, tell the user.
-3. Once green (its own verification + lint), run the per-group gates (§4),
-   commit the group on the batch branch.
+3. Once green (its own verification + lint), confirm scope (`git status -s`,
+   `git diff --stat` — no unrelated files) and commit the group's own
+   implementation immediately (Conventional Commits, per
+   git-conventions.md). `code-review` (Gate 4+5) no longer runs per group
+   for an isolated batch — trusting the classification enough to run a
+   group unattended but not to review it as part of a batch pass would be
+   inconsistent, so it runs once against the whole batch's cumulative diff
+   instead, after the last group (§4 step 1; cost-optimization #34). On the
+   *last* group specifically, run Gate 3 (`web-qa`) first if the change
+   touched user-facing UI — must-pass with a fix loop, its fixes folding
+   into that group's diff before the commit.
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
-   left → end the batch, go to §4.7.
-5. Any mid-batch pause (CONFIRMED finding, error, ambiguity) stops the batch
-   where it is — report and wait, never commit a half-finished group.
+   left → end the batch, go to §4.
+5. Any pause during implementation (an error, an ambiguity, a design
+   decision surfacing) stops the batch where it is — report and wait, never
+   commit a half-finished group. A CONFIRMED finding from the batch-level
+   `code-review` pass in §4 can only surface once every group in the batch
+   is already committed; its fix lands as a new commit appended to the
+   batch, never an amend of an earlier group's own commit.
 
 ### Case B — first pending group is judgement-heavy: one group, human in the loop
 
@@ -103,62 +116,64 @@ case it is:
    the group.
 2. Announce why it's judgement-heavy. Implement with the standard
    guardrails, but pause and ask on every design decision or ambiguity.
-3. Once green, run §4 for this one group, then go to §4.7.
+3. Once green, confirm scope and — if this is also the *last* group with
+   pending tasks in the whole change and it touched user-facing UI — run
+   Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
+   group's own implementation, then go to §4 — a judgement-heavy run is a
+   single group, so `code-review`'s batch-level pass in §4 step 1 is
+   already reviewing this one commit's whole diff, the same as it would for
+   an isolated batch of one.
 
-## 4. Review + commit each group, push + PR once per run
+## 4. Review the run, push + PR
 
-Steps 4.1-4.6 run per group; 4.7-4.10 run once per run.
+Every group in this run is already committed by §3 (implementation commits
+happen inline, per group) — every step below runs once per run, not once
+per group; that's the whole point of #34: an isolated batch trusted to
+implement unattended is reviewed as one unit too, not group-by-group.
 
-1. Review the group's diff (`git status -s`, `git diff --stat`) — confirm
-   scope, no unrelated files.
-2. Determine if this is the last group (any `- [ ]` left elsewhere in
-   `tasks.md`?). Remember the answer for steps 3, 5, and 4.10.
-3. **Last group + touched user-facing UI** → run **`web-qa`** (Gate 3)
-   before code-review, using the detected framework's dev-server command.
-   Must-pass with a fix loop (see that skill). Skip to 4.4 otherwise.
-4. Run **`code-review`** — Gate 4 and Gate 5 in one delegation (merged per
+1. Run **`code-review`** — Gate 4 and Gate 5 in one delegation (merged per
    cost-optimization #33, since they always reviewed the same diff back to
-   back) — against the group's diff (incl. any web-qa fixes). The skill
-   itself skips its Gate 5 section when the diff is docs/config-only; it
-   still runs precisely when a group touched source code, whether or not it
-   also touched tests, since a group that shipped source changes with no
-   tests is what that section exists to catch. CONFIRMED in either section
-   → pause and ask fix-now-or-commit-anyway. Clean/PLAUSIBLE in both →
-   continue.
-5. **Last group** → run **`harness-review`** (Gate 6) before committing. On
-   an approved finding, apply the fix and commit it separately — never
-   `git commit -a`/`-am`, which would sweep in the group's own
-   not-yet-committed implementation still sitting in the working tree. Stage
-   **exactly the files the fix touched** with explicit paths
-   (`git add <the-touched-file(s)>`), never a directory shorthand like
-   `.claude/` that could also pick up unrelated uncommitted changes the
-   group's own implementation left under the same directory. Gate 6's scope
-   bounds where those files can come from — `CLAUDE.md`/`AGENTS.md`,
+   back) — against:
+   - **Case A (isolated batch)** — the batch's cumulative diff,
+     `git diff <parent>..HEAD`, covering every group's commit in this batch
+     in one pass.
+   - **Case B (judgement-heavy)** — the single group's diff against the
+     parent (the run *is* one group, so this is already the whole run).
+   Skip the Gate 5 section only if that cumulative diff is docs/config-only
+   (no source or test files touched anywhere in the run) — a run that
+   shipped source changes with no tests anywhere in it is exactly what that
+   section exists to catch. CONFIRMED in either section → pause and ask
+   fix-now-or-continue; a fix lands as its own new commit appended to the
+   run's branch, never an amend of an already-committed group. Clean/
+   PLAUSIBLE in both → continue.
+2. Run **`harness-review`** (Gate 6) — trigger unchanged: this run's last
+   group with pending tasks. On an approved finding, apply the fix and
+   commit it separately — never `git commit -a`/`-am`. Stage **exactly the
+   files the fix touched** with explicit paths (`git add
+   <the-touched-file(s)>`), never a directory shorthand like `.claude/`
+   that could also pick up unrelated changes. Gate 6's scope bounds where
+   those files can come from — `CLAUDE.md`/`AGENTS.md`,
    `.claude/harness.json`, `.claude/settings.json`, `.claude/docs/**`,
    `.husky/**`, plus this plugin's own `skills/`/`agents/` when its own repo
-   is what's under review — but the `git add` itself always lists the
-   specific file(s), e.g.
+   is what's under review — e.g.
    `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
-   Do this before step 6.
-6. Commit the group's own implementation (Conventional Commits, per
-   git-conventions.md) — do not wait to be asked, this is the documented
-   override for group boundaries. If the pre-commit hook fails, fix the
-   root cause and recommit, never `--no-verify`. In a batch, loop back to
-   §3 Case A step 2 for the next group; 4.7-4.10 only run once the batch ends.
-7. Push the run's branch (`git push -u origin <branch>`).
-8. Ensure the parent branch exists on `origin` (push it first if local-only).
-9. Open one PR from the run's branch into the parent (`gh pr create`),
+   Every group in the run is already committed by this point (§3), so
+   there's no ordering constraint forcing this ahead of a group's own
+   commit any more — it simply lands as the next commit on the branch.
+3. Push the run's branch (`git push -u origin <branch>`).
+4. Ensure the parent branch exists on `origin` (push it first if local-only).
+5. Open one PR from the run's branch into the parent (`gh pr create`),
    covering every group in this run. **Judgement-heavy run** → lead the PR
    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
    open — the human owns the merge.
-10. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
-    invocation re-syncs the parent from `origin` (only picks up this run's
-    work once its PR is merged). **No tasks remain** → continue to step 5.
+6. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
+   invocation re-syncs the parent from `origin` (only picks up this run's
+   work once its PR is merged). **No tasks remain** → continue to step 5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
 Archiving mutates the parent branch's `openspec/changes/` tree. Doing that
-before the run's own PR (opened in step 4.9) has merged opens a second PR
+before the run's own PR (opened in §4 step 5) has merged opens a second PR
 into the same parent whose content depends on the first — if the run's PR
 is later rejected or reworked, an already-opened archive PR would have
 archived a change that was never actually accepted (#19).
@@ -184,7 +199,7 @@ archived a change that was never actually accepted (#19).
    `openspec-archive-change` skill if present).
 3. Commit the archive move (`chore: archive <change-name>`) — this is a
    second, narrower override of "never commit without being asked," same
-   justification as step 4.7.
+   justification as §3's per-group commit override.
 4. Push the archive branch, open a PR into the parent. Leave it open.
 5. Report the full session: every group completed with PR URLs, final
    `N/N tasks complete`, archive location, archive PR URL.

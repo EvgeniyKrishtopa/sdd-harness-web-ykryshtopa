@@ -177,11 +177,28 @@ Gate 5 section:
 8. Drop coverage below the fixture's configured `coverageThreshold` on
    purpose — confirm the report states the gap against that exact number,
    not a hardcoded default.
-9. Confirm one CONFIRMED finding in *either* section pauses the commit —
+9. Confirm one CONFIRMED finding in *either* section pauses before push —
    test this separately for a Gate-4-only CONFIRMED and a Gate-5-only
    CONFIRMED, since a bug that only pauses on one section but not the other
    would silently reduce the merged gate's coverage relative to the two
    separate gates it replaced.
+
+Review-depth-by-classification (#34):
+
+10. Run an autonomous batch of 3+ `isolated` groups — confirm `code-review`
+    spawns exactly **once** for the whole batch, against the cumulative
+    diff of all groups' commits (`git diff <parent>..HEAD`), not once per
+    group. Each group should still get its own commit (check `git log
+    --oneline` on the batch branch — one commit per group), just without a
+    per-group review spawn.
+11. Run a single `judgement-heavy` group — confirm `code-review` still
+    spawns once, against that one group's diff (a judgement-heavy run is
+    already "a batch of one," so this should look identical to before #34).
+12. Plant a CONFIRMED finding in a *non-last* group of an isolated batch —
+    confirm it only surfaces after the whole batch is committed (at the
+    batch-level `code-review` pass), and confirm its fix lands as a new
+    commit appended to the batch branch, not an amend of that earlier
+    group's own commit.
 
 ## 8. Gate 6 — harness-review
 
