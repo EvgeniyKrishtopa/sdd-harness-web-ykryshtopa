@@ -17,7 +17,11 @@ by design (see below).
   once after every group in the batch is already committed, not once per
   group. The coverage section runs whenever the run touched source code or
   tests, and is skipped only for a docs/config-only diff. Threshold:
-  {{COVERAGE_THRESHOLD}}% (set at `init-harness` time).
+  {{COVERAGE_THRESHOLD}}% (set at `init-harness` time). A 0-token
+  pre-filter skips this whole delegation for a trivial run — under
+  `trivialDiffThreshold` changed lines (default 10) and every changed path
+  matching `trivialDiffPaths` (default `*.md`, `*.css`, `*.svg`,
+  `public/**`), both configured in `.claude/harness.json`.
 - **Gate 6 — harness-review**, on the run's last group with pending tasks,
   before its commit — but only when a 0-token precondition check finds this
   run actually touched something it could review (`CLAUDE.md`/`AGENTS.md`,

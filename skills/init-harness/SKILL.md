@@ -280,6 +280,8 @@ rest around it:
     "testCoverage": "test:coverage"
   },
   "devServerUrl": "http://localhost:5173",
+  "trivialDiffThreshold": 10,
+  "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
     "architecture": "claude-opus-5",
@@ -307,6 +309,15 @@ Field notes:
 - `devServerUrl` — the dev server's root URL: `http://localhost:3000`
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
+- `trivialDiffThreshold` / `trivialDiffPaths` — seed with the values shown
+  above; don't ask the user for these unless they raise it. `code-review`
+  (Gate 4+5) skips itself, at zero model cost, for a run whose cumulative
+  diff changes fewer than `trivialDiffThreshold` lines (`git diff
+  --shortstat`) **and** every changed path matches one of
+  `trivialDiffPaths` (cost-optimization #36) — a 3-line CSS tweak or a typo
+  fix in a `.md` file doesn't need a full review pass. A user who wants a
+  stricter or looser bar edits this manifest directly; there's no separate
+  prompt for it.
 - `openspec` — already written by Step 2e; carry it over unchanged.
 - `models` — one entry per review-gate agent plus a `default` fallback. Seed
   it with the values shown above, not with whatever each `agents/*.md`

@@ -97,7 +97,7 @@ case it is:
    for an isolated batch — trusting the classification enough to run a
    group unattended but not to review it as part of a batch pass would be
    inconsistent, so it runs once against the whole batch's cumulative diff
-   instead, after the last group (§4 step 1; cost-optimization #34). On the
+   instead, after the last group (§4 step 2; cost-optimization #34). On the
    *last* group **with pending tasks in the whole change** (not just the
    last group of this batch — a batch can end mid-change, handing off to a
    judgement-heavy group next) — run Gate 3 (`web-qa`) first if the change
@@ -122,7 +122,7 @@ case it is:
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
    group's own implementation, then go to §4 — a judgement-heavy run is a
-   single group, so `code-review`'s batch-level pass in §4 step 1 is
+   single group, so `code-review`'s batch-level pass in §4 step 2 is
    already reviewing this one commit's whole diff, the same as it would for
    an isolated batch of one.
 
@@ -133,7 +133,41 @@ happen inline, per group) — every step below runs once per run, not once
 per group; that's the whole point of #34: an isolated batch trusted to
 implement unattended is reviewed as one unit too, not group-by-group.
 
-1. Run **`code-review`** — Gate 4 and Gate 5 in one delegation (merged per
+1. **Trivial-diff pre-filter (0 tokens)** — before spawning `code-review` at
+   all, check the run's cumulative diff (`git diff <parent>..HEAD`, the same
+   diff step 2 below would review) against `.claude/harness.json`'s
+   `trivialDiffThreshold` / `trivialDiffPaths` (seeded by `init-harness`;
+   defaults 10 changed lines / `*.md`, `*.css`, `*.svg`, `public/**`):
+   ```bash
+   stat=$(git diff --shortstat <parent>..HEAD)
+   ins=$(printf '%s' "$stat" | grep -oE '[0-9]+ insertion' | grep -oE '[0-9]+')
+   del=$(printf '%s' "$stat" | grep -oE '[0-9]+ deletion' | grep -oE '[0-9]+')
+   lines=$(( ${ins:-0} + ${del:-0} ))
+   ```
+   If `lines` is under the threshold **and** every path in `git diff
+   --name-only <parent>..HEAD` matches one of `trivialDiffPaths` (a shell
+   glob `case` per file — a single path outside the trivial set disqualifies
+   the whole run), skip the `code-review` delegation entirely
+   (cost-optimization #36): a 3-line CSS tweak or a typo fix in a `.md` file
+   doesn't need a full review pass. This must stay a deterministic shell
+   check — never "ask the model if this looks trivial," which would spend
+   exactly the tokens this step exists to avoid. When skipped, write both
+   log lines yourself (same shape `code-review` itself would write, both
+   `verdict:"skipped"`), since that skill never ran:
+   ```bash
+   mkdir -p .claude
+   for g in code-review test-coverage; do
+     printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+       --arg change "<change-slug>" --arg group "<group-number-or-range>" \
+       --arg gate "$g" \
+       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+       >> .claude/harness-log.jsonl
+   done
+   ```
+   Then skip straight to step 3 (Gate 6's own precondition, #35 — evaluated
+   independently, since even a trivial-by-this-filter diff can still touch
+   harness config worth flagging). Otherwise, continue to step 2.
+2. Run **`code-review`** — Gate 4 and Gate 5 in one delegation (merged per
    cost-optimization #33, since they always reviewed the same diff back to
    back) — against:
    - **Case A (isolated batch)** — the batch's cumulative diff,
@@ -152,7 +186,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    fix, before pushing — don't assume a fix scoped to the group that
    introduced the problem is automatically compatible with what later
    groups added on top of it. Clean/PLAUSIBLE in both → continue.
-2. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
+3. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
    on this run's last group with pending tasks only, before spawning
    `harness-reviewer` at all, check whether this run touched anything it
    could plausibly review:
@@ -199,20 +233,20 @@ implement unattended is reviewed as one unit too, not group-by-group.
    Every group in the run is already committed by this point (§3), so
    there's no ordering constraint forcing this ahead of a group's own
    commit any more — it simply lands as the next commit on the branch.
-3. Push the run's branch (`git push -u origin <branch>`).
-4. Ensure the parent branch exists on `origin` (push it first if local-only).
-5. Open one PR from the run's branch into the parent (`gh pr create`),
+4. Push the run's branch (`git push -u origin <branch>`).
+5. Ensure the parent branch exists on `origin` (push it first if local-only).
+6. Open one PR from the run's branch into the parent (`gh pr create`),
    covering every group in this run. **Judgement-heavy run** → lead the PR
    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
    open — the human owns the merge.
-6. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
+7. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
    invocation re-syncs the parent from `origin` (only picks up this run's
    work once its PR is merged). **No tasks remain** → continue to step 5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
 Archiving mutates the parent branch's `openspec/changes/` tree. Doing that
-before the run's own PR (opened in §4 step 5) has merged opens a second PR
+before the run's own PR (opened in §4 step 6) has merged opens a second PR
 into the same parent whose content depends on the first — if the run's PR
 is later rejected or reworked, an already-opened archive PR would have
 archived a change that was never actually accepted (#19).

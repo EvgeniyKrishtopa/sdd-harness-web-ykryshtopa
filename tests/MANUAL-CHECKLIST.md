@@ -183,6 +183,23 @@ Gate 5 section:
    would silently reduce the merged gate's coverage relative to the two
    separate gates it replaced.
 
+Trivial-diff pre-filter (#36):
+
+13. Make a run whose entire cumulative diff is a 3-line `.md` edit — confirm
+    `code-review` never spawns at all, and `.claude/harness-log.jsonl` gets
+    both the `code-review` and `test-coverage` lines written directly by
+    `opsx-apply-git` with `"verdict":"skipped"`.
+14. Make a run that's still `.md`-only but exceeds `trivialDiffThreshold`
+    (default 10) changed lines — confirm the pre-filter does NOT skip it
+    (line-count check, not just path check).
+15. Make a run that's under the line threshold but touches one `.ts`/`.tsx`
+    file alongside `.md` files — confirm the pre-filter does NOT skip it
+    (a single non-trivial path disqualifies the whole run).
+16. Edit `.claude/harness.json`'s `trivialDiffThreshold` down to `0` —
+    confirm even a 1-line `.md` diff now runs the full `code-review`
+    delegation, proving the threshold is actually read from the manifest
+    and not hardcoded.
+
 Review-depth-by-classification (#34):
 
 10. Run an autonomous batch of 3+ `isolated` groups — confirm `code-review`
