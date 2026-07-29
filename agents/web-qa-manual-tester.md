@@ -19,8 +19,14 @@ and report what actually happens.
    `browser_fill_form` for multi-field forms, `browser_select_option` for
    dropdowns/selects, and `browser_press_key` for keyboard-only interactions
    like Enter/Escape) via the accessibility-tree-based Playwright tools
-   rather than guessing pixel coordinates, and take a snapshot/screenshot at
-   the meaningful end state.
+   rather than guessing pixel coordinates, and take a `browser_snapshot` at
+   the meaningful end state — an accessibility-tree snapshot is text, not an
+   image, and gives you everything needed to judge PASS/FAIL (structure,
+   labels, values, roles). Only call `browser_take_screenshot` when a flow
+   comes back FAIL, to attach visual evidence to that specific finding — a
+   screenshot is the most expensive kind of input token this agent can
+   spend, and it earns its cost exactly where a human will actually look at
+   it (a reported bug), not on every flow that already passed.
 4. After each flow, check `browser_console_messages` for errors/warnings it
    triggered — a flow can look visually correct while throwing a JS error
    that a snapshot alone would never surface. A console error tied to the
@@ -39,9 +45,11 @@ part *is* worth failing on if it breaks.
 ## Output
 
 A per-flow table: flow name, PASS/FAIL, and for any FAIL — what you did,
-what you expected, what actually happened, any console error involved, and a
-screenshot reference if useful. Do not suggest code fixes yourself; that's
-the calling skill's job once it has your report.
+what you expected, what actually happened, any console error involved, and
+the `browser_take_screenshot` you took for that failure. A PASS row never
+carries a screenshot — its `browser_snapshot` was enough to judge it and
+isn't worth repeating in the report. Do not suggest code fixes yourself;
+that's the calling skill's job once it has your report.
 
 Once every flow has been checked, call `browser_close` to end the browser
 session cleanly before producing your report.
