@@ -6,12 +6,10 @@
         "matcher": "Bash",
         "hooks": [
           {
-            "type": "agent",
+            "type": "command",
             "if": "Bash(git commit:*)",
-            "model": "claude-opus-5",
-            "timeout": 120,
-            "statusMessage": "Reviewing staged diff for architecture risks...",
-            "prompt": "You are gating a `git commit`. The Bash tool call about to run is: $ARGUMENTS\n\n1. Read `${CLAUDE_PLUGIN_ROOT}/agents/architecture-reviewer.md` and follow its criteria exactly.\n2. Run `git diff --cached`. If that's empty — e.g. the commit uses `-a`/`-am` and stages straight from the working tree instead of the index — fall back to `git diff HEAD` so an unstaged commit doesn't skip review just because the staged diff was empty. If both are empty, nothing to review.\n3. Only escalate CONFIRMED violations, never PLAUSIBLE-only.\n4. Output ONLY this JSON as the last thing in your response:\n   - CONFIRMED: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"ask\", \"permissionDecisionReason\": \"<summary>\"}}\n   - Clean/empty: {\"hookSpecificOutput\": {\"hookEventName\": \"PreToolUse\", \"permissionDecision\": \"allow\"}}"
+            "statusMessage": "Checking staged diff for secrets, size, and protected-branch commits...",
+            "command": "default=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's@^origin/@@'); branch=$(git symbolic-ref --short -q HEAD 2>/dev/null); protected=\"${default:-main}\"; if [ -z \"$branch\" ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Detached HEAD: cannot verify this is not the protected branch, confirm before committing.\"}}'; exit 0; fi; if [ \"$branch\" = \"$protected\" ] || { [ -z \"$default\" ] && [ \"$branch\" = \"master\" ]; }; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Committing directly on %s requires confirmation.\"}}' \"$branch\"; exit 0; fi; diff=$(git diff --cached); if [ -z \"$diff\" ]; then diff=$(git diff HEAD); fi; if printf '%s' \"$diff\" | grep -qEi -- '-----BEGIN [A-Z ]*PRIVATE KEY-----|AKIA[0-9A-Z]{16}|(secret|api)_?key[[:space:]]*[:=][[:space:]]*[\"'\"'\"']?[A-Za-z0-9/+_.-]{16,}|password[[:space:]]*[:=][[:space:]]*[^[:space:]]{8,}'; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Staged diff matches a secret-like pattern (API key, private key block, or hardcoded password). Confirm before committing.\"}}'; exit 0; fi; lines=$(printf '%s' \"$diff\" | wc -l | tr -d ' '); if [ \"$lines\" -gt 500 ]; then printf '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"ask\",\"permissionDecisionReason\":\"Large commit (%s changed lines) - confirm this is intentional.\"}}' \"$lines\"; exit 0; fi; echo '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}'"
           },
           {
             "type": "command",
