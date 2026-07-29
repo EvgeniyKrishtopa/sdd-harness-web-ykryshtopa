@@ -210,8 +210,8 @@ rather than merge targets. If a file already exists, read it first:
 
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
-This plugin's `hooks/hooks.json` (commit gate, merge/push guards,
-`.claudeignore` enforcement, typecheck-on-edit, session banner) is loaded
+This plugin's `hooks/hooks.json` (commit/merge/push guards,
+`.claudeignore` enforcement, typecheck-before-stop, session banner) is loaded
 automatically for this repo as soon as the plugin is enabled — the same way
 its skills and agents are. There is nothing to copy or merge for hooks; do
 not write a `hooks` key into the target repo's own `.claude/settings.json`,

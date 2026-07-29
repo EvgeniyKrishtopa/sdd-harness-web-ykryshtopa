@@ -2,8 +2,9 @@
 
 Spec-driven OpenSpec harness for web projects — **Vite or Next.js**, either
 package manager (yarn/npm/pnpm), either test runner (Vitest/Jest). Six
-automated review gates, a branch-per-group git workflow, and a scaffolder
-that detects your stack instead of assuming one.
+automated review gates (five agent delegations — Gate 4 and Gate 5 share
+one, see Components below), a branch-per-group git workflow, and a
+scaffolder that detects your stack instead of assuming one.
 
 ## What this is
 
@@ -55,8 +56,8 @@ group) and `.husky/pre-push` (the full `test:coverage` run) — independent
 of Claude Code's own hooks, so bad commits and pushes are still blocked
 even with no agent involved.
 
-This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
-merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
+This plugin's own Claude Code hooks (`hooks/hooks.json` — commit/merge/push
+guards, `.claudeignore` enforcement, typecheck-before-stop) apply
 automatically to any repo where the plugin is enabled, the same way its
 skills and agents do. `/init-harness` does not copy them into your project's
 `.claude/settings.json` — there is nothing to install for that layer.
@@ -88,8 +89,10 @@ skills and agents do. `/init-harness` does not copy them into your project's
 2. `/opsx-apply-git` — implement the next run: an autonomous batch of
    `isolated` groups to one PR, or one `judgement-heavy` group with you in
    the loop.
-3. Gates 3-6 (`web-qa` → `code-review` [Gate 4 + Gate 5 in one delegation] →
-   `harness-review`) run automatically before each group's commit, per
+3. Each group implements and commits as it goes; Gates 3-6 (`web-qa` →
+   `code-review` [Gate 4 + Gate 5 in one delegation] → `harness-review`) run
+   automatically once per run, after every group in it is already
+   committed and before push — not once per group — per
    `.claude/docs/review-gates.md`.
 4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
    from that merge.
