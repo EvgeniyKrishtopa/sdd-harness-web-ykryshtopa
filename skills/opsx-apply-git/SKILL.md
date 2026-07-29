@@ -98,7 +98,9 @@ case it is:
    group unattended but not to review it as part of a batch pass would be
    inconsistent, so it runs once against the whole batch's cumulative diff
    instead, after the last group (§4 step 1; cost-optimization #34). On the
-   *last* group specifically, run Gate 3 (`web-qa`) first if the change
+   *last* group **with pending tasks in the whole change** (not just the
+   last group of this batch — a batch can end mid-change, handing off to a
+   judgement-heavy group next) — run Gate 3 (`web-qa`) first if the change
    touched user-facing UI — must-pass with a fix loop, its fixes folding
    into that group's diff before the commit.
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
@@ -144,8 +146,12 @@ implement unattended is reviewed as one unit too, not group-by-group.
    shipped source changes with no tests anywhere in it is exactly what that
    section exists to catch. CONFIRMED in either section → pause and ask
    fix-now-or-continue; a fix lands as its own new commit appended to the
-   run's branch, never an amend of an already-committed group. Clean/
-   PLAUSIBLE in both → continue.
+   run's branch, never an amend of an already-committed group. Since later
+   groups in the same batch may have built on top of the flawed one, re-run
+   the project's own verification (typecheck/lint/tests) after applying the
+   fix, before pushing — don't assume a fix scoped to the group that
+   introduced the problem is automatically compatible with what later
+   groups added on top of it. Clean/PLAUSIBLE in both → continue.
 2. Run **`harness-review`** (Gate 6) — trigger unchanged: this run's last
    group with pending tasks. On an approved finding, apply the fix and
    commit it separately — never `git commit -a`/`-am`. Stage **exactly the
