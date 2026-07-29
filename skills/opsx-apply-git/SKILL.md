@@ -40,7 +40,22 @@ are the source of truth for branch naming, commit format, and gate order.
 2. `openspec status --change "<name>" --json` for schema and progress.
 3. `openspec instructions apply --change "<name>" --json` for context files
    and the task list.
-4. Read every file under `contextFiles`.
+4. Read only the slice of `contextFiles` this run actually needs, not the
+   whole set on every invocation (cost-optimization #42) — a long change
+   re-reading its full proposal/design/every capability's spec on every
+   single run, when a given run only ever touches one or two groups, spends
+   context on files that aren't relevant to what this run is about to do:
+   - `tasks.md` itself — always; §3 depends on it to determine groups and
+     read the isolated/judgement-heavy marks.
+   - `proposal.md` / `design.md` — only on this change's very first run (no
+     group anywhere in `tasks.md` is committed yet), or later if a group's
+     own ambiguity genuinely requires re-checking the original intent. Not
+     by default on every subsequent run of an already-in-progress change.
+   - The spec file(s) under `contextFiles` that cover the group(s) this run
+     is about to implement (§3 determines which) — not the full spec set
+     for a change that spans capabilities this run isn't touching.
+   - Anything else under `contextFiles` — read on demand only if a specific
+     question comes up mid-run, not upfront.
 
 ## 3. Work the next run: isolated batch, or one judgement-heavy group
 
