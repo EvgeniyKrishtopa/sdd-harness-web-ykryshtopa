@@ -1,0 +1,11 @@
+lockfileVersion: '9.0'
+
+# Stub lockfile: present only so `init-harness`'s package-manager detection
+# (lockfile in repo root, see skills/init-harness/references/stack-detection.md)
+# finds `pnpm-lock.yaml` and picks `pnpm`. Not a real resolved lockfile — run
+# `pnpm install` after copying this fixture out of the plugin repo to
+# generate a real one.
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
