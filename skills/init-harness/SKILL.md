@@ -1,6 +1,6 @@
 ---
 name: init-harness
-description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs a native git pre-commit hook (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
+description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
 ---
 
 Run this once per repository, before using any other skill in this plugin.
@@ -124,35 +124,60 @@ this key when that step runs):
 This lets `harness-review` (Gate 6) notice later if someone runs
 `openspec config reset` and silently drops the project back to Core.
 
-## Step 3 — install a native git pre-commit hook (not just Claude Code hooks)
+## Step 3 — install native git hooks (not just Claude Code hooks): fast checks on commit, full coverage on push
 
 This plugin's Claude Code hooks (`hooks/hooks.json`, active automatically
 while this plugin is enabled — see the note in Step 6) only fire when
-**Claude itself** runs `git commit` through the Bash tool — they do nothing
-if the human commits directly from a terminal with no agent involved. That
-gap needs its own, independent safety net: a real git pre-commit hook, so
-bad commits are blocked regardless of who or what is committing.
+**Claude itself** runs `git commit`/`git push` through the Bash tool — they
+do nothing if the human commits or pushes directly from a terminal with no
+agent involved. That gap needs its own, independent safety net: real git
+hooks, so bad commits and pushes are blocked regardless of who or what is
+committing.
 
 Do this now, before Step 6 writes `permissions.deny` — that step denies
-`npm install`/`add` and equivalents, which would block installing Husky if
-done afterward.
+`npm install`/`add` and equivalents, which would block installing these
+tools if done afterward.
 
-1. If Husky isn't already a devDependency, install it
-   (`yarn add -D husky` / `npm install -D husky` / `pnpm add -D husky`) and
-   run its init (`npx husky init`).
+Split the checks by cost, matched to how often each hook fires: this
+harness commits once per `tasks.md` group (`opsx-apply-git` §4.7), so a
+full `test:coverage` run on every `pre-commit` turns into minutes of wait
+on every group — multiplied across a whole change. `pre-commit` stays fast
+(typecheck + lint + lint-staged); the full coverage run moves to
+`pre-push`, where it runs once per push instead of once per commit.
+
+1. If Husky and `lint-staged` aren't already devDependencies, install both
+   (`yarn add -D husky lint-staged` / `npm install -D husky lint-staged` /
+   `pnpm add -D husky lint-staged`) and run Husky's init (`npx husky init`).
 2. Write `.husky/pre-commit` with the detected package manager's commands,
    chained so any failure blocks the commit:
    ```
-   <pm> typecheck && <pm> lint && <pm> test:coverage
+   <pm> typecheck && <pm> lint && npx lint-staged
    ```
-   (e.g. `yarn typecheck && yarn lint && yarn test:coverage`, or the npm/pnpm
+   (e.g. `yarn typecheck && yarn lint && npx lint-staged`, or the npm/pnpm
    equivalents — use whatever script names actually exist in this project's
    `package.json`; don't invent script names that aren't there, ask the user
-   if the mapping isn't obvious.)
-3. Do not overwrite an existing `.husky/pre-commit` that already has content
-   — read it first, and only append/merge the missing checks in, the same
-   "never clobber existing config" rule used for merges later in this skill.
-4. Confirm the hook is executable (`chmod +x .husky/pre-commit` if needed).
+   if the mapping isn't obvious.) No test run here — that's `pre-push`,
+   below.
+3. Configure `lint-staged` — in `package.json`'s `"lint-staged"` key, or a
+   `.lintstagedrc.json` if the project already has one of those instead —
+   to run the project's lint/format tooling against staged files only, e.g.
+   for ESLint: `{"*.{ts,tsx}": "eslint --fix"}`. This is what actually keeps
+   `pre-commit` fast: `<pm> lint` above still runs the full project-wide
+   lint as a correctness gate, while `lint-staged` auto-fixes and re-stages
+   only the files this commit actually touches — ask the user for the exact
+   glob/command if the project's lint tooling isn't obvious from
+   `package.json`.
+4. Write `.husky/pre-push` with the full coverage run:
+   ```
+   <pm> test:coverage
+   ```
+   (e.g. `yarn test:coverage`, or the npm/pnpm equivalent.)
+5. Do not overwrite an existing `.husky/pre-commit` or `.husky/pre-push`
+   that already has content — read each first, and only append/merge the
+   missing checks in, the same "never clobber existing config" rule used
+   for merges later in this skill.
+6. Confirm both hooks are executable (`chmod +x .husky/pre-commit
+   .husky/pre-push` if needed).
 
 ## Step 4 — ask the user for the coverage threshold
 
@@ -167,6 +192,21 @@ into the target repo (see `references/git-conventions-template.md` and
 `references/review-gates-template.md` in this skill for the content to
 adapt — fill in the detected package manager's commands and the chosen
 coverage threshold rather than copying placeholders verbatim).
+
+Do not silently overwrite either file on a re-run of this skill — the same
+"never clobber existing config" rule this skill already applies to hooks
+(Step 3), permissions (Step 6), `.claudeignore` (Step 7), and CLAUDE.md
+(Step 9) also applies here, even though these two are fully generated files
+rather than merge targets. If a file already exists, read it first:
+- If its content is identical to what this step would generate (modulo the
+  substituted package-manager commands and coverage threshold), there's
+  nothing to do — leave it.
+- If it differs — a changed coverage threshold, a package-manager switch,
+  or hand-edits the user made to the doc directly — tell the user
+  specifically what's different and ask before overwriting. Never replace a
+  file the user may have customized without them seeing what would change.
+- Only write straight over the file with no confirmation when it doesn't
+  exist yet.
 
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
@@ -242,13 +282,13 @@ rest around it:
   "devServerUrl": "http://localhost:5173",
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
-    "architecture": "claude-fable-5",
-    "spec": "claude-fable-5",
-    "webQa": "claude-fable-5",
-    "code": "claude-fable-5",
-    "testCoverage": "claude-fable-5",
-    "harness": "claude-fable-5",
-    "default": "claude-fable-5"
+    "architecture": "claude-opus-5",
+    "spec": "claude-sonnet-5",
+    "webQa": "claude-haiku-4-5",
+    "code": "claude-sonnet-5",
+    "testCoverage": "claude-haiku-4-5",
+    "harness": "claude-haiku-4-5",
+    "default": "claude-sonnet-5"
   }
 }
 ```
@@ -269,11 +309,15 @@ Field notes:
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
 - `openspec` — already written by Step 2e; carry it over unchanged.
-- `models` — one entry per review-gate agent plus a `default` fallback,
-  seeded from whatever model each `agents/*.md` currently declares in its
-  frontmatter. No skill reads this key yet to actually pick a model — this
-  stage only makes the setting machine-readable; per-gate model selection
-  is a later stage's work.
+- `models` — one entry per review-gate agent plus a `default` fallback. Seed
+  it with the values shown above, not with whatever each `agents/*.md`
+  currently declares in its own frontmatter — every gate skill
+  (`architecture-review`, `spec-review`, `code-review`, `test-coverage`,
+  `harness-review`, `web-qa`) reads its own key from this manifest and
+  passes it as the `Agent` tool's `model` override, so this is the actual
+  place a user changes which model a gate runs on, not the agent files
+  themselves. Only depart from the seeded defaults if the user asks for a
+  different tier or doesn't have access to one of these models.
 
 Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be
@@ -325,8 +369,8 @@ to asking before every commit instead of trusting it.
 
 Summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
-list the files written — including confirming the native pre-commit hook is
-now in place (Step 3), noting that this plugin's Claude Code hooks are
+list the files written — including confirming the native pre-commit and
+pre-push hooks are now in place (Step 3), noting that this plugin's Claude Code hooks are
 already active with nothing to install (Step 6), the
 permissions/`.claudeignore` distinction from Steps 6-7 (what
 `permissions.deny` actually enforces vs. what the `.claudeignore` guard hook

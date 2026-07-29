@@ -49,10 +49,11 @@ those docs (and the auto-commit override they define) are actually
 discoverable — Claude Code doesn't load `.claude/docs/*.md` into context on
 its own the way it loads `CLAUDE.md`; merges a full `permissions` allow/deny
 list into your `.claude/settings.json`; writes `.claudeignore` plus its
-enforcement hook; installs a native git pre-commit hook via Husky
-(`.husky/pre-commit`) that runs typecheck + lint + test:coverage on every
-commit — independent of Claude Code's own hooks, so it still blocks bad
-commits made without any agent involved.
+enforcement hook; installs native git hooks via Husky — `.husky/pre-commit`
+(typecheck + lint + `lint-staged`, kept fast since it fires once per task
+group) and `.husky/pre-push` (the full `test:coverage` run) — independent
+of Claude Code's own hooks, so bad commits and pushes are still blocked
+even with no agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit gate,
 merge/push guards, `.claudeignore` enforcement, typecheck-on-edit) apply
@@ -111,6 +112,31 @@ skills and agents do. `/init-harness` does not copy them into your project's
 
 Six matching read-only subagents live in `agents/` and are invoked by the
 skills above, not usually directly.
+
+## Command names
+
+- **`code-review` collides with Claude Code's own built-in `/code-review`
+  slash command.** Inside the normal workflow this doesn't matter: `opsx-
+  apply-git` runs Gate 4 itself via the `Agent` tool, not by invoking a
+  slash command — and the built-in `/code-review` couldn't be invoked that
+  way regardless, since it has `disable-model-invocation` (confirmed
+  empirically; a plugin skill or agent cannot trigger it). It only matters
+  if you want to run Gate 4 by hand outside that workflow: a bare
+  `/code-review` always resolves to Claude Code's built-in command, never
+  this plugin's skill. Use the namespaced form —
+  `/sdd-harness-web-ykryshtopa:code-review` (substitute the marketplace
+  alias you actually installed under, if different) — to reach this
+  plugin's version directly, or just run `/opsx-apply-git`, which reaches
+  it without the ambiguity.
+- **This plugin's `opsx-propose-review` / `opsx-apply-git` /
+  `opsx-update-review` skills are not the same thing as OpenSpec's own
+  generated `/opsx:propose` / `/opsx:apply` / `/opsx:update` commands.**
+  Once `init-harness` puts OpenSpec in Expanded (`custom`) profile with
+  `delivery: "both"` (see Requirements above), both sets exist side by
+  side — this plugin's are hyphenated (`opsx-apply-git`), OpenSpec's own
+  are colon-namespaced (`opsx:apply`). Everything in this README's
+  "Everyday workflow" and "Components" sections refers to this plugin's
+  hyphenated skills, not OpenSpec's CLI-generated ones.
 
 ## MCP servers
 

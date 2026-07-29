@@ -5,12 +5,21 @@ description: Reviews an OpenSpec design.md, or a diff, for architecture risks �
 
 Run **Gate 1** of this project's review pipeline: architecture review.
 
+## Model
+
+Before delegating, read `.claude/harness.json`'s `models.architecture` key
+(written by `init-harness`) and pass it as the `model` parameter on the
+`Agent` tool call, overriding `architecture-reviewer`'s own frontmatter
+default for this run. If the manifest or the key is missing, fall back to
+the agent's own default — a missing override never blocks the gate.
+
 ## When invoked against a design artifact (no diff yet)
 
 1. Read the OpenSpec change's `design.md` (or equivalent proposal doc).
-2. Delegate to the `architecture-reviewer` subagent (`Agent` tool), pointing it
-   at the design artifact's path — it reviews the *proposed* architecture,
-   not a diff, because none exists yet at this point in the workflow.
+2. Delegate to the `architecture-reviewer` subagent (`Agent` tool, model per
+   the note above), pointing it at the design artifact's path — it reviews
+   the *proposed* architecture, not a diff, because none exists yet at this
+   point in the workflow.
 3. Use the `sequential-thinking` MCP tool if the design is non-trivial
    (multiple layers, a new cross-cutting concern, a data-flow change) — work
    through the boundary/coupling implications step by step before handing a
@@ -20,7 +29,8 @@ Run **Gate 1** of this project's review pipeline: architecture review.
 
 1. Run `git diff` (or `git diff --cached` if the target is staged) against
    the parent branch.
-2. Delegate to `architecture-reviewer` with that diff.
+2. Delegate to `architecture-reviewer` (model per the note above) with that
+   diff.
 
 ## Handling the result
 

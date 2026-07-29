@@ -12,8 +12,12 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
 
 ## Action
 
-1. Delegate to the `spec-reviewer` subagent (`Agent` tool) for the whole
-   change.
+1. Read `.claude/harness.json`'s `models.spec` key (written by
+   `init-harness`) and pass it as the `model` parameter when delegating to
+   the `spec-reviewer` subagent (`Agent` tool) for the whole change —
+   overriding the agent's own frontmatter default for this run. If the
+   manifest or the key is missing, fall back to the agent's own default;
+   never block the gate on a missing override.
 2. Beyond surfacing gaps, this is also where **task-group classification**
    happens: the reviewer marks each `## N.` heading in `tasks.md` as
    `isolated` or `judgement-heavy`, written back as a trailing
