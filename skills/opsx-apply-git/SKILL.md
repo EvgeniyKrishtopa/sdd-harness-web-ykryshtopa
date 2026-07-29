@@ -152,8 +152,30 @@ implement unattended is reviewed as one unit too, not group-by-group.
    fix, before pushing — don't assume a fix scoped to the group that
    introduced the problem is automatically compatible with what later
    groups added on top of it. Clean/PLAUSIBLE in both → continue.
-2. Run **`harness-review`** (Gate 6) — trigger unchanged: this run's last
-   group with pending tasks. On an approved finding, apply the fix and
+2. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
+   on this run's last group with pending tasks only, before spawning
+   `harness-reviewer` at all, check whether this run touched anything it
+   could plausibly review:
+   `git diff --name-only <parent>..HEAD | grep -qE '^(CLAUDE|AGENTS)\.md|^\.claude/|^\.husky/'`,
+   or the run added/removed a script or dependency in `package.json`
+   (`git diff <parent>..HEAD -- package.json | grep -qE '^[+-]\s*"'`). Most
+   runs touch neither — a run that never touched the harness has nothing
+   for this gate to find. In that case, skip the `harness-review` delegation
+   entirely and append the skip directly to `.claude/harness-log.jsonl`
+   yourself (create the file if it doesn't exist), since the skill that
+   normally writes that line never ran:
+   ```bash
+   mkdir -p .claude
+   printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+     --arg change "<change-slug>" --arg gate "harness-review" \
+     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+     >> .claude/harness-log.jsonl
+   ```
+   If `jq` isn't available, construct the equivalent line with `printf`
+   instead, matching `harness-review`'s own log format. If either
+   precondition check matches, run **`harness-review`** (Gate 6) as before —
+   it writes its own log line per its skill doc. On an approved finding,
+   apply the fix and
    commit it separately — never `git commit -a`/`-am`. Stage **exactly the
    files the fix touched** with explicit paths (`git add
    <the-touched-file(s)>`), never a directory shorthand like `.claude/`

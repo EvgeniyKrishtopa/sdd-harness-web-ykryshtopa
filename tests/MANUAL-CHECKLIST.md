@@ -204,12 +204,26 @@ Review-depth-by-classification (#34):
 
 1. Edit `.claude/docs/review-gates.md` by hand to say something false
    about a gate's trigger, then run this gate on the last group of an
-   unrelated change — confirm it flags the drift.
+   unrelated change — confirm it flags the drift (this run touches
+   `.claude/`, so the precondition in #4 below should let it run at all).
 2. Re-run the Gate-1-negative-test scenario (`openspec config reset`) and
    confirm this gate also independently notices the profile regression,
    not only `init-harness`'s own check.
 3. Confirm every finding is shown with a suggested fix regardless of
    verdict, and nothing is auto-applied without the human choosing to.
+
+Precondition (#35):
+
+4. Run a change whose diff touches only application source/test files —
+   nothing under `CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, no
+   `package.json` script/dependency change — confirm `harness-reviewer`
+   never spawns for it, and `.claude/harness-log.jsonl` gets a
+   `"gate":"harness-review","verdict":"skipped"` line written directly by
+   `opsx-apply-git` (not by the harness-review skill, which never ran).
+5. Run a change that only adds a `package.json` script (no `.claude/`/
+   `.husky/`/`CLAUDE.md` touched) — confirm the precondition still fires
+   and `harness-reviewer` runs, since a script/dependency change is the
+   other half of the precondition, not just harness-path changes.
 
 ---
 
