@@ -141,6 +141,22 @@ skills above, not usually directly.
 ## MCP servers
 
 - **playwright** (`@playwright/mcp`) — drives a real browser for Gate 3.
+  This is the only MCP server this plugin ships, and it stays resident for
+  the whole session even though only Gate 3 ever calls it — there is no
+  supported way, as of Claude Code 2.1.220, for a plugin's `.mcp.json` to
+  load a server conditionally per-skill or per-gate; servers listed there
+  attach for the session's lifetime once enabled. Two things narrow the
+  actual cost, though: (1) Claude Code 2.1.x defers MCP tool schemas
+  (`ToolSearch`) rather than loading all ~12 of Playwright's tools into
+  context up front, so the static footprint is smaller than a naive count
+  suggests; (2) `npx` resolves an already-cached/locally-installed package
+  without a registry round-trip, so a project that installs
+  `@playwright/mcp` as a devDependency (rather than relying on `npx -y` to
+  fetch it fresh) avoids the network check on session start. Neither
+  eliminates the server being resident for gates 1/2/4/5/6, which never
+  touch a browser — if a session is known not to run `web-qa`, disable the
+  server for it via `/mcp` (or remove/comment the entry from `.mcp.json` in
+  a project fork) rather than leaving it attached by default.
 
 This plugin previously also shipped a `sequential-thinking` MCP server for
 `architecture-review` and `spec-review`'s non-trivial-change reasoning.
