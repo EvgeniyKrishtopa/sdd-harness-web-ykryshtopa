@@ -33,9 +33,9 @@ in `skills/`, `agents/`, or `hooks/` reads it. To use it:
 
 ## Why it has real source and a real test
 
-`src/utils/sum.ts` + `src/utils/sum.test.ts` exist so Gate 5
-(`test-coverage`, triggered by "source changed OR tests changed") and Gate 4
-(`code-review`) have something non-trivial to look at, and so `yarn
-typecheck` / `yarn test:coverage` are real, runnable commands rather than
-no-ops. `src/App.tsx` / `src/main.tsx` are the minimum needed for `yarn dev`
+`src/utils/sum.ts` + `src/utils/sum.test.ts` exist so `code-review`'s Gate 4
+section and its Gate 5 section (triggered by "source changed OR tests
+changed", merged into the same delegation as Gate 4) both have something
+non-trivial to look at, and so `yarn typecheck` / `yarn test:coverage` are
+real, runnable commands rather than no-ops. `src/App.tsx` / `src/main.tsx` are the minimum needed for `yarn dev`
 to serve an actual page for Gate 3 (`web-qa`) to drive with Playwright MCP.

@@ -92,9 +92,9 @@ Gate 4.
      as a defect, though the app must still degrade gracefully.
   2. For a genuine failure, suggest a concrete fix and get the user's
      approval before changing anything.
-  3. Apply the approved fix — it folds into this group's own diff, so Gate 4
-     and Gate 5 review it too — and re-run `web-qa` on the affected flow(s).
-     Repeat until all-PASS.
+  3. Apply the approved fix — it folds into this group's own diff, so
+     `code-review` (Gate 4 + Gate 5) reviews it too — and re-run `web-qa` on
+     the affected flow(s). Repeat until all-PASS.
   4. Do not proceed to Gate 4 past a FAIL on the default path. The only
      exception is an explicit human "proceed anyway," recorded in the
      group's commit body.

@@ -33,11 +33,11 @@ in `skills/`, `agents/`, or `hooks/` reads it. To use it:
 
 ## Why it has real source and a real test
 
-`src/utils/sum.ts` + `src/utils/sum.test.ts` exist so Gate 5
-(`test-coverage`, triggered by "source changed OR tests changed") and Gate 4
-(`code-review`) have something non-trivial to look at, and so `pnpm
-typecheck` / `pnpm test:coverage` are real, runnable commands rather than
-no-ops. `src/app/page.tsx` / `src/app/layout.tsx` are the minimum App Router
+`src/utils/sum.ts` + `src/utils/sum.test.ts` exist so `code-review`'s Gate 4
+section and its Gate 5 section (triggered by "source changed OR tests
+changed", merged into the same delegation as Gate 4) both have something
+non-trivial to look at, and so `pnpm typecheck` / `pnpm test:coverage` are
+real, runnable commands rather than no-ops. `src/app/page.tsx` / `src/app/layout.tsx` are the minimum App Router
 shape needed for `pnpm dev` to serve an actual page for Gate 3 (`web-qa`) to
 drive with Playwright MCP.
 

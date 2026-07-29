@@ -8,8 +8,10 @@ gate scoped to the harness configuration itself, not the application code.
 
 ## Trigger
 
-The *last* OpenSpec task group with pending tasks, right after Gate 5 (or
-Gate 4, if Gate 5 didn't apply) passes — but before that group's own commit.
+The *last* OpenSpec task group with pending tasks, right after `code-review`
+(Gate 4 + Gate 5, merged into one delegation — see that skill) passes,
+whether or not the diff needed the Gate 5 section — but before that group's
+own commit.
 
 ## Action
 
