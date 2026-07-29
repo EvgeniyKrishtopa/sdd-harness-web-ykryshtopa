@@ -93,7 +93,7 @@ case it is:
 3. Once green (its own verification + lint), run the per-group gates (§4),
    commit the group on the batch branch.
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
-   left → end the batch, go to §4.8.
+   left → end the batch, go to §4.7.
 5. Any mid-batch pause (CONFIRMED finding, error, ambiguity) stops the batch
    where it is — report and wait, never commit a half-finished group.
 
@@ -103,29 +103,29 @@ case it is:
    the group.
 2. Announce why it's judgement-heavy. Implement with the standard
    guardrails, but pause and ask on every design decision or ambiguity.
-3. Once green, run §4 for this one group, then go to §4.8.
+3. Once green, run §4 for this one group, then go to §4.7.
 
 ## 4. Review + commit each group, push + PR once per run
 
-Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
+Steps 4.1-4.6 run per group; 4.7-4.10 run once per run.
 
 1. Review the group's diff (`git status -s`, `git diff --stat`) — confirm
    scope, no unrelated files.
 2. Determine if this is the last group (any `- [ ]` left elsewhere in
-   `tasks.md`?). Remember the answer for steps 3, 6, and 4.11.
+   `tasks.md`?). Remember the answer for steps 3, 5, and 4.10.
 3. **Last group + touched user-facing UI** → run **`web-qa`** (Gate 3)
    before code-review, using the detected framework's dev-server command.
    Must-pass with a fix loop (see that skill). Skip to 4.4 otherwise.
-4. Run **`code-review`** (Gate 4) against the group's diff (incl. any web-qa
-   fixes). CONFIRMED → pause and ask fix-now-or-commit-anyway. Clean/
-   PLAUSIBLE → continue.
-5. Unless the group's diff is docs/config-only, run **`test-coverage`**
-   (Gate 5) against the same diff, using the detected test runner and the
-   coverage threshold `init-harness` recorded — this runs precisely when a
-   group touched source code, whether or not it also touched tests, since a
-   group that shipped source changes with no tests is what this gate exists
-   to catch. Same pause behavior.
-6. **Last group** → run **`harness-review`** (Gate 6) before committing. On
+4. Run **`code-review`** — Gate 4 and Gate 5 in one delegation (merged per
+   cost-optimization #33, since they always reviewed the same diff back to
+   back) — against the group's diff (incl. any web-qa fixes). The skill
+   itself skips its Gate 5 section when the diff is docs/config-only; it
+   still runs precisely when a group touched source code, whether or not it
+   also touched tests, since a group that shipped source changes with no
+   tests is what that section exists to catch. CONFIRMED in either section
+   → pause and ask fix-now-or-commit-anyway. Clean/PLAUSIBLE in both →
+   continue.
+5. **Last group** → run **`harness-review`** (Gate 6) before committing. On
    an approved finding, apply the fix and commit it separately — never
    `git commit -a`/`-am`, which would sweep in the group's own
    not-yet-committed implementation still sitting in the working tree. Stage
@@ -139,26 +139,26 @@ Steps 4.1-4.7 run per group; 4.8-4.11 run once per run.
    is what's under review — but the `git add` itself always lists the
    specific file(s), e.g.
    `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
-   Do this before step 7.
-7. Commit the group's own implementation (Conventional Commits, per
+   Do this before step 6.
+6. Commit the group's own implementation (Conventional Commits, per
    git-conventions.md) — do not wait to be asked, this is the documented
    override for group boundaries. If the pre-commit hook fails, fix the
    root cause and recommit, never `--no-verify`. In a batch, loop back to
-   §3 Case A step 2 for the next group; 4.8-4.11 only run once the batch ends.
-8. Push the run's branch (`git push -u origin <branch>`).
-9. Ensure the parent branch exists on `origin` (push it first if local-only).
-10. Open one PR from the run's branch into the parent (`gh pr create`),
-    covering every group in this run. **Judgement-heavy run** → lead the PR
-    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
-    open — the human owns the merge.
-11. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
+   §3 Case A step 2 for the next group; 4.7-4.10 only run once the batch ends.
+7. Push the run's branch (`git push -u origin <branch>`).
+8. Ensure the parent branch exists on `origin` (push it first if local-only).
+9. Open one PR from the run's branch into the parent (`gh pr create`),
+   covering every group in this run. **Judgement-heavy run** → lead the PR
+   body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
+   open — the human owns the merge.
+10. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
     invocation re-syncs the parent from `origin` (only picks up this run's
     work once its PR is merged). **No tasks remain** → continue to step 5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
 Archiving mutates the parent branch's `openspec/changes/` tree. Doing that
-before the run's own PR (opened in step 4.10) has merged opens a second PR
+before the run's own PR (opened in step 4.9) has merged opens a second PR
 into the same parent whose content depends on the first — if the run's PR
 is later rejected or reworked, an already-opened archive PR would have
 archived a change that was never actually accepted (#19).

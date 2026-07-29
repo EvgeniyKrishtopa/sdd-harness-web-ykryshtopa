@@ -88,8 +88,8 @@ skills and agents do. `/init-harness` does not copy them into your project's
 2. `/opsx-apply-git` — implement the next run: an autonomous batch of
    `isolated` groups to one PR, or one `judgement-heavy` group with you in
    the loop.
-3. Gates 3-6 (`web-qa` → `code-review` → `test-coverage` → `harness-review`)
-   run automatically before each group's commit, per
+3. Gates 3-6 (`web-qa` → `code-review` [Gate 4 + Gate 5 in one delegation] →
+   `harness-review`) run automatically before each group's commit, per
    `.claude/docs/review-gates.md`.
 4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
    from that merge.
@@ -106,11 +106,10 @@ skills and agents do. `/init-harness` does not copy them into your project's
 | `architecture-review` | 1 | Boundary/coupling risk on `design.md` or a diff |
 | `spec-review` | 2 | Artifact consistency + isolated/judgement-heavy classification |
 | `web-qa` | 3 | Real-browser QA via Playwright MCP, must-pass with a fix loop |
-| `code-review` | 4 | Correctness bugs + simplification |
-| `test-coverage` | 5 | Coverage gaps against your configured threshold |
+| `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 
-Six matching read-only subagents live in `agents/` and are invoked by the
+Five matching read-only subagents live in `agents/` and are invoked by the
 skills above, not usually directly.
 
 ## Command names

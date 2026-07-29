@@ -10,9 +10,12 @@ by design (see below).
   classifies every `tasks.md` group isolated/judgement-heavy.
 - **Gate 3 — web-qa**, on the last group only, if the change touched
   user-facing UI. Must-pass with a fix loop, not CONFIRMED/PLAUSIBLE.
-- **Gate 4 — code-review**, after each group's own verification passes.
-- **Gate 5 — test-coverage**, after Gate 4, if the group touched tests.
-  Threshold: {{COVERAGE_THRESHOLD}}% (set at `init-harness` time).
+- **Gate 4 + Gate 5 — code-review**, after each group's own verification
+  passes: correctness/simplification and test-coverage gaps in one
+  delegation (same diff, one spawn) — the coverage section runs whenever the
+  group touched source code or tests, and is skipped only for a
+  docs/config-only diff. Threshold: {{COVERAGE_THRESHOLD}}% (set at
+  `init-harness` time).
 - **Gate 6 — harness-review**, on the last group, before its commit. Shows
   every finding with a suggested fix regardless of verdict — nothing is
   silently auto-applied.

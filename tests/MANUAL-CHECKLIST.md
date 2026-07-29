@@ -144,7 +144,13 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
 
-## 6. Gate 4 — code-review
+## 6-7. Gate 4 + Gate 5 — code-review (merged, one delegation, #33)
+
+Both gates are now one delegation to the `code-reviewer` subagent, returning
+a two-section report — the checks below still verify each gate's own
+behavior independently, just within that single spawn.
+
+Gate 4 section:
 
 1. Run it against a diff with one planted, unambiguous bug (e.g. an
    off-by-one) — confirm CONFIRMED, with file/line and the concrete
@@ -153,21 +159,29 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
    — confirm PLAUSIBLE, and confirm PLAUSIBLE-only never blocks the commit.
 3. Confirm the model used matches `.claude/harness.json`'s `models.code`
    key, not whatever the agent's own frontmatter default is (override the
-   manifest value and confirm the override actually takes effect).
+   manifest value and confirm the override actually takes effect). There is
+   no separate `models.testCoverage` key any more — the Gate 5 section runs
+   on this same model.
 4. Confirm `--fix` applies a finding only after explicit confirmation, not
    automatically.
 
-## 7. Gate 5 — test-coverage
+Gate 5 section:
 
-1. Add source code with **no** accompanying test changes in the same group
-   — confirm the gate fires (source-only should trigger it, not just
+5. Add source code with **no** accompanying test changes in the same group
+   — confirm the section fires (source-only should trigger it, not just
    tests-only — this is #10's fix).
-2. Add only test changes with no source changes — confirm it also fires.
-3. Add neither (e.g. a comment-only or doc-only diff) — confirm it's
-   skipped.
-4. Drop coverage below the fixture's configured `coverageThreshold` on
-   purpose — confirm the gate reports the gap against that exact number,
+6. Add only test changes with no source changes — confirm it also fires.
+7. Add neither (e.g. a comment-only or doc-only diff) — confirm the report
+   states the Gate 5 section is not applicable, and confirm the agent still
+   ran (Gate 4 doesn't skip) rather than the whole delegation being skipped.
+8. Drop coverage below the fixture's configured `coverageThreshold` on
+   purpose — confirm the report states the gap against that exact number,
    not a hardcoded default.
+9. Confirm one CONFIRMED finding in *either* section pauses the commit —
+   test this separately for a Gate-4-only CONFIRMED and a Gate-5-only
+   CONFIRMED, since a bug that only pauses on one section but not the other
+   would silently reduce the merged gate's coverage relative to the two
+   separate gates it replaced.
 
 ## 8. Gate 6 — harness-review
 
