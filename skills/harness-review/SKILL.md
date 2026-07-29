@@ -70,7 +70,11 @@ printf '%s\n' "$(jq -nc \
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
 the wall-clock time spent, and the model `harness-reviewer` ran on (`group`
-is `-`: this gate runs at change scope). If `jq` isn't available, construct
-the equivalent JSON line with `printf` instead. A failed log write never
+is `-`: this gate runs at change scope). A fourth verdict value,
+`skipped`, also appears under `"gate":"harness-review"` in this log — but
+is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
+precondition finds nothing to review and this delegation never runs at all
+(cost-optimization #35). If `jq` isn't available, construct the equivalent
+JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic
 aid, not part of the pass/fail logic.

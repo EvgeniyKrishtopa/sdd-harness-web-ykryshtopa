@@ -157,10 +157,21 @@ implement unattended is reviewed as one unit too, not group-by-group.
    `harness-reviewer` at all, check whether this run touched anything it
    could plausibly review:
    `git diff --name-only <parent>..HEAD | grep -qE '^(CLAUDE|AGENTS)\.md|^\.claude/|^\.husky/'`,
-   or the run added/removed a script or dependency in `package.json`
-   (`git diff <parent>..HEAD -- package.json | grep -qE '^[+-]\s*"'`). Most
-   runs touch neither — a run that never touched the harness has nothing
-   for this gate to find. In that case, skip the `harness-review` delegation
+   or `package.json`'s `scripts`/`dependencies`/`devDependencies`/
+   `peerDependencies` actually changed. Compare those keys structurally, not
+   with a line-based diff grep — a line-based check either misses a
+   single-line/minified `package.json` or false-fires on an unrelated
+   change (a `version`/`description` bump) whose diff hunk merely happens to
+   include a `"scripts"` line as context:
+   ```bash
+   old_pkg=$(git show <parent>:package.json 2>/dev/null | jq -cS '{scripts,dependencies,devDependencies,peerDependencies}' 2>/dev/null)
+   new_pkg=$(jq -cS '{scripts,dependencies,devDependencies,peerDependencies}' package.json 2>/dev/null)
+   [ "$old_pkg" != "$new_pkg" ] && pkg_changed=true
+   ```
+   (python3/node equivalents if `jq` isn't available, same fallback pattern
+   as this project's hooks.) Most runs touch neither — a run that never
+   touched the harness has nothing for this gate to find. In that case,
+   skip the `harness-review` delegation
    entirely and append the skip directly to `.claude/harness-log.jsonl`
    yourself (create the file if it doesn't exist), since the skill that
    normally writes that line never ran:
