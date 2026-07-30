@@ -48,8 +48,8 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash(gh pr create:*)",
       "Write(./.claude/docs/**)",
       "Edit(./.claude/docs/**)",
-      "Write(./.claude/skills/**)",
-      "Edit(./.claude/skills/**)"
+      "Write(./.claude/harness.json)",
+      "Edit(./.claude/harness.json)"
     ],
     "deny": [
       "Read(**/.env)",
@@ -118,6 +118,18 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   Claude Code doesn't enforce `deny` against a tool call that `allow`
   already grants. It is not the same thing as the `.claudeignore` file from
   Step 7 below — see that step's notes for why both exist.
+- The scoped `Write`/`Edit` entries cover the two things this harness
+  actually rewrites in a target repo: `.claude/docs/**` (written by
+  `init-harness`, kept current by Gate 6) and `.claude/harness.json` (the
+  stack manifest, same). They used to grant `.claude/skills/**` instead —
+  a leftover from the original project, where the harness's skills were
+  vendored into the repo. In this plugin they live inside the plugin, so a
+  target repo has no `.claude/skills/` the harness owns; granting unprompted
+  writes there only handed the agent a way to author skill files that steer
+  every later session in that repo. Everything else `init-harness` writes
+  once (`.claude/settings.json`, `.claudeignore`, `CLAUDE.md`, `.husky/**`)
+  is deliberately left to prompt — a one-time scaffolder asking before it
+  edits your instruction file is the correct amount of friction.
 - `allow` deliberately excludes `Bash(node -e:*)`, `Bash(node -p:*)`,
   `Bash(cat:*)`, `Bash(for *)`, and bare `Write`/`Edit`: each is a generic
   enough primitive to read or overwrite any file in the repo — including
