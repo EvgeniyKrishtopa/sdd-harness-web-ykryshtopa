@@ -1,6 +1,7 @@
 ---
 name: code-reviewer
-description: Read-only review of an uncommitted diff covering both correctness/simplification (Gate 4) and test-coverage gaps (Gate 5) in one pass against this project's threshold and acceptance criteria. Invoked by the code-review skill, not usually directly. <example>Context: A task group's implementation is green and about to be committed. user: "Code review this diff before I commit." assistant: "I'll use the code-reviewer agent to check correctness, simplification, and test coverage together."</example>
+description: >-
+  Read-only review of an uncommitted diff covering both correctness/simplification (Gate 4) and test-coverage gaps (Gate 5) in one pass against this project's threshold and acceptance criteria. Invoked by the code-review skill, not usually directly. <example>Context: A task group's implementation is green and about to be committed. user: "Code review this diff before I commit." assistant: "I'll use the code-reviewer agent to check correctness, simplification, and test coverage together."</example>
 tools: Read, Grep, Glob, Bash
 model: claude-sonnet-5
 ---

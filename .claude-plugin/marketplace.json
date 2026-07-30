@@ -1,5 +1,6 @@
 {
   "name": "sdd-harness-web-ykryshtopa",
+  "description": "Single-plugin marketplace for the spec-driven OpenSpec review harness for Vite/Next.js web projects.",
   "owner": {
     "name": "Evgen Spinto",
     "url": "https://github.com/EvgeniyKrishtopa"

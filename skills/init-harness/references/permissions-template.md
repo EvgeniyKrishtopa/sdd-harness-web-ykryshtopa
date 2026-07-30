@@ -46,9 +46,7 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash(git rev-parse:*)",
       "Bash(git log:*)",
       "Bash(gh pr create:*)",
-      "Write(./.claude/docs/**)",
       "Edit(./.claude/docs/**)",
-      "Write(./.claude/harness.json)",
       "Edit(./.claude/harness.json)"
     ],
     "deny": [
@@ -118,7 +116,13 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   Claude Code doesn't enforce `deny` against a tool call that `allow`
   already grants. It is not the same thing as the `.claudeignore` file from
   Step 7 below — see that step's notes for why both exist.
-- The scoped `Write`/`Edit` entries cover the two things this harness
+- **Path rules are written as `Edit(...)`, never `Write(...)`.** Claude Code
+  checks file permissions against `Edit(path)` and `Read(path)` rules only:
+  a `Write(path)` rule is accepted, never consulted, and produces a startup
+  warning in every session ("is not matched by file permission checks — only
+  Edit(path) rules are"). `Edit(path)` covers every file-editing tool,
+  `Write` included, so one entry per path is both correct and sufficient.
+- The scoped `Edit` entries cover the two things this harness
   actually rewrites in a target repo: `.claude/docs/**` (written by
   `init-harness`, kept current by Gate 6) and `.claude/harness.json` (the
   stack manifest, same). They used to grant `.claude/skills/**` instead —

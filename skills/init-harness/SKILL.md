@@ -74,14 +74,34 @@ unless configured separately, and changing it on this machine affects
 **every other OpenSpec project** the user has, not just this one. Because of
 that blast radius, never change it silently.
 
-1. Run `npx openspec config list` and read the current `profile`.
-2. If it's already `custom` with the full workflow list, skip to 2d
-   (verification) — nothing to change.
-3. If it's `core`, explain to the user, plainly, before doing anything:
+**Check the workflow list, not the `profile` string.** `profile: custom`
+only means the user picked their own selection — it says nothing about
+*which* workflows are in it. A machine can sit at `profile: custom` with,
+say, `propose, explore, continue, apply, update, sync, archive` — a
+perfectly valid custom profile that is still missing `new` and `verify`,
+and so still can't run Gates 1-2 at their designed insertion points. That
+state is common (it's what a partial pass through the interactive picker
+leaves behind) and it must be treated exactly like `core`.
+
+The workflows this harness requires are **`new`, `continue`, `verify`**.
+The rest of the Expanded set (`ff`, `bulk-archive`, `onboard`) is nice to
+have and not worth blocking on.
+
+1. Run `npx openspec config list` and read the `workflows` list (not just
+   `profile`).
+2. If `new`, `continue` and `verify` are all present, skip to 2d
+   (verification) — nothing to change, whatever `profile` says.
+3. If any of the three is missing, explain to the user, plainly, before
+   doing anything — naming which ones are missing:
    - this harness requires the Expanded workflow set to work as designed;
    - the setting is global to their machine, not scoped to this repo;
    - it will change OpenSpec's behavior in their other OpenSpec projects too.
-   Then offer two ways to proceed, and let the user pick:
+   Then offer two ways to proceed, and let the user pick. There is no third
+   way: `openspec config profile` accepts exactly one preset shortcut,
+   `core` (verified against @fission-ai/openspec 1.7.0 — any other preset
+   name exits with "Unknown profile preset"), and outside a TTY it refuses
+   to run at all with "Interactive mode required". So the Expanded set can
+   only be reached by a human at a prompt, or by writing the file.
    - **Default**: ask the user to run `npx openspec config profile`
      themselves in their own terminal (it's an interactive multi-select —
      not something to drive non-interactively through the agent's Bash
@@ -105,24 +125,34 @@ that blast radius, never change it silently.
 
 ### 2d — verify, and stop loudly if it didn't take
 
-Re-run `npx openspec config list` and confirm `new`, `continue`, and `verify`
-are present in the workflow list. If the profile is still `core` — **stop
-the whole init-harness run here** with a clear message explaining that the
-gates in `review-gates.md` are designed around the Expanded lifecycle and
-will not trigger correctly under Core. Do not continue installation on a
-silent fallback to Core.
+Re-run `npx openspec config list` and confirm `new`, `continue`, and
+`verify` are all present in the workflow list. If any of them is still
+missing — **stop the whole init-harness run here**, naming the missing
+workflows, with a clear message explaining that the gates in
+`review-gates.md` are designed around the Expanded lifecycle and will not
+trigger correctly without them.
+
+Key the stop on the missing workflows, **not** on `profile == "core"`. A
+run that keys on the profile string sails straight past the most likely
+failure — a `custom` profile whose selection is incomplete — and installs a
+harness whose first two gates have nowhere to attach.
 
 ### 2e — record the outcome
 
-Once Expanded is confirmed, record the fact in `.claude/harness.json` in the
-target repo (create the file with just this key if it doesn't exist yet —
-Step 8 below fills in the rest of the manifest around it; never overwrite
-this key when that step runs):
+Once the required workflows are confirmed, record what `openspec config
+list` **actually reported** in `.claude/harness.json` in the target repo
+(create the file with just this key if it doesn't exist yet — Step 8 below
+fills in the rest of the manifest around it; never overwrite this key when
+that step runs):
 ```json
 { "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] } }
 ```
-This lets `harness-review` (Gate 6) notice later if someone runs
-`openspec config reset` and silently drops the project back to Core.
+The list above is the shape, not the value to copy: write the real
+`profile` and the real `workflows` array this machine reports. Writing an
+idealised list defeats the point — Gate 6 compares this key against live
+config to notice if someone later runs `openspec config reset` or trims the
+selection, and a hardcoded "everything" list makes every such regression
+look like a match.
 
 ## Step 3 — install native git hooks (not just Claude Code hooks): fast checks on commit, full coverage on push
 

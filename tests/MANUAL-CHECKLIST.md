@@ -19,13 +19,22 @@ axis the harness claims to generalize across (framework, package manager,
 test runner). A fix that only gets tried against one of them is unverified
 on the other.
 
-Run `tests/smoke-json-schema.sh` **first**, every time — it's free, and it
-would have caught #1 and #21 by itself. Don't start the manual passes below
-if it fails.
+Run both automated scripts **first**, every time — they're free, need no
+network, and between them they cover the manifest shapes, the frontmatter,
+and every hook's actual decision. Don't start the manual passes below if
+either fails.
 
 ```
-bash tests/smoke-json-schema.sh
+bash tests/smoke-json-schema.sh   # manifests, frontmatter, official validator
+bash tests/hook-behaviour.sh      # every hook's decision, on a throwaway repo
 ```
+
+`smoke-json-schema.sh` would have caught #1 and #21 by itself, and now also
+runs `claude plugin validate --strict` when the CLI is available — that is
+the check that caught all five agents loading with empty frontmatter.
+`hook-behaviour.sh` builds a real git repo from the vite fixture and asserts
+on what each hook returns, which is what caught the `npx tsc` fallback
+running a stub package instead of the compiler.
 
 ---
 
@@ -36,8 +45,18 @@ The plugin must be tested against a repo it doesn't already live inside.
 1. Copy `tests/fixtures/vite-vitest-yarn/` (or `next-jest-pnpm/`) to a
    scratch directory outside this repo.
 2. `cd` into the copy: `git init && git add -A && git commit -m "init fixture"`.
-3. Install/enable this plugin in that repo (local marketplace path, or
-   however dev builds are normally installed).
+3. Install/enable this plugin. From any directory outside the plugin repo:
+
+   ```
+   claude plugin marketplace add /abs/path/to/sdd-harness-web-ykryshtopa
+   claude plugin install sdd-harness-web-ykryshtopa@sdd-harness-web-ykryshtopa
+   claude plugin details sdd-harness-web-ykryshtopa
+   ```
+
+   `details` is the fast sanity check: it must list 9 skills, 5 agents by
+   name, 3 hook events and 1 MCP server. Agents showing up unnamed or
+   missing means their frontmatter failed to parse. Undo afterwards with
+   `claude plugin uninstall` + `claude plugin marketplace remove`.
 4. Install real dependencies: `yarn install` (vite fixture) or
    `pnpm install` (next fixture) — needs real registry access.
 5. Confirm the plugin's own hooks fire at all: open a session in the
@@ -57,38 +76,44 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
    framework, package manager, test runner, build dir, dev server URL.
 3. `.claude/harness.json` exists and its `scripts.*` keys point at real
    `package.json` script names (never invented ones).
-4. `openspec config list` shows `profile: custom` with `new`/`continue`/
-   `verify` present in the workflow list (Expanded, not Core).
-5. **Negative test**: run `openspec config reset`, then re-run
-   `init-harness`. It must stop with a clear message about the profile
-   being back on Core — not silently continue.
-6. `.claude/docs/git-conventions.md` and `review-gates.md` exist, with the
+4. `openspec config list` shows `new`/`continue`/`verify` present in the
+   workflow list, and `.claude/harness.json`'s `openspec.workflows` records
+   the list that command actually printed — not an idealised full set.
+5. **Negative test A**: run `openspec config reset`, then re-run
+   `init-harness`. It must stop with a clear message about the missing
+   workflows — not silently continue.
+6. **Negative test B** (the likelier one): leave `profile: custom` but
+   deselect `new` and `verify` in `openspec config profile`. `init-harness`
+   must still stop — a custom profile with an incomplete selection is not
+   good enough, and keying the check on the profile string instead of the
+   workflow list is exactly how this passes when it shouldn't.
+7. `.claude/docs/git-conventions.md` and `review-gates.md` exist, with the
    coverage threshold and package-manager commands actually filled in (no
    literal `{{PLACEHOLDER}}` text left over).
-7. `CLAUDE.md` (or `AGENTS.md`) has a pointer block to `.claude/docs/*` and
+8. `CLAUDE.md` (or `AGENTS.md`) has a pointer block to `.claude/docs/*` and
    `.claude/harness.json`. Re-run on a repo that already had a CLAUDE.md —
    original content must survive, the block only appended.
-8. `.husky/pre-commit` runs typecheck + lint + `lint-staged` only (no full
+9. `.husky/pre-commit` runs typecheck + lint + `lint-staged` only (no full
    coverage run); `.husky/pre-push` runs the full coverage script. Both
    executable.
-9. `.claude/settings.json`'s `permissions.allow`/`deny` contains the merged
-   template entries (see `02-p1-security` checks below) — merged into an
-   existing block if one was already there, not overwritten.
-10. `.claudeignore` exists; re-running `init-harness` a second time changes
+10. `.claude/settings.json`'s `permissions.allow`/`deny` contains the merged
+    template entries (see `02-p1-security` checks below) — merged into an
+    existing block if one was already there, not overwritten.
+11. `.claudeignore` exists; re-running `init-harness` a second time changes
     nothing (idempotency — no duplicated lines, no clobbered hand-edits).
-11. `hooks/hooks.json` was **not** copied into the fixture's own
+12. `hooks/hooks.json` was **not** copied into the fixture's own
     `.claude/settings.json` — the plugin's hooks apply once, from the
     plugin itself. Check for double-firing: make one commit through Claude
     and confirm the commit guard fired once, not twice (it's a plain shell
     hook now, not an agent delegation — a second copy would show up as a
     duplicated confirmation prompt).
-12. Open a session **from a subdirectory** of the fixture (e.g. `src/`) and
+13. Open a session **from a subdirectory** of the fixture (e.g. `src/`) and
     `Read` a `.claudeignore`-covered path such as `coverage/index.html` —
     it must still be denied. Both project-file hooks resolve paths against
     `${CLAUDE_PROJECT_DIR}`; before that fix, a subdirectory session
     silently disabled `.claudeignore` enforcement and the typecheck hook
     alike.
-13. Introduce a type error the model can't resolve (e.g. reference a type
+14. Introduce a type error the model can't resolve (e.g. reference a type
     from a package that isn't installed), then end a turn. The typecheck
     Stop hook must block **once**, hand the error text back, and then let
     the turn end — not re-run the full typecheck on every following stop

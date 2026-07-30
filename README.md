@@ -15,10 +15,13 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 ## Requirements
 
 - **Node >= 20.19.0** — required by OpenSpec.
-- **OpenSpec in Expanded (`custom`) profile, not the default Core profile.**
-  This harness's gates are designed around OpenSpec's Expanded workflow set
-  (`new`, `continue`, `verify`, ...), not the single-shot `propose` flow that
-  Core ships with. `/init-harness` checks this and offers to switch it for
+- **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
+  This harness's gates are designed around OpenSpec's Expanded workflow set,
+  not the single-shot `propose` flow that Core ships with. Note that
+  `profile: custom` on its own is *not* the requirement — a custom profile
+  can be missing exactly those workflows, which is what a partial pass
+  through OpenSpec's interactive picker leaves behind. What matters is the
+  `workflows` list, and those three names being in it. `/init-harness` checks this and offers to switch it for
   you (see Step 2 of `skills/init-harness/SKILL.md`) — but be aware that
   **this setting lives in `~/.config/openspec/config.json`, a global,
   per-machine file, not anything committed to this repository.** That means:
@@ -164,8 +167,9 @@ what it may run unattended.
   load a server conditionally per-skill or per-gate; servers listed there
   attach for the session's lifetime once enabled. Two things narrow the
   actual cost, though: (1) Claude Code 2.1.x defers MCP tool schemas
-  (`ToolSearch`) rather than loading all ~12 of Playwright's tools into
-  context up front, so the static footprint is smaller than a naive count
+  (`ToolSearch`) rather than loading all of Playwright's tools into context
+  up front — 24 of them, as of `@playwright/mcp@0.0.78`, measured by asking
+  the server itself — so the static footprint is smaller than a naive count
   suggests; (2) `npx` resolves an already-cached/locally-installed package
   without a registry round-trip, so a project that installs
   `@playwright/mcp` as a devDependency (rather than relying on `npx -y` to

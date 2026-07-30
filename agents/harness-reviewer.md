@@ -1,6 +1,7 @@
 ---
 name: harness-reviewer
-description: Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, .husky/**, plus this plugin's own skills/ and agents/ only when its own repo is under review) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
+description: >-
+  Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, .husky/**, plus this plugin's own skills/ and agents/ only when its own repo is under review) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
 tools: Read, Grep, Glob, Bash
 model: claude-haiku-4-5
 ---
