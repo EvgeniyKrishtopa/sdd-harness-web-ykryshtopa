@@ -167,8 +167,9 @@ what it may run unattended.
   load a server conditionally per-skill or per-gate; servers listed there
   attach for the session's lifetime once enabled. Two things narrow the
   actual cost, though: (1) Claude Code 2.1.x defers MCP tool schemas
-  (`ToolSearch`) rather than loading all ~12 of Playwright's tools into
-  context up front, so the static footprint is smaller than a naive count
+  (`ToolSearch`) rather than loading all of Playwright's tools into context
+  up front — 24 of them, as of `@playwright/mcp@0.0.78`, measured by asking
+  the server itself — so the static footprint is smaller than a naive count
   suggests; (2) `npx` resolves an already-cached/locally-installed package
   without a registry round-trip, so a project that installs
   `@playwright/mcp` as a devDependency (rather than relying on `npx -y` to
