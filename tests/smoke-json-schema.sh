@@ -75,6 +75,48 @@ process.exit(d && typeof d === "object" && Object.prototype.hasOwnProperty.call(
   esac
 }
 
+# Print a top-level string field, or nothing when absent.
+json_str() {
+  f="$1"; key="$2"
+  case "$ENGINE" in
+    jq) jq -r --arg k "$key" '.[$k] // "" | tostring' "$f" 2>/dev/null ;;
+    python3) python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+v = d.get(sys.argv[2]) if isinstance(d, dict) else None
+print("" if v is None else v)
+' "$f" "$key" 2>/dev/null ;;
+    node) node -e '
+const d = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+const v = d && typeof d === "object" ? d[process.argv[2]] : undefined;
+process.stdout.write(v === undefined || v === null ? "" : String(v));
+' "$f" "$key" 2>/dev/null ;;
+    none) sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$f" | head -1 ;;
+  esac
+}
+
+# Print a string field of the first entry in plugins[], or nothing.
+json_plugin0_str() {
+  f="$1"; key="$2"
+  case "$ENGINE" in
+    jq) jq -r --arg k "$key" '(.plugins[0][$k] // "") | tostring' "$f" 2>/dev/null ;;
+    python3) python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+p = (d.get("plugins") or [{}])[0]
+v = p.get(sys.argv[2]) if isinstance(p, dict) else None
+print("" if v is None else v)
+' "$f" "$key" 2>/dev/null ;;
+    node) node -e '
+const d = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+const p = (d.plugins || [{}])[0] || {};
+const v = p[process.argv[2]];
+process.stdout.write(v === undefined || v === null ? "" : String(v));
+' "$f" "$key" 2>/dev/null ;;
+    none) sed -n "s/.*\"$key\"[[:space:]]*:[[:space:]]*\"\([^\"]*\)\".*/\1/p" "$f" | head -1 ;;
+  esac
+}
+
 json_lacks_top_key() {
   f="$1"; key="$2"
   if json_has_top_key "$f" "$key"; then
@@ -166,6 +208,37 @@ if [ -f .claude-plugin/plugin.json ] && json_valid .claude-plugin/plugin.json; t
     ok ".claude-plugin/plugin.json has name, version, description"
   else
     bad ".claude-plugin/plugin.json is missing key(s):$missing"
+  fi
+fi
+
+# A declared version pins installs: Claude Code caches by resolved version
+# and skips a plugin whose version it already has, so a release pushed
+# without a bump reaches nobody. These three checks make the release rule
+# from the README enforceable rather than remembered.
+if [ -f .claude-plugin/plugin.json ] && json_valid .claude-plugin/plugin.json; then
+  ver="$(json_str .claude-plugin/plugin.json version)"
+  if printf '%s' "$ver" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+    ok "plugin.json version \"$ver\" is semver"
+  else
+    bad "plugin.json version \"$ver\" is not semver (major.minor.patch)"
+  fi
+
+  if [ -f .claude-plugin/marketplace.json ] && json_valid .claude-plugin/marketplace.json; then
+    if [ -n "$(json_plugin0_str .claude-plugin/marketplace.json version)" ]; then
+      bad 'the marketplace entry also declares a "version" — Claude Code silently prefers plugin.json, so a stale manifest would mask it. Keep the version in plugin.json only'
+    else
+      ok 'the marketplace entry leaves "version" to plugin.json (no competing value)'
+    fi
+  fi
+
+  if [ -f CHANGELOG.md ]; then
+    if grep -qE "^##[[:space:]]+v?${ver}([[:space:]]|$)" CHANGELOG.md; then
+      ok "CHANGELOG.md has a section for $ver"
+    else
+      bad "CHANGELOG.md has no \"## $ver\" section — bump and changelog entry go together"
+    fi
+  else
+    bad "CHANGELOG.md does not exist, so no release is documented"
   fi
 fi
 
