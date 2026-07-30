@@ -15,10 +15,13 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 ## Requirements
 
 - **Node >= 20.19.0** — required by OpenSpec.
-- **OpenSpec in Expanded (`custom`) profile, not the default Core profile.**
-  This harness's gates are designed around OpenSpec's Expanded workflow set
-  (`new`, `continue`, `verify`, ...), not the single-shot `propose` flow that
-  Core ships with. `/init-harness` checks this and offers to switch it for
+- **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
+  This harness's gates are designed around OpenSpec's Expanded workflow set,
+  not the single-shot `propose` flow that Core ships with. Note that
+  `profile: custom` on its own is *not* the requirement — a custom profile
+  can be missing exactly those workflows, which is what a partial pass
+  through OpenSpec's interactive picker leaves behind. What matters is the
+  `workflows` list, and those three names being in it. `/init-harness` checks this and offers to switch it for
   you (see Step 2 of `skills/init-harness/SKILL.md`) — but be aware that
   **this setting lives in `~/.config/openspec/config.json`, a global,
   per-machine file, not anything committed to this repository.** That means:

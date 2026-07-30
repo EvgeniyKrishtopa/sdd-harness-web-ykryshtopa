@@ -66,38 +66,44 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
    framework, package manager, test runner, build dir, dev server URL.
 3. `.claude/harness.json` exists and its `scripts.*` keys point at real
    `package.json` script names (never invented ones).
-4. `openspec config list` shows `profile: custom` with `new`/`continue`/
-   `verify` present in the workflow list (Expanded, not Core).
-5. **Negative test**: run `openspec config reset`, then re-run
-   `init-harness`. It must stop with a clear message about the profile
-   being back on Core — not silently continue.
-6. `.claude/docs/git-conventions.md` and `review-gates.md` exist, with the
+4. `openspec config list` shows `new`/`continue`/`verify` present in the
+   workflow list, and `.claude/harness.json`'s `openspec.workflows` records
+   the list that command actually printed — not an idealised full set.
+5. **Negative test A**: run `openspec config reset`, then re-run
+   `init-harness`. It must stop with a clear message about the missing
+   workflows — not silently continue.
+6. **Negative test B** (the likelier one): leave `profile: custom` but
+   deselect `new` and `verify` in `openspec config profile`. `init-harness`
+   must still stop — a custom profile with an incomplete selection is not
+   good enough, and keying the check on the profile string instead of the
+   workflow list is exactly how this passes when it shouldn't.
+7. `.claude/docs/git-conventions.md` and `review-gates.md` exist, with the
    coverage threshold and package-manager commands actually filled in (no
    literal `{{PLACEHOLDER}}` text left over).
-7. `CLAUDE.md` (or `AGENTS.md`) has a pointer block to `.claude/docs/*` and
+8. `CLAUDE.md` (or `AGENTS.md`) has a pointer block to `.claude/docs/*` and
    `.claude/harness.json`. Re-run on a repo that already had a CLAUDE.md —
    original content must survive, the block only appended.
-8. `.husky/pre-commit` runs typecheck + lint + `lint-staged` only (no full
+9. `.husky/pre-commit` runs typecheck + lint + `lint-staged` only (no full
    coverage run); `.husky/pre-push` runs the full coverage script. Both
    executable.
-9. `.claude/settings.json`'s `permissions.allow`/`deny` contains the merged
-   template entries (see `02-p1-security` checks below) — merged into an
-   existing block if one was already there, not overwritten.
-10. `.claudeignore` exists; re-running `init-harness` a second time changes
+10. `.claude/settings.json`'s `permissions.allow`/`deny` contains the merged
+    template entries (see `02-p1-security` checks below) — merged into an
+    existing block if one was already there, not overwritten.
+11. `.claudeignore` exists; re-running `init-harness` a second time changes
     nothing (idempotency — no duplicated lines, no clobbered hand-edits).
-11. `hooks/hooks.json` was **not** copied into the fixture's own
+12. `hooks/hooks.json` was **not** copied into the fixture's own
     `.claude/settings.json` — the plugin's hooks apply once, from the
     plugin itself. Check for double-firing: make one commit through Claude
     and confirm the commit guard fired once, not twice (it's a plain shell
     hook now, not an agent delegation — a second copy would show up as a
     duplicated confirmation prompt).
-12. Open a session **from a subdirectory** of the fixture (e.g. `src/`) and
+13. Open a session **from a subdirectory** of the fixture (e.g. `src/`) and
     `Read` a `.claudeignore`-covered path such as `coverage/index.html` —
     it must still be denied. Both project-file hooks resolve paths against
     `${CLAUDE_PROJECT_DIR}`; before that fix, a subdirectory session
     silently disabled `.claudeignore` enforcement and the typecheck hook
     alike.
-13. Introduce a type error the model can't resolve (e.g. reference a type
+14. Introduce a type error the model can't resolve (e.g. reference a type
     from a package that isn't installed), then end a turn. The typecheck
     Stop hook must block **once**, hand the error text back, and then let
     the turn end — not re-run the full typecheck on every following stop
