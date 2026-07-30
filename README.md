@@ -57,9 +57,13 @@ of Claude Code's own hooks, so bad commits and pushes are still blocked
 even with no agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit/merge/push
-guards, `.claudeignore` enforcement, typecheck-before-stop) apply
+guards, `.claudeignore` enforcement, typecheck-before-stop, and a
+`SessionStart` banner printing branch/status/recent commits) apply
 automatically to any repo where the plugin is enabled, the same way its
-skills and agents do. `/init-harness` does not copy them into your project's
+skills and agents do. The commit/merge/push guards are plain shell — they
+escalate to a confirmation prompt on a protected-branch commit, a
+secret-shaped or unusually large staged diff, or a force-push, and stay out
+of the way otherwise; no model call is involved. `/init-harness` does not copy them into your project's
 `.claude/settings.json` — there is nothing to install for that layer.
 
 ### Permissions and `.claudeignore` — what's actually enforced
@@ -67,8 +71,8 @@ skills and agents do. `/init-harness` does not copy them into your project's
 - **`permissions.deny`** (in `.claude/settings.json`) is Claude Code's own
   officially-supported enforcement mechanism, and it's the layer that blocks
   secrets (`.env`), destructive commands (`rm -rf` and its common variants),
-  and all four package managers' install commands regardless of which one
-  this repo uses. It is only as strong as `allow` is narrow, though: `allow`
+  and every spelling of a dependency-adding command across npm, yarn, pnpm
+  and bun — regardless of which one this repo uses. It is only as strong as `allow` is narrow, though: `allow`
   is checked first, and a broad `allow` entry (a bare `Write`, an unscoped
   `Bash(cat:*)` or `Bash(node -e:*)`) grants the call before `deny` ever gets
   a say, silently defeating any `deny` rule it overlaps with. This plugin's
@@ -112,8 +116,13 @@ skills and agents do. `/init-harness` does not copy them into your project's
 | `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 
-Five matching read-only subagents live in `agents/` and are invoked by the
-skills above, not usually directly.
+Five matching subagents live in `agents/` and are invoked by the skills
+above, not usually directly. Four are strictly read-only (`Read`/`Grep`/
+`Glob` plus `Bash` scoped by their own prompts to inspection commands);
+`spec-reviewer` additionally carries `Edit`, limited by its prompt to one
+job — writing the `<!-- isolated -->` / `<!-- judgement-heavy -->` marker
+onto a `tasks.md` heading, which is what `opsx-apply-git` reads to decide
+what it may run unattended.
 
 ## Command names
 
@@ -143,6 +152,12 @@ skills above, not usually directly.
 ## MCP servers
 
 - **playwright** (`@playwright/mcp`) — drives a real browser for Gate 3.
+  Because it ships *inside* this plugin, Claude Code exposes its tools under
+  the plugin-scoped names
+  `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`, not the
+  bare `mcp__playwright__browser_*` a project-level `.mcp.json` would
+  produce — `web-qa-manual-tester`'s `tools:` list carries both spellings so
+  the gate works whichever way Playwright MCP is provided.
   This is the only MCP server this plugin ships, and it stays resident for
   the whole session even though only Gate 3 ever calls it — there is no
   supported way, as of Claude Code 2.1.220, for a plugin's `.mcp.json` to

@@ -26,6 +26,13 @@ whose target path matches a pattern.
 Don't rely on `.claudeignore` alone for anything that must never be read —
 put that in `permissions.deny` instead, where init-harness already writes it.
 
+The hook resolves both the `.claudeignore` file and the path it is checking
+against `${CLAUDE_PROJECT_DIR}` (the directory the session was started in),
+not against whatever directory the session happens to be sitting in when the
+tool call happens — patterns are therefore always project-root-relative, and
+the guard keeps working in a session opened in, or `cd`-ed into, a
+subdirectory.
+
 The guard hook matches `Read`, `Grep`, and `Glob` calls, but only when the
 call carries an explicit `file_path`/`path`. A `Grep` or `Glob` invoked over
 the whole repo with no `path` argument has nothing for the hook to compare
