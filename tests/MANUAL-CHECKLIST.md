@@ -19,13 +19,22 @@ axis the harness claims to generalize across (framework, package manager,
 test runner). A fix that only gets tried against one of them is unverified
 on the other.
 
-Run `tests/smoke-json-schema.sh` **first**, every time — it's free, and it
-would have caught #1 and #21 by itself. Don't start the manual passes below
-if it fails.
+Run both automated scripts **first**, every time — they're free, need no
+network, and between them they cover the manifest shapes, the frontmatter,
+and every hook's actual decision. Don't start the manual passes below if
+either fails.
 
 ```
-bash tests/smoke-json-schema.sh
+bash tests/smoke-json-schema.sh   # manifests, frontmatter, official validator
+bash tests/hook-behaviour.sh      # every hook's decision, on a throwaway repo
 ```
+
+`smoke-json-schema.sh` would have caught #1 and #21 by itself, and now also
+runs `claude plugin validate --strict` when the CLI is available — that is
+the check that caught all five agents loading with empty frontmatter.
+`hook-behaviour.sh` builds a real git repo from the vite fixture and asserts
+on what each hook returns, which is what caught the `npx tsc` fallback
+running a stub package instead of the compiler.
 
 ---
 
