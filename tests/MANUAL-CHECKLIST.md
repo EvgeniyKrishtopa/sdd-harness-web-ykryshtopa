@@ -45,8 +45,18 @@ The plugin must be tested against a repo it doesn't already live inside.
 1. Copy `tests/fixtures/vite-vitest-yarn/` (or `next-jest-pnpm/`) to a
    scratch directory outside this repo.
 2. `cd` into the copy: `git init && git add -A && git commit -m "init fixture"`.
-3. Install/enable this plugin in that repo (local marketplace path, or
-   however dev builds are normally installed).
+3. Install/enable this plugin. From any directory outside the plugin repo:
+
+   ```
+   claude plugin marketplace add /abs/path/to/sdd-harness-web-ykryshtopa
+   claude plugin install sdd-harness-web-ykryshtopa@sdd-harness-web-ykryshtopa
+   claude plugin details sdd-harness-web-ykryshtopa
+   ```
+
+   `details` is the fast sanity check: it must list 9 skills, 5 agents by
+   name, 3 hook events and 1 MCP server. Agents showing up unnamed or
+   missing means their frontmatter failed to parse. Undo afterwards with
+   `claude plugin uninstall` + `claude plugin marketplace remove`.
 4. Install real dependencies: `yarn install` (vite fixture) or
    `pnpm install` (next fixture) — needs real registry access.
 5. Confirm the plugin's own hooks fire at all: open a session in the
