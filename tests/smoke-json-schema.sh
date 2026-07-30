@@ -242,6 +242,67 @@ done
 for f in agents/*.md; do
   check_frontmatter "$f" name description tools model
 done
+
+# A field's presence isn't enough: the block has to be parseable YAML. An
+# unquoted plain scalar containing ": " (e.g. `description: ... <example>
+# Context: ...`) makes YAML read a nested mapping key and the whole
+# frontmatter fails — at which point every field is dropped and a
+# "read-only" agent silently inherits the full tool set. Quote such a value
+# or make it a folded block scalar (`>-`), as the agents here do.
+check_frontmatter_parseable() {
+  file="$1"
+  offenders="$(extract_frontmatter "$file" | awk '
+    /^[A-Za-z_-]+:[[:space:]]/ {
+      key = $0; sub(/:.*/, "", key)
+      val = $0; sub(/^[A-Za-z_-]+:[[:space:]]+/, "", val)
+      first = substr(val, 1, 1)
+      if (first == ">" || first == "|" || first == "\"" || first == "'"'"'") next
+      if (val ~ /: /) print key
+    }')"
+  if [ -n "$offenders" ]; then
+    bad "$file frontmatter would fail to parse as YAML — unquoted value(s) containing \": \" in field(s): $(printf '%s' "$offenders" | tr '\n' ' ')"
+  else
+    ok "$file frontmatter is YAML-parseable (no unquoted \": \" in a plain scalar)"
+  fi
+}
+
+for f in skills/*/SKILL.md agents/*.md; do
+  check_frontmatter_parseable "$f"
+done
+echo
+
+# --- Check 4: the official validator, when the CLI is available ------------
+
+echo "-- claude plugin validate --"
+
+if command -v claude >/dev/null 2>&1; then
+  # Validate the plugin, not the marketplace: given a directory containing
+  # both manifests, `claude plugin validate` checks only marketplace.json
+  # and never looks at agents/ at all. Copy the plugin half out to get the
+  # agent and manifest checks to actually run.
+  vtmp="$(mktemp -d)"
+  trap 'rm -rf "$vtmp"' EXIT
+  mkdir -p "$vtmp/.claude-plugin"
+  cp .claude-plugin/plugin.json "$vtmp/.claude-plugin/" 2>/dev/null
+  [ -f .mcp.json ] && cp .mcp.json "$vtmp/"
+  for d in agents skills hooks commands; do
+    [ -d "$d" ] && cp -R "$d" "$vtmp/"
+  done
+  if vout="$(claude plugin validate "$vtmp" --strict 2>&1)"; then
+    ok "claude plugin validate --strict passes for the plugin manifest and every agent"
+  else
+    bad "claude plugin validate --strict failed:"
+    printf '%s\n' "$vout" | sed 's/^/         /'
+  fi
+  if mout="$(claude plugin validate . --strict 2>&1)"; then
+    ok "claude plugin validate --strict passes for the marketplace manifest"
+  else
+    bad "claude plugin validate --strict failed for the marketplace manifest:"
+    printf '%s\n' "$mout" | sed 's/^/         /'
+  fi
+else
+  note "claude CLI not on PATH — skipped the official 'claude plugin validate --strict' pass, which is the authoritative check for the two above"
+fi
 echo
 
 # --- Summary -----------------------------------------------------------------
