@@ -79,8 +79,21 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
 11. `hooks/hooks.json` was **not** copied into the fixture's own
     `.claude/settings.json` — the plugin's hooks apply once, from the
     plugin itself. Check for double-firing: make one commit through Claude
-    and confirm the commit-gate agent hook and typecheck hook each ran
-    once, not twice.
+    and confirm the commit guard fired once, not twice (it's a plain shell
+    hook now, not an agent delegation — a second copy would show up as a
+    duplicated confirmation prompt).
+12. Open a session **from a subdirectory** of the fixture (e.g. `src/`) and
+    `Read` a `.claudeignore`-covered path such as `coverage/index.html` —
+    it must still be denied. Both project-file hooks resolve paths against
+    `${CLAUDE_PROJECT_DIR}`; before that fix, a subdirectory session
+    silently disabled `.claudeignore` enforcement and the typecheck hook
+    alike.
+13. Introduce a type error the model can't resolve (e.g. reference a type
+    from a package that isn't installed), then end a turn. The typecheck
+    Stop hook must block **once**, hand the error text back, and then let
+    the turn end — not re-run the full typecheck on every following stop
+    until Claude Code's 8-block cap force-ends it. Confirm the second stop
+    is fast (the hook exits on `stop_hook_active` before running `tsc`).
 
 ---
 
@@ -132,7 +145,13 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
 1. Implement one small user-facing flow (the fixture's own counter/home
    page is enough) and run the gate on the last task group.
 2. Confirm it actually drives a real browser via Playwright MCP against
-   the real dev server — not just reading code.
+   the real dev server — not just reading code. Check this by name, not by
+   vibe: the subagent's tool calls must be
+   `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*` (the
+   plugin-scoped form). A report that reads plausible but contains no
+   `browser_*` call at all is the failure mode this check exists for — the
+   agent launches fine with only `Read`/`Grep`/`Glob` and will happily
+   describe the UI from source.
 3. Occupy the fixture's default dev server port (`5173`/`3000`) with
    another process first — confirm the gate reads the *actual* port Vite/
    Next fell back to (`5174`/`3001`) from the dev-server process's own

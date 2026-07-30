@@ -57,9 +57,13 @@ of Claude Code's own hooks, so bad commits and pushes are still blocked
 even with no agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit/merge/push
-guards, `.claudeignore` enforcement, typecheck-before-stop) apply
+guards, `.claudeignore` enforcement, typecheck-before-stop, and a
+`SessionStart` banner printing branch/status/recent commits) apply
 automatically to any repo where the plugin is enabled, the same way its
-skills and agents do. `/init-harness` does not copy them into your project's
+skills and agents do. The commit/merge/push guards are plain shell — they
+escalate to a confirmation prompt on a protected-branch commit, a
+secret-shaped or unusually large staged diff, or a force-push, and stay out
+of the way otherwise; no model call is involved. `/init-harness` does not copy them into your project's
 `.claude/settings.json` — there is nothing to install for that layer.
 
 ### Permissions and `.claudeignore` — what's actually enforced
@@ -112,8 +116,13 @@ skills and agents do. `/init-harness` does not copy them into your project's
 | `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 
-Five matching read-only subagents live in `agents/` and are invoked by the
-skills above, not usually directly.
+Five matching subagents live in `agents/` and are invoked by the skills
+above, not usually directly. Four are strictly read-only (`Read`/`Grep`/
+`Glob` plus `Bash` scoped by their own prompts to inspection commands);
+`spec-reviewer` additionally carries `Edit`, limited by its prompt to one
+job — writing the `<!-- isolated -->` / `<!-- judgement-heavy -->` marker
+onto a `tasks.md` heading, which is what `opsx-apply-git` reads to decide
+what it may run unattended.
 
 ## Command names
 
