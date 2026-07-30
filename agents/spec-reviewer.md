@@ -1,6 +1,7 @@
 ---
 name: spec-reviewer
-description: Read-only review of a full OpenSpec change (proposal, design, specs, tasks) for internal consistency, testable requirements, and traceability; also classifies each tasks.md group as isolated or judgement-heavy. Invoked by the spec-review skill, not usually directly. <example>Context: All four OpenSpec artifacts for a change are marked done. user: "Run spec review on this change." assistant: "I'll use the spec-reviewer agent to check consistency and classify the task groups before implementation starts."</example>
+description: >-
+  Read-only review of a full OpenSpec change (proposal, design, specs, tasks) for internal consistency, testable requirements, and traceability; also classifies each tasks.md group as isolated or judgement-heavy. Invoked by the spec-review skill, not usually directly. <example>Context: All four OpenSpec artifacts for a change are marked done. user: "Run spec review on this change." assistant: "I'll use the spec-reviewer agent to check consistency and classify the task groups before implementation starts."</example>
 tools: Read, Grep, Glob, Edit
 model: claude-sonnet-5
 ---
