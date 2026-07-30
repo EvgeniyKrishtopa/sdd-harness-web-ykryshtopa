@@ -14,6 +14,16 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
 ## Requirements
 
+- **Claude Code >= 2.1.220.** Not a soft floor — the harness is built on
+  behaviour that older versions don't have or handle differently: tools from
+  a plugin-bundled MCP server are named `mcp__plugin_<plugin>_<server>__<tool>`
+  (Gate 3's agent resolves nothing without it); file permission rules are
+  honoured for `Edit(path)`/`Read(path)` only, which is what the generated
+  `permissions` block is written against (2.1.210+); a subagent whose
+  `tools:` list resolves to nothing refuses to launch instead of running
+  toolless (2.1.208+); and the `Stop` hook relies on `stop_hook_active`.
+  2.1.220 is the version every gate, hook and manifest here was verified
+  against.
 - **Node >= 20.19.0** — required by OpenSpec.
 - **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
   This harness's gates are designed around OpenSpec's Expanded workflow set,
@@ -33,9 +43,80 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
 ## Install
 
+This repository is both the plugin and a single-plugin marketplace, so
+adding it and installing from it are two steps against the same name:
+
 ```
-/plugin install sdd-harness-web-ykryshtopa@<your-marketplace>
+/plugin marketplace add EvgeniyKrishtopa/sdd-harness-web-ykryshtopa
+/plugin install sdd-harness-web-ykryshtopa@sdd-harness-web-ykryshtopa
 ```
+
+The same commands work from a shell (`claude plugin marketplace add ...`,
+`claude plugin install ...`), and `claude plugin details
+sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
+list 9 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+from a local checkout instead of GitHub, pass the absolute path to
+`marketplace add`. There is no npm package — Claude Code installs plugins
+from marketplaces, not from the npm registry.
+
+Restart Claude Code (or `/reload-plugins`) after installing: skills take
+effect immediately, but hooks, agents and MCP servers only load on start.
+Then run `/init-harness` once per repository (next section) — installing the
+plugin adds the skills and hooks, but writes nothing into your project.
+
+### Updating, pinning, removing
+
+```
+/plugin update sdd-harness-web-ykryshtopa      # or: claude plugin update ...
+/plugin uninstall sdd-harness-web-ykryshtopa   # marketplace remove <name> to
+                                               # forget the marketplace too
+```
+
+An update only arrives when this plugin's declared `version` changes —
+Claude Code caches by resolved version and skips a plugin whose version it
+already has. That means a fix pushed without a version bump reaches nobody;
+see "Versioning and releases" below for how that's handled here, and
+`CHANGELOG.md` for what each version changed.
+
+To hold a specific release rather than tracking the default branch, point
+your own marketplace entry at a tag or commit:
+
+```json
+{
+  "name": "sdd-harness-web-ykryshtopa",
+  "source": {
+    "source": "github",
+    "repo": "EvgeniyKrishtopa/sdd-harness-web-ykryshtopa",
+    "ref": "sdd-harness-web-ykryshtopa--v0.2.0"
+  }
+}
+```
+
+## Versioning and releases
+
+The version lives in **one** place, `.claude-plugin/plugin.json`. The
+marketplace entry deliberately doesn't repeat it: when both are set Claude
+Code silently uses the manifest's, so a stale manifest would mask the
+marketplace value.
+
+Semver, with breaking changes in the minor position until 1.0.0. Because a
+declared version pins installs, the rule is unavoidable rather than
+stylistic:
+
+1. bump `version` in `.claude-plugin/plugin.json` — every release, however
+   small, or existing installs never see it;
+2. add the matching `## <version>` section to `CHANGELOG.md`;
+3. `bash tests/smoke-json-schema.sh` — it fails if the version isn't semver,
+   if the marketplace entry has grown a competing `version`, or if
+   `CHANGELOG.md` has no section for the current one;
+4. `claude plugin tag --push` — creates the `sdd-harness-web-ykryshtopa--v<version>`
+   git tag, after checking that `plugin.json` and the marketplace entry
+   agree. That tag is what consumers pin with `ref`.
+
+The alternative Claude Code offers — dropping `version` entirely so every
+commit counts as a new one — is deliberately not used here: this harness's
+whole argument is that state should be explicit and reviewable, and "which
+version am I running" is exactly that kind of state.
 
 ## First run
 
