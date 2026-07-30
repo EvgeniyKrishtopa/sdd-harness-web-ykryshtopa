@@ -67,8 +67,8 @@ skills and agents do. `/init-harness` does not copy them into your project's
 - **`permissions.deny`** (in `.claude/settings.json`) is Claude Code's own
   officially-supported enforcement mechanism, and it's the layer that blocks
   secrets (`.env`), destructive commands (`rm -rf` and its common variants),
-  and all four package managers' install commands regardless of which one
-  this repo uses. It is only as strong as `allow` is narrow, though: `allow`
+  and every spelling of a dependency-adding command across npm, yarn, pnpm
+  and bun — regardless of which one this repo uses. It is only as strong as `allow` is narrow, though: `allow`
   is checked first, and a broad `allow` entry (a bare `Write`, an unscoped
   `Bash(cat:*)` or `Bash(node -e:*)`) grants the call before `deny` ever gets
   a say, silently defeating any `deny` rule it overlaps with. This plugin's

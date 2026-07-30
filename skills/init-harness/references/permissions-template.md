@@ -63,8 +63,14 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash(git reset --hard:*)",
       "Bash(npm install:*)",
       "Bash(npm i:*)",
+      "Bash(npm add:*)",
       "Bash(pnpm add:*)",
+      "Bash(pnpm install:*)",
+      "Bash(pnpm i:*)",
       "Bash(yarn add:*)",
+      "Bash(bun add:*)",
+      "Bash(bun install:*)",
+      "Bash(bun i:*)",
       "Bash(screencapture:*)",
       "Read(./node_modules/**)",
       "Read(./{{BUILD_DIR}}/**)",
@@ -83,10 +89,23 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   Here it's whichever lockfile `init-harness` detected — always deny reading
   the lockfile, not just the yarn one, since it's large and rarely relevant
   to a task.
-- The three other package managers' `add`/`install` commands stay in `deny`
+- Every package manager's dependency-adding command stays in `deny`
   **regardless of which one this project actually uses** (defense in depth —
   an agent can't route around the install-command block by invoking a
-  different package manager than the one detected).
+  different package manager than the one detected). "Every" has to mean
+  every *spelling*, not one entry per tool: `npm add` is an alias of
+  `npm install`, `pnpm install <pkg>` and `pnpm i <pkg>` add a package just
+  like `pnpm add` does, and `bun` is a fourth package manager an agent can
+  reach for even in a repo that has never used it. A list that blocks
+  `npm install` but not `npm add` isn't defense in depth; it's a speed bump
+  with a marked detour.
+- One asymmetry is deliberate and worth knowing about: `yarn install`
+  (restore from lockfile) stays allowed because yarn can't add a package
+  that way, while `npm install` / `pnpm install` are denied even though
+  they're also the restore spelling for those tools — there, the same
+  command does both jobs, and blocking dependency changes wins over
+  convenience. If a restore is genuinely needed, run it yourself in a
+  terminal.
 - `Bash(npx openspec:*)` / `Bash(openspec:*)` match the CLI **binary** name,
   which is `openspec` regardless of package name. The npm package installed
   in Step 2 is `@fission-ai/openspec` (the bare `openspec` package is an
