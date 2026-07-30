@@ -33,9 +33,24 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
 
 ## Install
 
+This repository is both the plugin and a single-plugin marketplace, so
+adding it and installing from it are two steps against the same name:
+
 ```
-/plugin install sdd-harness-web-ykryshtopa@<your-marketplace>
+/plugin marketplace add EvgeniyKrishtopa/sdd-harness-web-ykryshtopa
+/plugin install sdd-harness-web-ykryshtopa@sdd-harness-web-ykryshtopa
 ```
+
+The same commands work from a shell (`claude plugin marketplace add ...`,
+`claude plugin install ...`), and `claude plugin details
+sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
+list 9 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+from a local checkout instead of GitHub, pass the absolute path to
+`marketplace add`. There is no npm package — Claude Code installs plugins
+from marketplaces, not from the npm registry.
+
+Restart Claude Code (or `/reload-plugins`) after installing: skills take
+effect immediately, but hooks, agents and MCP servers only load on start.
 
 ## First run
 
