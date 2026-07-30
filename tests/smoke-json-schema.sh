@@ -3,9 +3,13 @@
 #
 # Catches the class of bug that reached commit e57b8ad unnoticed: #1 (
 # hooks/hooks.json missing its top-level "hooks" wrapper) and #21 (.mcp.json
-# wrapped in "mcpServers" instead of matching the official plugin's
-# top-level-keys form) were both silent, structurally-wrong JSON that no one
-# ran the plugin against a real repo to catch. This script needs nothing
+# not matching a shape Claude Code actually loads) were both silent,
+# structurally-wrong JSON that no one ran the plugin against a real repo to
+# catch. Note on #21: the two shapes are not right-and-wrong. Every official
+# plugin in claude-plugins-official puts servers at the top level, while the
+# plugin reference documents the "mcpServers" wrapper; both load, so this
+# script checks that the servers themselves are launchable rather than
+# policing which wrapper is used. This script needs nothing
 # beyond a POSIX shell — jq is used if present, with a python3 or node
 # fallback, and a degraded grep-based check if none of the three exist.
 #
@@ -80,21 +84,29 @@ json_lacks_top_key() {
   fi
 }
 
-mcp_entries_have_command() {
+# Every declared MCP server must be launchable: a stdio server has a
+# "command", an http/sse one has a "url". Servers live either at the top
+# level (the form every official plugin in claude-plugins-official ships) or
+# under an "mcpServers" wrapper (the form the plugin reference documents) —
+# Claude Code reads both, so this accepts both and only checks the entries.
+mcp_entries_launchable() {
   f="$1"
   case "$ENGINE" in
-    jq) jq -e '(to_entries | length) > 0 and (to_entries | all(.value | has("command")))' "$f" >/dev/null 2>&1 ;;
+    jq) jq -e '(if has("mcpServers") then .mcpServers else . end) | (to_entries | length) > 0 and (to_entries | all(.value | (has("command") or has("url"))))' "$f" >/dev/null 2>&1 ;;
     python3) python3 -c '
 import json, sys
 d = json.load(open(sys.argv[1]))
-sys.exit(0 if isinstance(d, dict) and len(d) > 0 and all(isinstance(v, dict) and "command" in v for v in d.values()) else 1)
+if isinstance(d, dict) and "mcpServers" in d:
+    d = d["mcpServers"]
+sys.exit(0 if isinstance(d, dict) and len(d) > 0 and all(isinstance(v, dict) and ("command" in v or "url" in v) for v in d.values()) else 1)
 ' "$f" ;;
     node) node -e '
-const d = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+let d = JSON.parse(require("fs").readFileSync(process.argv[1],"utf8"));
+if (d && typeof d === "object" && d.mcpServers) d = d.mcpServers;
 const vals = Object.values(d || {});
-process.exit(vals.length > 0 && vals.every(v => v && typeof v === "object" && "command" in v) ? 0 : 1);
+process.exit(vals.length > 0 && vals.every(v => v && typeof v === "object" && ("command" in v || "url" in v)) ? 0 : 1);
 ' "$f" ;;
-    none) grep -q '"command"' "$f" ;;
+    none) grep -qE '"(command|url)"' "$f" ;;
   esac
 }
 
@@ -171,17 +183,18 @@ if [ -f .claude-plugin/marketplace.json ] && json_valid .claude-plugin/marketpla
   fi
 fi
 
-# #21: .mcp.json must have MCP servers as top-level keys (the official
-# plugin form), not wrapped in an "mcpServers" object.
+# #21: .mcp.json must declare at least one launchable server, in either of
+# the two shapes Claude Code accepts (see mcp_entries_launchable above).
 if [ -f .mcp.json ] && json_valid .mcp.json; then
   if json_lacks_top_key .mcp.json mcpServers; then
-    if mcp_entries_have_command .mcp.json; then
-      ok '.mcp.json has servers as top-level keys (not wrapped in "mcpServers"), each with a "command"'
-    else
-      bad '.mcp.json top-level entries are missing a "command" field, or the file has no servers'
-    fi
+    shape='servers as top-level keys (the shipped-plugin form)'
   else
-    bad '.mcp.json is wrapped in a top-level "mcpServers" key (this is #21 — official plugins put servers at the top level)'
+    shape='servers under an "mcpServers" wrapper (the documented form)'
+  fi
+  if mcp_entries_launchable .mcp.json; then
+    ok ".mcp.json declares $shape, each with a \"command\" or \"url\""
+  else
+    bad ".mcp.json has $shape but an entry is missing both \"command\" and \"url\", or there are no servers at all"
   fi
 fi
 echo
