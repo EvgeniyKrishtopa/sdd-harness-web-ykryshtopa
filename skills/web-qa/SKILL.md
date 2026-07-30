@@ -77,8 +77,13 @@ Gate 4.
    agent's own frontmatter default for this run. If the manifest or the key
    is missing, fall back to the agent's own default; never block the gate on
    a missing override. The subagent drives the **Playwright MCP server**
-   (`mcp__playwright__*` tools — navigate, click, fill, snapshot via the
-   accessibility tree, screenshot) against the running dev server. Scope its
+   (navigate, click, fill, snapshot via the accessibility tree, screenshot)
+   against the running dev server. Those tools are named
+   `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*` when the
+   server comes from this plugin's own `.mcp.json` — the bare
+   `mcp__playwright__browser_*` form only applies when the project supplies
+   Playwright MCP itself; the agent's `tools:` list carries both spellings
+   for that reason. Scope its
    flows to the *whole change's* diff against the parent branch, not just
    the last group, so the final pass covers everything the change touched.
 2. The subagent relays a per-flow PASS/FAIL report.

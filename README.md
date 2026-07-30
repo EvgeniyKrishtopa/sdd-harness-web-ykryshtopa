@@ -143,6 +143,12 @@ skills above, not usually directly.
 ## MCP servers
 
 - **playwright** (`@playwright/mcp`) — drives a real browser for Gate 3.
+  Because it ships *inside* this plugin, Claude Code exposes its tools under
+  the plugin-scoped names
+  `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`, not the
+  bare `mcp__playwright__browser_*` a project-level `.mcp.json` would
+  produce — `web-qa-manual-tester`'s `tools:` list carries both spellings so
+  the gate works whichever way Playwright MCP is provided.
   This is the only MCP server this plugin ships, and it stays resident for
   the whole session even though only Gate 3 ever calls it — there is no
   supported way, as of Claude Code 2.1.220, for a plugin's `.mcp.json` to
