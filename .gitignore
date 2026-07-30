@@ -1,0 +1,5 @@
+# Local audit / planning notes — not part of the published plugin
+harness-audit/
+
+# Per-developer local Claude Code settings — not part of the published plugin
+.claude/settings.local.json

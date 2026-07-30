@@ -12,8 +12,12 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
 
 ## Action
 
-1. Delegate to the `spec-reviewer` subagent (`Agent` tool) for the whole
-   change.
+1. Read `.claude/harness.json`'s `models.spec` key (written by
+   `init-harness`) and pass it as the `model` parameter when delegating to
+   the `spec-reviewer` subagent (`Agent` tool) for the whole change —
+   overriding the agent's own frontmatter default for this run. If the
+   manifest or the key is missing, fall back to the agent's own default;
+   never block the gate on a missing override.
 2. Beyond surfacing gaps, this is also where **task-group classification**
    happens: the reviewer marks each `## N.` heading in `tasks.md` as
    `isolated` or `judgement-heavy`, written back as a trailing
@@ -23,9 +27,11 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    decide how far it can proceed autonomously. An unmarked group is treated
    as `judgement-heavy` downstream — never let a group run unattended if
    nobody classified it.
-3. If the change is non-trivial (many groups, cross-cutting groups), use the
-   `sequential-thinking` MCP tool to work through the isolated vs
-   judgement-heavy call per group explicitly, rather than eyeballing it.
+3. If the change is non-trivial (many groups, cross-cutting groups), think
+   through the isolated vs judgement-heavy call per group explicitly, rather
+   than eyeballing it — native extended thinking covers this in one pass; the
+   `sequential-thinking` MCP server this project used to require for it is
+   redundant with that and has been removed (cost-optimization #39).
 
 ## Handling the result
 
@@ -33,3 +39,31 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
   relevant artifact(s) before declaring the change ready for implementation.
 - **Clean, or PLAUSIBLE-only** — declare the change ready for implementation.
   The classification is still recorded either way.
+
+## Log this gate's run
+
+After delivering the verdict above, append one line to
+`.claude/harness-log.jsonl` in the target repo (create the file if it
+doesn't exist yet) — a plain shell append, 0 model tokens:
+
+```bash
+mkdir -p .claude
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "-" \
+  --arg gate "spec-review" \
+  --arg verdict "<clean|plausible|confirmed>" \
+  --argjson durationMs <elapsed-ms> \
+  --arg model "<model spec-reviewer actually ran on>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  >> .claude/harness-log.jsonl
+```
+
+Fill in the change slug, the verdict this run resolved to, the wall-clock
+time spent from delegating to `spec-reviewer` to receiving its response, and
+the model it actually ran on (`group` is `-`: this gate runs at change
+scope). If `jq` isn't available, construct the equivalent JSON line with
+`printf` instead. A failed log write never blocks the gate — note it in the
+report and move on; this is a diagnostic aid, not part of the pass/fail
+logic.

@@ -22,4 +22,5 @@ boundaries — nowhere else.
 
 Every commit an agent makes documents: what changed, why, how it was
 verified (gate outcomes, test results), and known remaining risk. Never
-`--no-verify` past a failing pre-commit hook — fix the root cause instead.
+`--no-verify` past a failing pre-commit or pre-push hook — fix the root
+cause instead.
