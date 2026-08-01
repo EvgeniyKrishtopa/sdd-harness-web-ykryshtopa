@@ -132,7 +132,16 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Implement with the standard
-   guardrails, but pause and ask on every design decision or ambiguity.
+   guardrails, but pause and ask on every design decision or ambiguity. Route
+   each decision reached this way: scoped to this change's own lifetime →
+   note it in the change's own `design.md` (it archives with the change,
+   which is fine — nothing outside this change needs it again); outlives this
+   change — a convention, a tool choice, a stance the *next* change will also
+   need → write it as a new `docs/decisions/NNNN-<slug>.md` per
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/decision-template.md`,
+   including its required `Alternatives Considered` section. Check for an
+   existing `docs/adr/` first — if the project already has one, use that
+   instead of creating `docs/decisions/` alongside it, and say so.
 3. Once green, confirm scope and — if this is also the *last* group with
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
@@ -267,9 +276,16 @@ implement unattended is reviewed as one unit too, not group-by-group.
    covering every group in this run. **Judgement-heavy run** → lead the PR
    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
    open — the human owns the merge.
-7. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
-   invocation re-syncs the parent from `origin` (only picks up this run's
-   work once its PR is merged). **No tasks remain** → continue to step 5.
+7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
+   current change and branch, last commit, done/in-progress/blocked groups
+   (a blocked task carries its own `<!-- blocked: ... -->` reason, see
+   `opsx-apply-git`'s blocked-state handling below and
+   `references/progress-template.md`'s self-check: re-read what you wrote
+   and reconcile it against `tasks.md`'s real state before moving on) and
+   numbered next steps for whatever remains in this change. Then report
+   progress and stop; the next `opsx-apply-git` invocation re-syncs the
+   parent from `origin` (only picks up this run's work once its PR is
+   merged). **No tasks remain** → continue to §5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
@@ -302,7 +318,11 @@ archived a change that was never actually accepted (#19).
    second, narrower override of "never commit without being asked," same
    justification as §3's per-group commit override.
 4. Push the archive branch, open a PR into the parent. Leave it open.
-5. Report the full session: every group completed with PR URLs, final
+5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
+   current change and no next steps remain for it, noting the archive
+   location and archive PR URL — the same self-checking regeneration as §4
+   step 7, just for a change that's now fully done rather than paused. Then
+   report the full session: every group completed with PR URLs, final
    `N/N tasks complete`, archive location, archive PR URL.
 
 ## Exceptions

@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi"
+            "command": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi; cd \"${CLAUDE_PROJECT_DIR:-.}\" 2>/dev/null; if [ -f PROGRESS.md ]; then echo '=== Progress (PROGRESS.md) ==='; awk '/^## Status$/{s=1;next} /^## Next steps$/{s=2;next} /^## /{s=0} s==1 && /^- (In progress|Blocked):/ {print} s==2 && NF {print}' PROGRESS.md; fi"
           }
         ]
       }
