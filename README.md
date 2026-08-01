@@ -61,8 +61,11 @@ from marketplaces, not from the npm registry.
 
 Restart Claude Code (or `/reload-plugins`) after installing: skills take
 effect immediately, but hooks, agents and MCP servers only load on start.
-Then run `/init-harness` once per repository (next section) — installing the
-plugin adds the skills and hooks, but writes nothing into your project.
+Then run `/init-harness` in each repository (next section) — installing the
+plugin adds the skills and hooks, but writes nothing into your project. Run
+it again after a `/plugin update`: the update refreshes the plugin, and
+`/init-harness` is what brings the repository's own files along with it (it
+detects that case itself and only fills in what's missing).
 
 ### Updating, pinning, removing
 
@@ -190,7 +193,7 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 
 | Skill | Gate | Purpose |
 |---|---|---|
-| `init-harness` | — | One-time scaffolder: detects stack, installs OpenSpec, writes docs/hooks |
+| `init-harness` | — | Scaffolder: detects stack, installs OpenSpec, writes docs/hooks; re-run after a plugin update to upgrade the repo |
 | `opsx-propose-review` | 1-2 | Propose a change, run architecture + spec review |
 | `opsx-apply-git` | 3-6 | Implement a run inside the branch-per-group workflow |
 | `opsx-update-review` | 1-2 | Revise an existing change's plan |

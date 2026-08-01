@@ -47,8 +47,8 @@ below) — never applied by you.
    match the version of the plugin that is actually installed?
 
    ```bash
-   jq -r '.harnessVersion // "(absent)"' .claude/harness.json
-   jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
+   jq -r '.harnessVersion // "(absent)"' .claude/harness.json 2>/dev/null
+   jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null
    ```
 
    A mismatch — or an absent `harnessVersion`, which means the repo was set
@@ -57,10 +57,15 @@ below) — never applied by you.
    means the plugin was updated but this repository's own files weren't, so
    newer skills and hooks may be reading files that were never written here.
    The fix to hand the user is one line: run `/init-harness`, which detects
-   this case itself and runs in upgrade mode. If `${CLAUDE_PLUGIN_ROOT}`
-   isn't set (this plugin's own repo is under review rather than a project
-   that installed it, so there is no target-repo manifest to compare), skip
-   this check and say so — never report a match you couldn't make.
+   this case itself and runs in upgrade mode.
+
+   Skip the check, and name which side was missing, whenever either command
+   above produces nothing rather than a version. Both cases are normal: no
+   `.claude/harness.json` means this plugin's own repo is under review
+   rather than a project that installed it, so there is no repo-side version
+   to compare; an unreadable `plugin.json` means `${CLAUDE_PLUGIN_ROOT}`
+   didn't resolve. Never report a match you couldn't make — a check that
+   can't run is not a check that passed.
 
 The next three checks only apply when this plugin's own repository — not a
 project that has installed it — is what's under review, since `agents/` and

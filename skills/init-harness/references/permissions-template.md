@@ -132,8 +132,9 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   writes there only handed the agent a way to author skill files that steer
   every later session in that repo. Everything else `init-harness` writes
   once (`.claude/settings.json`, `.claudeignore`, `CLAUDE.md`, `.husky/**`)
-  is deliberately left to prompt — a one-time scaffolder asking before it
-  edits your instruction file is the correct amount of friction.
+  is deliberately left to prompt — a scaffolder that runs a handful of times
+  over a repo's life asking before it edits your instruction file is the
+  correct amount of friction.
 - `allow` deliberately excludes `Bash(node -e:*)`, `Bash(node -p:*)`,
   `Bash(cat:*)`, `Bash(for *)`, and bare `Write`/`Edit`: each is a generic
   enough primitive to read or overwrite any file in the repo — including
