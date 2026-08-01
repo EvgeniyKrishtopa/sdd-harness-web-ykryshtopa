@@ -104,9 +104,9 @@ actually missing. Concretely:
 - **Verify the toolchain** — Step 8b runs in upgrade mode too. A script the
   project renamed since the repo was set up is exactly the kind of drift an
   upgrade should surface.
-- **Then write `harnessVersion`** (Step 8), and only then. If any step
-  stopped — a missing workflow, a failing toolchain check, a diff the user
-  declined — leave `harnessVersion` at its old value. A version number
+- **Then write `harnessVersion`** (Step 8b writes it, not Step 8), and only
+  then. If any step stopped — a missing workflow, a failing toolchain check,
+  a diff the user declined — leave `harnessVersion` at its old value. A version number
   claiming an upgrade that didn't finish is worse than no version number:
   the next run would skip via branch 2 above.
 - **Report what changed** (Step 10): the version transition
@@ -451,8 +451,9 @@ Field notes:
   repository, read at run time from
   `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (Step 0). Write the value
   that command returns; the `"0.3.0"` above is the shape, not a constant to
-  copy. Write it **last**, only once every step of this run has succeeded —
-  it is the claim "this repo is fully configured for that plugin version",
+  copy. Step 8b writes it, not this step, and only once every step of this
+  run has succeeded — it is the claim "this repo is fully configured for
+  that plugin version",
   and Step 0's branch 2 and Gate 6's checklist item 6 both trust it. A run
   that stopped early leaves the old value (or none) in place.
 - `toolchainVerifiedAt` — written by Step 8b, alongside `harnessVersion` and
@@ -500,9 +501,11 @@ Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be
 determined, ask the user rather than guessing.
 
-Do not write `harnessVersion` yet — Step 8b has to pass first. Write the rest
-of the manifest now, because Step 8b verifies exactly the values this step
-recorded, not a fresh guess at them.
+Two keys are deliberately not written here: `harnessVersion` and
+`toolchainVerifiedAt`. Both are claims about a run that has finished
+successfully, and this run hasn't — Step 8b writes them once it passes.
+Write every other key now, because Step 8b verifies exactly the values this
+step recorded, not a fresh guess at them.
 
 ## Step 8b — prove the toolchain actually runs
 
@@ -553,21 +556,34 @@ from the user's own uncommitted work would be blamed on the harness).
    to relax the hook: the hook is correct, the repository isn't green.
 
 3. **The tests run *and* at least one passes.** Run
-   `<runCmd> <scripts.testCoverage>`. Exit 0 alone is not enough — a runner
-   that matched zero test files also exits 0, and that is an empty
-   `pre-push`, not a passing one. Confirm from the output that at least one
-   test actually passed; the format follows the detected `testRunner`
-   (Vitest: `Tests  N passed`; Jest: `Tests:  N passed`), and "No test files
-   found" / "0 total" is a failure of this step. Report it as such and stop —
+   `<runCmd> <scripts.testCoverage>`. Read the count, don't just read the
+   exit code: Vitest and Jest both exit 1 on zero matched tests by default,
+   but `--passWithNoTests` flips that to 0, and it is common enough in
+   starter templates and CI scripts to be worth not trusting. A green exit
+   from a runner that matched nothing is an empty `pre-push`, not a passing
+   one. Confirm from the output that at least one test actually passed; the
+   format follows the detected `testRunner` (Vitest: `Tests  N passed`;
+   Jest: `Tests:  N passed`), and "No test files found" / "0 total" is a
+   failure of this step. Report it as such and stop —
    a project with no tests can still use the rest of the harness, but the
    user should decide that knowingly rather than discover it when Gate 5
    reviews coverage that was never collected.
 
 4. **Any of the three not satisfied → stop the whole `init-harness` run.**
-   Name what didn't match, and do **not** write `harnessVersion` (Step 8).
-   The repository isn't configured, so nothing should claim it is: leaving
-   the version unwritten means the next run comes back through Step 0's
-   upgrade branch rather than skipping as already-current.
+   Name what didn't match, and leave `harnessVersion` and
+   `toolchainVerifiedAt` unwritten. The repository isn't configured, so
+   nothing should claim it is: an unwritten version means the next run comes
+   back through Step 0's upgrade branch rather than skipping as
+   already-current.
+
+   Say one more thing before stopping, if the run stopped at item 1 with no
+   correct script name to substitute: `.claude/harness.json` still holds the
+   name that doesn't resolve, and this plugin's `Stop` hook reads
+   `scripts.typecheck` from it on every turn regardless of whether the repo
+   was ever verified. Until the user adds the script or corrects the
+   manifest by hand, that hook will keep reporting a "script not found" as
+   though it were a type error. The user needs to know that, because
+   stopping here doesn't undo it.
 
 5. **All three satisfied** → write both remaining manifest keys:
 
