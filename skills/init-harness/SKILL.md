@@ -1,6 +1,6 @@
 ---
 name: init-harness
-description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
+description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky), then proves the detected typecheck/lint/test scripts actually run and pass before declaring the repo configured. This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
 ---
 
 Run this when adding the harness to a repository, and again after the plugin
@@ -76,7 +76,7 @@ whole failure this step exists to prevent.
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
-| `.claude/harness.json` | Steps 2e, 8 | merge keys; never drop keys already there |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
 
 ### Upgrade mode
@@ -302,7 +302,9 @@ on every group — multiplied across a whole change. `pre-commit` stays fast
    equivalents — use whatever script names actually exist in this project's
    `package.json`; don't invent script names that aren't there, ask the user
    if the mapping isn't obvious.) No test run here — that's `pre-push`,
-   below.
+   below. Step 8b runs both of these names for real and stops the whole
+   setup if either doesn't resolve, so a wrong guess here is caught during
+   setup rather than on the user's first commit.
 3. Configure `lint-staged` — in `package.json`'s `"lint-staged"` key, or a
    `.lintstagedrc.json` if the project already has one of those instead —
    to run the project's lint/format tooling against staged files only, e.g.
@@ -412,6 +414,7 @@ rest around it:
 {
   "version": 1,
   "harnessVersion": "0.3.0",
+  "toolchainVerifiedAt": "2026-08-01T12:00:00Z",
   "framework": "vite",
   "packageManager": "yarn",
   "runCmd": "yarn",
@@ -452,6 +455,10 @@ Field notes:
   it is the claim "this repo is fully configured for that plugin version",
   and Step 0's branch 2 and Gate 6's checklist item 6 both trust it. A run
   that stopped early leaves the old value (or none) in place.
+- `toolchainVerifiedAt` — written by Step 8b, alongside `harnessVersion` and
+  under the same rule: only once the three scripts were actually run and
+  actually passed. Its absence means they weren't, which is what lets a
+  later run tell a proven toolchain from an assumed one.
 - `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
@@ -492,6 +499,87 @@ Field notes:
 Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be
 determined, ask the user rather than guessing.
+
+Do not write `harnessVersion` yet — Step 8b has to pass first. Write the rest
+of the manifest now, because Step 8b verifies exactly the values this step
+recorded, not a fresh guess at them.
+
+## Step 8b — prove the toolchain actually runs
+
+Everything up to here has *detected* a toolchain. Nothing has *run* it. Those
+script names are not decoration: Step 3 already wrote them into
+`.husky/pre-commit`, and this plugin's `Stop` hook builds
+`<runCmd> <scripts.typecheck>` straight out of the manifest. If a project
+calls its script `type-check`, `tsc`, or `types` — all more common than
+`typecheck` — then `pre-commit` fails on every single commit with "script not
+found", and the `Stop` hook reports the package manager's complaint as if it
+were a type error. Neither failure surfaces during setup. Both surface on the
+first real task group, by which point the cause is three steps back.
+
+Step 3 and Step 8 both already say "don't invent script names, ask the user."
+That instruction was in 0.1.0 too, and the bug shipped anyway. An instruction
+to be careful is not a check. This step is the check: four commands, once in
+a repository's lifetime.
+
+Run it in both first-install and upgrade mode, on a clean tree (if the tree
+is dirty, say so and ask the user to commit or stash first — a lint failure
+from the user's own uncommitted work would be blamed on the harness).
+
+1. **The keys exist.** For each of `scripts.typecheck`, `scripts.lint`, and
+   `scripts.testCoverage`, confirm the name in the manifest is a real key in
+   `package.json`:
+
+   ```bash
+   for key in typecheck lint testCoverage; do
+     name="$(jq -r --arg k "$key" '.scripts[$k]' .claude/harness.json)"
+     jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
+       || echo "MISSING: harness.json scripts.$key = \"$name\" is not in package.json"
+   done
+   ```
+
+   Anything missing: stop and ask the user which script actually does that
+   job (offer the closest matches from `jq -r '.scripts | keys[]'
+   package.json`). If they name one, correct **both** `.claude/harness.json`
+   and the `.husky/` hook that embeds it — the two hold the same name in two
+   places, and fixing one leaves the other broken. If the project genuinely
+   has no such script, that is a real gap in the project, not something to
+   paper over with a guess: say so and stop.
+
+2. **Typecheck and lint pass.** Run `<runCmd> <scripts.typecheck>` and
+   `<runCmd> <scripts.lint>`. Both must exit 0. A non-zero exit on a clean
+   tree means this harness would block the user's every commit from the
+   moment it is installed — via `.husky/pre-commit`, which chains exactly
+   these two. Report which one failed and its output, and stop. Don't offer
+   to relax the hook: the hook is correct, the repository isn't green.
+
+3. **The tests run *and* at least one passes.** Run
+   `<runCmd> <scripts.testCoverage>`. Exit 0 alone is not enough — a runner
+   that matched zero test files also exits 0, and that is an empty
+   `pre-push`, not a passing one. Confirm from the output that at least one
+   test actually passed; the format follows the detected `testRunner`
+   (Vitest: `Tests  N passed`; Jest: `Tests:  N passed`), and "No test files
+   found" / "0 total" is a failure of this step. Report it as such and stop —
+   a project with no tests can still use the rest of the harness, but the
+   user should decide that knowingly rather than discover it when Gate 5
+   reviews coverage that was never collected.
+
+4. **Any of the three not satisfied → stop the whole `init-harness` run.**
+   Name what didn't match, and do **not** write `harnessVersion` (Step 8).
+   The repository isn't configured, so nothing should claim it is: leaving
+   the version unwritten means the next run comes back through Step 0's
+   upgrade branch rather than skipping as already-current.
+
+5. **All three satisfied** → write both remaining manifest keys:
+
+   ```json
+   { "harnessVersion": "<plugin version from Step 0>", "toolchainVerifiedAt": "2026-08-01T12:00:00Z" }
+   ```
+
+   `toolchainVerifiedAt` is an ISO-8601 UTC timestamp (`date -u
+   +%Y-%m-%dT%H:%M:%SZ`) — the shape above is not a value to copy. It is what
+   lets a later upgrade run, and Gate 6, tell "these commands were proven to
+   work" from "these names were assumed to be right", which is the whole
+   difference this step exists to record.
 
 ## Step 9 — create or append CLAUDE.md's harness pointer block
 
@@ -541,6 +629,11 @@ In upgrade mode, report the shorter form Step 0 describes — version
 transition, files created, files appended to, files left alone — not the
 full first-install summary below, which mostly restates what the user
 already has.
+
+Either mode: state that the three scripts were run and passed (Step 8b),
+naming them — this is the one thing in the report the user can't infer from
+the file list, and it is the difference between "the harness found these
+names" and "the harness ran these commands".
 
 For a first-time install: summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
