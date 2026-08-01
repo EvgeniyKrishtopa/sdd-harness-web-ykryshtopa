@@ -1,6 +1,6 @@
 ---
 name: harness-review
-description: Reviews CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, and .husky/** for stale claims and drift from authoring best practices — plus this plugin's own skills/ and agents/ when its own repo is what's being reviewed. Use before pushing a run whose diff touched the harness itself, or whenever the harness setup changes.
+description: Reviews CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, .husky/**, and openspec/config.yaml for stale claims and drift from authoring best practices — plus this plugin's own skills/ and agents/ when its own repo is what's being reviewed. Use before pushing a run whose diff touched the harness itself, or whenever the harness setup changes.
 ---
 
 Run **Gate 6** of this project's review pipeline: harness review — the only
@@ -29,7 +29,8 @@ fall back to the agent's own default; never block the gate on a missing
 override. Scope the review to the
 paths `init-harness` actually writes into a target repo — `CLAUDE.md`/
 `AGENTS.md`, `.claude/harness.json`, `.claude/settings.json`,
-`.claude/docs/**`, `.husky/**` — plus `${CLAUDE_PLUGIN_ROOT}/skills/` and
+`.claude/docs/**`, `.husky/**`, `openspec/config.yaml` — plus
+`${CLAUDE_PLUGIN_ROOT}/skills/` and
 `${CLAUDE_PLUGIN_ROOT}/agents/` only when this plugin's own repo is the one
 under review (those two directories live inside the plugin itself; a project
 that has merely installed the plugin has no local copy of them to scan).

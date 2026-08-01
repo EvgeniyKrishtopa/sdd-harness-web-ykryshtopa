@@ -1,6 +1,6 @@
 ---
 name: init-harness
-description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky), then proves the detected typecheck/lint/test scripts actually run and pass before declaring the repo configured. This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
+description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, seeds openspec/config.yaml with the project's context and artifact rules so changes are drafted knowing what this project is, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky), then proves the detected typecheck/lint/test scripts actually run and pass before declaring the repo configured. This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
 ---
 
 Run this when adding the harness to a repository, and again after the plugin
@@ -71,6 +71,7 @@ whole failure this step exists to prevent.
 | Path | Written by | Merge rule |
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
+| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys; never touch `schema`, never replace existing content without asking |
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
@@ -268,6 +269,85 @@ idealised list defeats the point — Gate 6 compares this key against live
 config to notice if someone later runs `openspec config reset` or trims the
 selection, and a hardcoded "everything" list makes every such regression
 look like a match.
+
+### 2f — seed `openspec/config.yaml` with this project's context and rules
+
+`openspec init` (2b) creates `openspec/config.yaml` with nothing but default
+schema settings. It is OpenSpec's own extension point: whatever `context:`
+and `rules:` it holds get mixed into every artifact OpenSpec generates —
+`proposal.md`, `design.md`, `tasks.md`, the delta specs. Left at its
+defaults, every change in this repo is drafted by an agent that knows
+nothing about the project, and Gates 1 and 2 spend their budget reviewing
+artifacts that were generated blind. Shaping the artifact before generation
+is cheaper than catching its shape at review — the same argument the review
+gates themselves rest on, except this hook is OpenSpec's, not ours.
+
+Read the file first. `openspec init` wrote it, so it exists; treat every key
+already in it as the user's. In particular **leave `schema:` alone** — it
+selects the artifact set OpenSpec generates and is not ours to change. Add
+only what is missing, and when a key we want is already present with
+different content, show the difference and ask rather than replacing.
+
+1. **`context:`** — a block scalar. Fill the technical half from what Step 1
+   already detected: framework, package manager, test runner, build output
+   directory, dev server URL, and the top-level source layout. Do not invent
+   anything here; every line is a fact already in hand.
+2. Then ask the user, **once**, for three to five lines on what the project
+   actually is — its domain, who uses it, the nouns that matter. This is the
+   half no detection can produce, and the half that most changes an
+   artifact's usefulness. Ask once, plainly, and accept a short answer. If
+   they decline or skip it, write the technical half alone and move on.
+   Never write a guessed domain: an invented description is worse than none,
+   because every future artifact inherits it and nobody re-reads a file that
+   looks already filled in.
+3. **`rules.proposal`** — one rule, and it is load-bearing: every requirement
+   carries a stable identifier. Use `FR-<n>` for functional and `NFR-<n>` for
+   non-functional requirements, unique within the change, and never renumbered
+   once written. Without identifiers, "is every requirement implemented?" can
+   only ever be answered by a model's impression of a document. With them, it
+   is a `grep`. Later gates depend on this being true of every proposal.
+4. **`rules.tasks`** — two rules: each task names the requirement identifier
+   it implements, and verification is a task in the list rather than
+   something left for a human to remember afterwards. The first makes the
+   proposal-to-task link traceable in the same mechanical way; the second is
+   why a group can be considered done at all.
+
+Keep it to this. It is tempting to specify a full house style for
+`proposal.md` — sections, ordering, headings — and a project that wants one
+should add it. A portable plugin should not: a structure grown around one
+product's design system and information architecture is exactly the kind of
+thing that fits its author and nobody else. The rules above are the minimum
+the gates actually need to function.
+
+The resulting file looks like this — the values are this project's, not
+these:
+
+```yaml
+schema: spec-driven          # written by `openspec init`; left untouched
+
+context: |
+  Vite + React + TypeScript app; yarn; Vitest for tests; builds to dist/;
+  dev server on http://localhost:5173. Source under src/, routes in
+  src/routes/.
+  Reviewed by the sdd-harness-web-ykryshtopa harness — see
+  .claude/docs/review-gates.md for the gates and their order.
+  <the user's three to five lines about the domain, or nothing at all>
+
+rules:
+  proposal:
+    - Give every requirement a stable identifier — FR-1, FR-2 for functional
+      requirements, NFR-1, NFR-2 for non-functional ones. Unique within the
+      change. Never renumber an identifier once it is written.
+  tasks:
+    - Every task states the requirement identifier it implements.
+    - Verification belongs in the task list as its own task, not left as a
+      manual check after the fact.
+```
+
+Record nothing about this file in `.claude/harness.json` — `openspec/
+config.yaml` is OpenSpec's, and a second copy of its contents in our manifest
+would be one more pair of things to drift apart. Gate 6 reads the file
+itself.
 
 ## Step 3 — install native git hooks (not just Claude Code hooks): fast checks on commit, full coverage on push
 
@@ -652,7 +732,10 @@ the file list, and it is the difference between "the harness found these
 names" and "the harness ran these commands".
 
 For a first-time install: summarize what was detected (framework, package manager, test runner),
-confirm OpenSpec is initialized, state the coverage threshold chosen, and
+confirm OpenSpec is initialized and say whether `openspec/config.yaml`
+(Step 2f) got the user's domain description or only the technical half —
+they can still add it later, and knowing it's missing is what prompts them
+to. State the coverage threshold chosen, and
 list the files written — including confirming the native pre-commit and
 pre-push hooks are now in place (Step 3), noting that this plugin's Claude Code hooks are
 already active with nothing to install (Step 6), the

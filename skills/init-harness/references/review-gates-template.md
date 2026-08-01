@@ -25,7 +25,8 @@ by design (see below).
 - **Gate 6 — harness-review**, on the run's last group with pending tasks,
   before its commit — but only when a 0-token precondition check finds this
   run actually touched something it could review (`CLAUDE.md`/`AGENTS.md`,
-  `.claude/`, `.husky/`, or a `package.json` script/dependency change);
+  `.claude/`, `.husky/`, `openspec/config.yaml`, or a `package.json`
+  script/dependency change);
   skipped otherwise, since most runs never touch the harness. When it runs,
   it shows every finding with a suggested fix regardless of verdict —
   nothing is silently auto-applied.
