@@ -218,7 +218,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    on this run's last group with pending tasks only, before spawning
    `harness-reviewer` at all, check whether this run touched anything it
    could plausibly review:
-   `git diff --name-only <parent>..HEAD | grep -qE '^(CLAUDE|AGENTS)\.md|^\.claude/|^\.husky/'`,
+   `git diff --name-only <parent>..HEAD | grep -qE '^(CLAUDE|AGENTS)\.md|^\.claude/|^\.husky/|^openspec/config\.yaml$'`,
    or `package.json`'s `scripts`/`dependencies`/`devDependencies`/
    `peerDependencies` actually changed. Compare those keys structurally, not
    with a line-based diff grep — a line-based check either misses a
@@ -255,8 +255,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    that could also pick up unrelated changes. Gate 6's scope bounds where
    those files can come from — `CLAUDE.md`/`AGENTS.md`,
    `.claude/harness.json`, `.claude/settings.json`, `.claude/docs/**`,
-   `.husky/**`, plus this plugin's own `skills/`/`agents/` when its own repo
-   is what's under review — e.g.
+   `.husky/**`, `openspec/config.yaml`, plus this plugin's own
+   `skills/`/`agents/` when its own repo is what's under review — e.g.
    `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
    Every group in the run is already committed by this point (§3), so
    there's no ordering constraint forcing this ahead of a group's own
