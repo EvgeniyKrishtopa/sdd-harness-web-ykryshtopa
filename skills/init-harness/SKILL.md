@@ -1,9 +1,124 @@
 ---
 name: init-harness
-description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
+description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
 ---
 
-Run this once per repository, before using any other skill in this plugin.
+Run this when adding the harness to a repository, and again after the plugin
+itself is updated — Step 0 decides which of the two is happening. Run it
+before using any other skill in this plugin.
+
+## Step 0 — first-time install, or upgrade of a repo an earlier version set up?
+
+This skill used to be a one-shot scaffolder. It isn't anymore: every release
+that adds a file to the target repo (see the inventory below) has to reach
+repositories that were set up by an earlier version, not just new ones.
+`/plugin update` refreshes the skills, agents, and hooks — everything that
+lives *in the plugin*. Nothing that lives *in the repository* changes until
+this skill runs again. Deciding which mode to run in is therefore the first
+thing that happens, before any detection or any question to the user.
+
+Read the plugin's own version and the version this repo was last set up with:
+
+```bash
+plugin_version="$(jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json")"
+repo_version="$(jq -r '.harnessVersion // empty' .claude/harness.json 2>/dev/null)"
+```
+
+Never hardcode the plugin version in this skill's text — it is read from
+`.claude-plugin/plugin.json` through `${CLAUDE_PLUGIN_ROOT}` every time, so
+it cannot drift away from the manifest at the next version bump. Note that
+`.claude/harness.json`'s `"version": 1` is a *different* number: it is the
+schema version of the manifest itself, it is not the plugin's version, and
+the two are never compared against each other or collapsed into one field.
+
+Then take exactly one of these four branches:
+
+1. **`.claude/harness.json` doesn't exist** → FIRST-TIME INSTALL. Run Steps
+   1-10 below as written.
+2. **`harnessVersion` equals `plugin_version`** → nothing to do. Say so —
+   naming the version — and stop without touching anything. (Re-running the
+   whole questionnaire against an already-configured repo, which is what
+   this skill did before, wastes the user's time re-answering questions the
+   manifest already holds.) If the user explicitly asks for a re-run anyway
+   — to repair a file they deleted, say — run the upgrade-mode step list.
+3. **`harnessVersion` is absent, or lower than `plugin_version`** → UPGRADE
+   MODE, below. Absent means the repo was set up by a version older than the
+   one that introduced this field, so it is treated as the oldest possible
+   version, not as a fresh install.
+4. **`harnessVersion` is *higher* than `plugin_version`** → the installed
+   plugin is older than the one that configured this repo. Say so and stop.
+   Do not "upgrade" downward: rewriting the manifest to the older version
+   would silently claim the repo lost features it still has.
+
+Compare versions as versions, not as strings: `0.10.0` sorts *below* `0.9.0`
+lexically. Use `sort -V` (or compare the three numeric components) —
+
+```bash
+older="$(printf '%s\n%s\n' "$repo_version" "$plugin_version" | sort -V | head -1)"
+```
+
+`$repo_version` is behind when it isn't equal to `$plugin_version` and is
+the `$older` of the two.
+
+### The file inventory this skill owns
+
+Upgrade mode walks this list; so does Gate 6 when it checks for drift. Every
+future release that teaches this skill to write a new file into the target
+repo **must add it here in the same commit** — a file that exists only in
+the first-time path reaches new repositories and no one else, which is the
+whole failure this step exists to prevent.
+
+| Path | Written by | Merge rule |
+| --- | --- | --- |
+| `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
+| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
+| `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
+| `.claudeignore` | Step 7 | append missing lines |
+| `.claude/harness.json` | Steps 2e, 8 | merge keys; never drop keys already there |
+| `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
+
+### Upgrade mode
+
+Run only the steps that create or extend files, and only for what is
+actually missing. Concretely:
+
+- **Skip every question the manifest already answers.** The coverage
+  threshold (Step 4), the detected framework, package manager, test runner,
+  build dir, lockfile, and script names (Step 1) are all in
+  `.claude/harness.json` already — read them from there. Only detect, or
+  ask, what the manifest doesn't have (a key added by a newer version, or
+  one a user removed).
+- **Leave the global OpenSpec config alone.** Step 2c changes a setting that
+  is global to the user's machine and affects their other projects. In
+  upgrade mode, run `npx openspec config list` and check the workflow list
+  (Step 2c's own check): if `new`, `continue`, and `verify` are all present,
+  there is nothing to do — do not re-prompt, and do not re-write the file.
+  Only if one is genuinely missing does Step 2c's normal conversation apply.
+- **Walk the inventory above** and apply each row's merge rule: create what
+  is absent, append what is missing from what exists, and never overwrite a
+  file the user may have edited without showing them the diff first. This is
+  the rule this skill already follows everywhere; upgrade mode adds no new
+  license to overwrite.
+- **Verify the toolchain** — Step 8b runs in upgrade mode too. A script the
+  project renamed since the repo was set up is exactly the kind of drift an
+  upgrade should surface.
+- **Then write `harnessVersion`** (Step 8), and only then. If any step
+  stopped — a missing workflow, a failing toolchain check, a diff the user
+  declined — leave `harnessVersion` at its old value. A version number
+  claiming an upgrade that didn't finish is worse than no version number:
+  the next run would skip via branch 2 above.
+- **Report what changed** (Step 10): the version transition
+  (`<old or "unversioned"> → <new>`), each file created, each file appended
+  to, and each file left alone. "Already up to date" is a real and common
+  outcome — say it plainly rather than implying work happened.
+
+Upgrade mode is the *only* way a repo picks up a new release's files. Do not
+add automatic migration to `SessionStart` or any other hook: writing into the
+user's repository without them asking is something this harness does nowhere
+else. Version drift is *detected* automatically (Gate 6, checklist item 6)
+and *fixed* on command.
 
 ## Step 1 — detect the project
 
@@ -296,6 +411,7 @@ rest around it:
 ```json
 {
   "version": 1,
+  "harnessVersion": "0.3.0",
   "framework": "vite",
   "packageManager": "yarn",
   "runCmd": "yarn",
@@ -325,6 +441,17 @@ rest around it:
 ```
 
 Field notes:
+- `version` — the schema version of *this manifest*. It changes only when the
+  shape of this file changes in a way readers have to know about. It is not
+  the plugin's version and never stands in for it.
+- `harnessVersion` — the version of *the plugin* that last configured this
+  repository, read at run time from
+  `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (Step 0). Write the value
+  that command returns; the `"0.3.0"` above is the shape, not a constant to
+  copy. Write it **last**, only once every step of this run has succeeded —
+  it is the claim "this repo is fully configured for that plugin version",
+  and Step 0's branch 2 and Gate 6's checklist item 6 both trust it. A run
+  that stopped early leaves the old value (or none) in place.
 - `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
@@ -410,7 +537,12 @@ to asking before every commit instead of trusting it.
 
 ## Step 10 — report
 
-Summarize what was detected (framework, package manager, test runner),
+In upgrade mode, report the shorter form Step 0 describes — version
+transition, files created, files appended to, files left alone — not the
+full first-install summary below, which mostly restates what the user
+already has.
+
+For a first-time install: summarize what was detected (framework, package manager, test runner),
 confirm OpenSpec is initialized, state the coverage threshold chosen, and
 list the files written — including confirming the native pre-commit and
 pre-push hooks are now in place (Step 3), noting that this plugin's Claude Code hooks are
@@ -423,3 +555,7 @@ was created or appended to — say plainly that this is required for the
 auto-commit override at group/archive boundaries to apply. Tell the user
 their harness is ready and that `opsx-propose-review` is the next command to
 run when they want to start their first spec-driven change.
+
+Either mode: mention that after a future `/plugin update`, running this skill
+again is what brings this repository's own files up to the new version — the
+plugin update alone doesn't, and Gate 6 will flag the gap in the meantime.

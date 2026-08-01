@@ -33,6 +33,10 @@ paths `init-harness` actually writes into a target repo — `CLAUDE.md`/
 `${CLAUDE_PLUGIN_ROOT}/agents/` only when this plugin's own repo is the one
 under review (those two directories live inside the plugin itself; a project
 that has merely installed the plugin has no local copy of them to scan).
+`${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` is in scope in both cases
+— it is the other half of checklist item 6's version comparison, and reading
+it is how the reviewer tells "the plugin was updated but this repo wasn't"
+from "up to date".
 Name the change so the reviewer can check for anything the change's
 implementation should have updated in the harness but didn't — including
 whether `.claude/harness.json` still matches reality (e.g. a new script

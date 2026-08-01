@@ -43,18 +43,36 @@ below) — never applied by you.
 5. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
    never by hand)?
+6. **Harness version drift** — does `.claude/harness.json`'s `harnessVersion`
+   match the version of the plugin that is actually installed?
+
+   ```bash
+   jq -r '.harnessVersion // "(absent)"' .claude/harness.json
+   jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json"
+   ```
+
+   A mismatch — or an absent `harnessVersion`, which means the repo was set
+   up before that field existed — is a **CONFIRMED** finding, not a
+   PLAUSIBLE one: it is read off two files, with no judgement involved. It
+   means the plugin was updated but this repository's own files weren't, so
+   newer skills and hooks may be reading files that were never written here.
+   The fix to hand the user is one line: run `/init-harness`, which detects
+   this case itself and runs in upgrade mode. If `${CLAUDE_PLUGIN_ROOT}`
+   isn't set (this plugin's own repo is under review rather than a project
+   that installed it, so there is no target-repo manifest to compare), skip
+   this check and say so — never report a match you couldn't make.
 
 The next three checks only apply when this plugin's own repository — not a
 project that has installed it — is what's under review, since `agents/` and
 `skills/` are this plugin's own directories and never exist inside a target
 project:
 
-6. **Progressive disclosure** — are skill bodies lean, with detail pushed to
+7. **Progressive disclosure** — are skill bodies lean, with detail pushed to
    `references/` rather than everything crammed into `SKILL.md`?
-7. **Skill description quality** — does each skill's frontmatter description
+8. **Skill description quality** — does each skill's frontmatter description
    include concrete trigger phrases a user would actually say, not vague
    language?
-8. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
+9. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
    it actually needs (read-only agents should never carry `Write`/`Edit`)?
    If an agent declared read-only still carries `Bash` (this plugin's own
    agents do, since git history/coverage inspection needs it — there's no
