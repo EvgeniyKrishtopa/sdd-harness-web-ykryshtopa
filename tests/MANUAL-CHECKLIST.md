@@ -277,7 +277,8 @@ Precondition (#35):
 
 4. Run a change whose diff touches only application source/test files —
    nothing under `CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, no
-   `package.json` script/dependency change — confirm `harness-reviewer`
+   `openspec/config.yaml` edit, no `package.json` script/dependency change —
+   confirm `harness-reviewer`
    never spawns for it, and `.claude/harness-log.jsonl` gets a
    `"gate":"harness-review","verdict":"skipped"` line written directly by
    `opsx-apply-git` (not by the harness-review skill, which never ran).
@@ -285,6 +286,11 @@ Precondition (#35):
    `.husky/`/`CLAUDE.md` touched) — confirm the precondition still fires
    and `harness-reviewer` runs, since a script/dependency change is the
    other half of the precondition, not just harness-path changes.
+6. Run a change that only edits `openspec/config.yaml`'s `context:` block —
+   confirm the precondition fires for that too, and that the review compares
+   the edited context against `.claude/harness.json` rather than accepting
+   it. This is the path most likely to go stale unnoticed, since nothing
+   breaks when it's wrong.
 
 ---
 

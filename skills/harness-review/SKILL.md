@@ -15,9 +15,9 @@ group in the run is already committed by this point (`opsx-apply-git` §3),
 so this runs once per run, not once per group. Also gated by a 0-token
 precondition in `opsx-apply-git` §4 step 3 (cost-optimization #35): this
 delegation only runs at all if that run's diff touched
-`CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, or `package.json`'s
-scripts/dependencies changed. Most runs touch neither and skip this
-delegation entirely.
+`CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`/`openspec/config.yaml`, or
+`package.json`'s scripts/dependencies changed. Most runs touch none of them
+and skip this delegation entirely.
 
 ## Action
 
