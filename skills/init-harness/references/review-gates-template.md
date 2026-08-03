@@ -31,6 +31,31 @@ by design (see below).
   it shows every finding with a suggested fix regardless of verdict —
   nothing is silently auto-applied.
 
+## Definition of Done
+
+Three layers, in this order. "Done" means all three are green for the
+change as a whole — not any one of them in isolation:
+
+1. **Static** — `.husky/pre-commit` (typecheck + lint + lint-staged). Runs on
+   every commit.
+2. **Runtime** — `.husky/pre-push` (the coverage-mode test run). Runs on
+   every push.
+3. **System** — Gate 3 (`web-qa`), a real-browser pass over the change's
+   whole diff, run once on the last task group before Gate 4 *if the change
+   touched user-facing UI*; not applicable to a change that didn't (e.g.
+   backend/API-only), in which case Static and Runtime are the whole
+   contract for that change.
+
+**No refactor before green.** Don't clean up, simplify, or restructure code
+in a change until all three layers pass for that change as a whole — a
+tidier version of code that isn't yet Static/Runtime/System-green isn't
+progress, it's a second unfinished thing stacked on the first. This is also
+why Gate 4 downgrades simplification/refactor findings to PLAUSIBLE on a
+run that isn't the change's final one (see `agents/code-reviewer.md`'s
+Verification bar) — the System layer hasn't covered the change as a whole
+yet on a non-final run, so refactoring ahead of it is premature by this same
+rule.
+
 Package manager: {{PACKAGE_MANAGER}}. Framework: {{FRAMEWORK}}. Test runner:
 {{TEST_RUNNER}}. (Filled in by `init-harness` — do not leave as literal
 placeholders in the generated file.)

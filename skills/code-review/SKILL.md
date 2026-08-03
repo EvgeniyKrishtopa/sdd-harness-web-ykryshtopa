@@ -27,15 +27,32 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
    is docs/config-only (no application source or test files changed) — tell
    the delegated agent this explicitly so it doesn't spend effort walking a
    checklist that doesn't apply.
-3. Read `.claude/harness.json`'s `models.code` key (written by
+3. Determine whether this run is the change's **final run**: read
+   `tasks.md` and check whether any `- [ ]` task remains anywhere in it once
+   this run's own groups are accounted for — **excluding** any `- [ ]` task
+   that carries its own `<!-- blocked: ... -->` marker. A blocked task can
+   sit unchecked for many runs by design (`opsx-apply-git` §3 "Blocked
+   tasks" skips past a blocked group rather than waiting on it), so counting
+   it here would mark every later run "non-final" indefinitely, even ones
+   touching code the block has nothing to do with. None remaining (ignoring
+   blocked tasks) → final run; anything still open and *not* blocked → not.
+   If the only open items left are blocked ones, say so plainly to the user
+   alongside the verdict — a review proceeding as "final" specifically
+   because a block is being set aside is worth surfacing, not silently
+   assumed. Tell the delegated agent the final-run verdict explicitly — it
+   only sees the diff and has no way to know this on its own, and it needs
+   it to apply the Definition of Done's simplification-downgrade rule
+   correctly (`review-gates.md`; `agents/code-reviewer.md`'s Verification
+   bar).
+4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
    the `code-reviewer` subagent (`Agent` tool) with that diff, the
-   Gate-5-applicability note, the detected `testRunner` and
-   `coverageThreshold`, and any acceptance criteria as context — overriding
-   the agent's own frontmatter default for this run. If the manifest or the
-   key is missing, fall back to the agent's own default; never block the
-   gate on a missing override.
-4. If invoked as `/code-review --fix`, apply the findings the subagent
+   Gate-5-applicability note, the final-run status, the detected
+   `testRunner` and `coverageThreshold`, and any acceptance criteria as
+   context — overriding the agent's own frontmatter default for this run. If
+   the manifest or the key is missing, fall back to the agent's own default;
+   never block the gate on a missing override.
+5. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 
 ## Handling the result
@@ -44,11 +61,19 @@ The subagent returns two labeled sections, Gate 4 and Gate 5 (or Gate 5
 marked not applicable).
 
 - **CONFIRMED finding in either section** — show it to the user and ask
-  whether to fix now or continue anyway. A fix lands as its own new commit
-  appended to the run's branch — never an amend of an already-committed
-  group — and the run's own verification (typecheck/lint/tests) re-runs
-  before push, since later groups in the batch may have built on the flawed
-  one. Do not push past an unresolved CONFIRMED finding.
+  whether to fix now or continue anyway. "Fix now" runs through the
+  `debug-loop` skill (reproduce the finding, isolate, diagnose with a
+  recorded expected effect, fix and reverify), bounded by
+  `.claude/harness.json`'s `maxFixAttempts`. A fix lands as its own new
+  commit appended to the run's branch — never an amend of an
+  already-committed group — and the run's own verification
+  (typecheck/lint/tests) re-runs before push, since later groups in the
+  batch may have built on the flawed one. Do not push past an unresolved
+  CONFIRMED finding. If `debug-loop` exhausts `maxFixAttempts` without
+  resolving it, follow its escalation for this call site — report-only, no
+  blocked-marker (every group in the run is already committed by this
+  point, so there's no open task line to mark) — and stop the run instead of
+  pushing.
 - **Clean, or PLAUSIBLE-only in both sections** — proceed to Gate 6's own
   precondition (`opsx-apply-git` §4 step 3).
 

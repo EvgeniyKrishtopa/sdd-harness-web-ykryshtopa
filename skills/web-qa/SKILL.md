@@ -91,18 +91,21 @@ Gate 4.
 ## This is a must-pass gate with a fix loop, not CONFIRMED/PLAUSIBLE
 
 - **All-PASS** → proceed to Gate 4.
-- **Any FAIL**:
-  1. First rule out an environment condition (a third-party API rate limit,
-     a flaky animation timing) — note it and re-run rather than treating it
-     as a defect, though the app must still degrade gracefully.
-  2. For a genuine failure, suggest a concrete fix and get the user's
-     approval before changing anything.
-  3. Apply the approved fix — it folds into this group's own diff, so
-     `code-review` (Gate 4 + Gate 5) reviews it too — and re-run `web-qa` on
-     the affected flow(s). Repeat until all-PASS.
-  4. Do not proceed to Gate 4 past a FAIL on the default path. The only
-     exception is an explicit human "proceed anyway," recorded in the
-     group's commit body.
+- **Any FAIL** → run the `debug-loop` skill, scoped to the failing flow(s):
+  reproduce / isolate (its environment-first check — rule out a third-party
+  API rate limit, flaky animation timing, note it and re-run rather than
+  treating it as a defect, though the app must still degrade gracefully — is
+  what used to be this step's own step 1) / diagnose with a recorded
+  expected effect / fix and reverify that exact scenario, bounded by
+  `.claude/harness.json`'s `maxFixAttempts` (default 2). An approved fix
+  folds into this group's own diff, so `code-review` (Gate 4 + Gate 5)
+  reviews it too, and this gate re-runs on the affected flow(s) after each
+  attempt.
+  - **All-PASS within the limit** → proceed to Gate 4.
+  - **Limit exhausted** → `debug-loop` escalates (blocked-marker + hypothesis
+    report to the human). Do not proceed to Gate 4 on the default path. The
+    only exception is an explicit human "proceed anyway," recorded in the
+    group's commit body.
 
 ## Tear down the dev server whenever this gate exits
 

@@ -538,6 +538,7 @@ rest around it:
   "devServerUrl": "http://localhost:5173",
   "trivialDiffThreshold": 10,
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
+  "maxFixAttempts": 2,
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
     "architecture": "claude-opus-5",
@@ -590,6 +591,11 @@ Field notes:
   fix in a `.md` file doesn't need a full review pass. A user who wants a
   stricter or looser bar edits this manifest directly; there's no separate
   prompt for it.
+- `maxFixAttempts` — seed with `2`, the same don't-ask-unless-raised
+  treatment as `trivialDiffThreshold`. The `debug-loop` skill reads it to
+  bound a `web-qa` fix loop or a `code-review` CONFIRMED fix attempt before
+  escalating to a human. A user who wants a stricter or looser bar edits
+  this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
 - `models` — one entry per review-gate agent plus a `default` fallback. Seed
   it with the values shown above, not with whatever each `agents/*.md`
