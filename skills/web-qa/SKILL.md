@@ -91,15 +91,17 @@ Gate 4.
    unaddressed state reads the same as an unexercised flow: incomplete, not
    a pass by default.
 2. The subagent relays a per-flow PASS/FAIL report, plus the per-surface UI
-   States Matrix — each state PASS/FAIL, or explicitly not applicable with a
-   reason, never silently omitted.
+   States Matrix — loading/error/empty/offline each PASS/FAIL or explicitly
+   not applicable with a reason, never silently omitted; syncing/conflict
+   included the same way only on a project with background sync, otherwise
+   left out of the matrix entirely rather than marked not-applicable.
 
 ## This is a must-pass gate with a fix loop, not CONFIRMED/PLAUSIBLE
 
 - **All-PASS** (every flow, and every applicable UI state) → proceed to
   Gate 4.
-- **Any FAIL**, in a flow or in a required UI state → run the `debug-loop`
-  skill, scoped to the failing flow(s) or state(s):
+- **Any FAIL**, in a flow or in any applicable UI state → run the
+  `debug-loop` skill, scoped to the failing flow(s) or state(s):
   reproduce / isolate (its environment-first check — rule out a third-party
   API rate limit, flaky animation timing, note it and re-run rather than
   treating it as a defect, though the app must still degrade gracefully — is

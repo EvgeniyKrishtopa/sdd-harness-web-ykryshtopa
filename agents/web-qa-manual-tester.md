@@ -86,6 +86,12 @@ condition and re-run rather than failing the flow outright. The app must
 still degrade gracefully in that case (no crash, no blank screen) — that
 part *is* worth failing on if it breaks.
 
+This carve-out is for noise encountered incidentally while testing a flow —
+never for a failure you deliberately induced to exercise the error or
+offline state above. A forced bad endpoint or a toggled-offline browser
+behaving exactly as arranged is the test working, not an environment
+condition to excuse; judge it PASS/FAIL like any other state.
+
 ## Output
 
 A per-flow table: flow name, PASS/FAIL, and for any FAIL — what you did,
