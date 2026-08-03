@@ -259,7 +259,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
-       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
        >> .claude/harness-log.jsonl
    done
    ```
@@ -274,6 +274,34 @@ implement unattended is reviewed as one unit too, not group-by-group.
      in one pass.
    - **Case B (judgement-heavy)** — the single group's diff against the
      parent (the run *is* one group, so this is already the whole run).
+   Check that diff's size before handing it to `code-review`:
+   ```bash
+   diff_size=$(git diff <parent>..HEAD | wc -c)
+   diff_file=""
+   if [ "$diff_size" -gt 51200 ]; then
+     diff_file=$(mktemp)   # $TMPDIR/tmp.XXXX by default — outside this repo's
+                            # working tree in any standard setup, never at risk
+                            # of a stray `git add .` picking it up
+     git diff <parent>..HEAD > "$diff_file"
+   fi
+   ```
+   Under ~50 KB (`diff_file` empty), pass the diff text inline in the
+   delegation as before. Over ~50 KB, pass `code-reviewer` `$diff_file`'s
+   *path* plus the `<parent>..HEAD` revision range instead of the text
+   itself — `code-reviewer` has both `Read` and `Bash`, so it reads the file
+   or re-runs the `git diff` itself. This threshold rarely fires in practice
+   (`isolated` groups are small by construction, and a run is at most five
+   of them), but the one diff this controller does hold onto for a whole
+   run — the batch's cumulative diff — is also the one genuinely large text
+   it passes anywhere. **Whenever `diff_file` was set**, `rm -f "$diff_file"`
+   before this step is considered done, on every exit path — the CONFIRMED
+   fix-and-continue path below, the clean/PLAUSIBLE continue path, and the
+   `maxFixAttempts`-exhausted stop path (a stopped run still ends this step;
+   it doesn't get to skip cleanup because it stopped early). Subagent
+   reports themselves stay inline in the response either way — they're
+   short findings lists, and this controller needs them immediately to
+   decide pause-or-continue; wrapping a short report in a file would add a
+   round-trip for nothing.
    Skip the Gate 5 section only if that cumulative diff is docs/config-only
    (no source or test files touched anywhere in the run) — a run that
    shipped source changes with no tests anywhere in it is exactly what that
@@ -291,7 +319,9 @@ implement unattended is reviewed as one unit too, not group-by-group.
    the run is already committed by this point, so there's no open task line
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
-   attempt's hypothesis to the human — don't push past it. Clean/PLAUSIBLE in
+   attempt's hypothesis to the human — don't push past it (still `rm -f
+   "$diff_file"` first if it was set, per above — stopping the run doesn't
+   exempt this step from its own cleanup). Clean/PLAUSIBLE in
    both → continue. Separately from that verdict, `code-reviewer` also
    reports its own `reviewConfidence`. On **Case A (isolated batch)**, a run
    with no CONFIRMED finding but `reviewConfidence: low` still continues —
@@ -329,7 +359,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    mkdir -p .claude
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
-     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
      >> .claude/harness-log.jsonl
    ```
    If `jq` isn't available, construct the equivalent line with `printf`

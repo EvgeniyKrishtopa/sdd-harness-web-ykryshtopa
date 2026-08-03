@@ -77,6 +77,12 @@ would otherwise grep zero, subtract zero, and report full coverage.
    isolated batch's cumulative diff (`git diff <parent>..HEAD`, covering
    every group's commit in the batch) or a judgement-heavy run's single
    group diff (the run *is* one group, so this is already the whole run).
+   For a large batch diff (over ~50 KB), `opsx-apply-git` hands this
+   delegation a file path and a `<parent>..HEAD` revision range instead of
+   the diff text itself (its own §4 step 2) — `Read` that file, or run
+   `git diff` over the given range directly; either produces the same diff
+   this step would otherwise have received inline. Below that threshold,
+   the diff arrives as text, as before.
 2. Determine whether the Gate 5 section applies: skip it only if that diff
    is docs/config-only (no application source or test files changed) — tell
    the delegated agent this explicitly so it doesn't spend effort walking a
@@ -100,8 +106,9 @@ would otherwise grep zero, subtract zero, and report full coverage.
    bar).
 4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
-   the `code-reviewer` subagent (`Agent` tool) with that diff, the
-   Gate-5-applicability note, the final-run status, the requirement-ID
+   the `code-reviewer` subagent (`Agent` tool) with that diff — text or
+   file-handoff, per step 1 — the Gate-5-applicability note, the final-run
+   status, the requirement-ID
    coverage result computed above, the detected `testRunner` and
    `coverageThreshold`, and any acceptance criteria as context — overriding
    the agent's own frontmatter default for this run. If the manifest or the
@@ -151,7 +158,9 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model code-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from code-reviewer's own Output>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations <total debug-loop attempts across every CONFIRMED finding fixed this run, 0 if none> \
+  --argjson escalatedToHuman <true iff debug-loop hit maxFixAttempts on this run> \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -162,7 +171,9 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs 0 \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
   --arg reviewConfidence "<same reviewConfidence, or empty if the Gate 5 section was skipped>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -175,7 +186,15 @@ single `high`/`low` value `code-reviewer` stated for the whole review
 (§4 step 2 of `opsx-apply-git` reads this same value for its own
 low-without-CONFIRMED surfacing) — the `code-review` line always carries it,
 and the `test-coverage` line carries the same value too, except it's empty
-when Gate 5 was skipped, mirroring `model` on that same line. If `jq` isn't available,
+when Gate 5 was skipped, mirroring `model` on that same line.
+`fixIterations`/`escalatedToHuman` work the same way `reviewConfidence`
+does, but land on the `code-review` line only: a CONFIRMED finding from
+either section is fixed through the same single `debug-loop` invocation
+(`opsx-apply-git` §4 step 2), so recording the attempt count on both lines
+would double it in any log-wide sum #U14 computes. The `test-coverage` line
+always logs `0`/`false` here, literally — not because Gate 5 never triggers
+a fix, but because whatever fix loop ran for it is already counted on the
+`code-review` line. If `jq` isn't available,
 construct the equivalent JSON lines with `printf` instead. A failed log
 write never blocks the gate — note it in the report and move on; this is a
 diagnostic aid, not part of the pass/fail logic.

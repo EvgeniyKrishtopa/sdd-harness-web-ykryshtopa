@@ -80,14 +80,20 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model harness-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from harness-reviewer's own Output>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
 the wall-clock time spent, the model `harness-reviewer` ran on (`group`
-is `-`: this gate runs at change scope), and its stated `reviewConfidence`. A fourth verdict value,
+is `-`: this gate runs at change scope), and its stated `reviewConfidence`.
+`fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
+never computed — because an approved finding here is applied directly and
+committed (see above), not run through `debug-loop`'s bounded retry cycle.
+A fourth verdict value,
 `skipped`, also appears under `"gate":"harness-review"` in this log — but
 is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
 precondition finds nothing to review and this delegation never runs at all
@@ -95,3 +101,33 @@ precondition finds nothing to review and this delegation never runs at all
 JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic
 aid, not part of the pass/fail logic.
+
+## Stats digest
+
+Right after this gate's own log line is written (whether this run actually
+delegated to `harness-reviewer` or `opsx-apply-git` wrote a `skipped` line
+for it), print one line summarizing the whole log so far — not just this
+run — since Gate 6 is the one gate that reliably runs whenever the harness
+itself changed, and that makes it the natural place for this to surface
+without asking for it separately:
+
+```bash
+if [ -s .claude/harness-log.jsonl ] && command -v jq >/dev/null 2>&1; then
+  # `fromjson?` drops any line that isn't valid JSON instead of one bad line
+  # aborting the whole slurp with a parse error.
+  jq -R 'fromjson?' .claude/harness-log.jsonl | jq -s -r '
+    ((([.[] | select(.verdict=="skipped")] | length) / length * 100 * 10 | round) / 10) as $skippedPct |
+    ([.[] | select(.escalatedToHuman == true)] | length) as $esc |
+    "harness-stats: \($skippedPct)% of all logged gate runs skipped by 0-token prefilters, \($esc) escalation(s) to human. Full breakdown: references/harness-stats.md."
+  '
+fi
+```
+
+(python3/node equivalent if `jq` isn't available, same fallback pattern as
+the rest of this plugin.) This is deliberately narrow — just the two numbers
+worth seeing without asking. For the full breakdown (per-gate verdicts,
+duration, `fixIterations` distribution, `reviewConfidence`, VCR, Rebuild
+Cost), follow `references/harness-stats.md` — on demand, or as the
+before/after measurement in the monthly harness-diet ritual (`README.md`,
+#U16). No model calls anywhere in either path; it's a plain read of a JSONL
+file, never worth spending tokens to compute.

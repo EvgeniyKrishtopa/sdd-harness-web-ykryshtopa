@@ -64,3 +64,20 @@ rule.
 Package manager: {{PACKAGE_MANAGER}}. Framework: {{FRAMEWORK}}. Test runner:
 {{TEST_RUNNER}}. (Filled in by `init-harness` — do not leave as literal
 placeholders in the generated file.)
+
+## Harness diet
+
+Once a month: temporarily skip one gate's delegation (no config flag for
+this — just don't invoke it for the trial window) or downgrade one gate's
+model via `.claude/harness.json`'s `models.*`, run the normal flow of
+changes for that stretch,
+then compare the `harness-review` skill's stats summary (its
+`references/harness-stats.md` procedure, reading this repo's own
+`.claude/harness-log.jsonl`) from before and after. If nothing measurable
+changed — verdict distribution, escalation count, `reviewConfidence: low`
+share — that gate or model was probably doing less than its cost implied;
+consider trimming
+it for good. If something did change, put it back and record what you
+tried and what you found as a new file in `docs/decisions/`. This is the
+same ratchet principle this harness applies to what gets *added* — it's
+also supposed to apply to what's already here.
