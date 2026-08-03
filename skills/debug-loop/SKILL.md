@@ -128,6 +128,7 @@ one delegation rather than two.
 
 This skill doesn't write its own `harness-log.jsonl` line — it isn't a gate.
 The gate that invoked it (`web-qa` or `code-review`) logs as it already
-does; the attempt count and escalation flag this loop produces join that log
-line in a later release (#U13), once there's a bounded, numbered loop for
-those fields to describe.
+does, folding the attempt count and escalation flag this loop produces into
+that log line's `fixIterations`/`escalatedToHuman` fields (#U13) — see
+those gates' own `## Log` sections for exactly what each field means at
+their call site.

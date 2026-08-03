@@ -151,7 +151,9 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model code-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from code-reviewer's own Output>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations <total debug-loop attempts across every CONFIRMED finding fixed this run, 0 if none> \
+  --argjson escalatedToHuman <true iff debug-loop hit maxFixAttempts on this run> \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -162,7 +164,9 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs 0 \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
   --arg reviewConfidence "<same reviewConfidence, or empty if the Gate 5 section was skipped>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -175,7 +179,15 @@ single `high`/`low` value `code-reviewer` stated for the whole review
 (§4 step 2 of `opsx-apply-git` reads this same value for its own
 low-without-CONFIRMED surfacing) — the `code-review` line always carries it,
 and the `test-coverage` line carries the same value too, except it's empty
-when Gate 5 was skipped, mirroring `model` on that same line. If `jq` isn't available,
+when Gate 5 was skipped, mirroring `model` on that same line.
+`fixIterations`/`escalatedToHuman` work the same way `reviewConfidence`
+does, but land on the `code-review` line only: a CONFIRMED finding from
+either section is fixed through the same single `debug-loop` invocation
+(`opsx-apply-git` §4 step 2), so recording the attempt count on both lines
+would double it in any log-wide sum #U14 computes. The `test-coverage` line
+always logs `0`/`false` here, literally — not because Gate 5 never triggers
+a fix, but because whatever fix loop ran for it is already counted on the
+`code-review` line. If `jq` isn't available,
 construct the equivalent JSON lines with `printf` instead. A failed log
 write never blocks the gate — note it in the report and move on; this is a
 diagnostic aid, not part of the pass/fail logic.

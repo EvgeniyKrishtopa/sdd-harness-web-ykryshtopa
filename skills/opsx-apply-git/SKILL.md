@@ -259,7 +259,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
-       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
        >> .claude/harness-log.jsonl
    done
    ```
@@ -329,7 +329,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    mkdir -p .claude
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
-     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:""}')" \
+     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
      >> .claude/harness-log.jsonl
    ```
    If `jq` isn't available, construct the equivalent line with `printf`

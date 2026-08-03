@@ -80,14 +80,20 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model harness-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from harness-reviewer's own Output>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
 the wall-clock time spent, the model `harness-reviewer` ran on (`group`
-is `-`: this gate runs at change scope), and its stated `reviewConfidence`. A fourth verdict value,
+is `-`: this gate runs at change scope), and its stated `reviewConfidence`.
+`fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
+never computed — because an approved finding here is applied directly and
+committed (see above), not run through `debug-loop`'s bounded retry cycle.
+A fourth verdict value,
 `skipped`, also appears under `"gate":"harness-review"` in this log — but
 is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
 precondition finds nothing to review and this delegation never runs at all

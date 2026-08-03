@@ -145,7 +145,9 @@ printf '%s\n' "$(jq -nc \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model web-qa-manual-tester actually ran on>" \
   --arg reviewConfidence "<high|low, from web-qa-manual-tester's own Output; empty when skipped>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
+  --argjson fixIterations <total debug-loop attempts across every FAIL this run, 0 if none> \
+  --argjson escalatedToHuman <true iff any debug-loop invocation this run hit maxFixAttempts> \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -154,7 +156,14 @@ any FAIL found along the way (even if later fixed and re-passed), or
 `skipped` when this gate wasn't applicable; the wall-clock time across the
 whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
 this gate covers the whole change, triggered on the last group). Also fill
-in its stated `reviewConfidence`, empty when this gate was skipped. If `jq`
+in its stated `reviewConfidence`, empty when this gate was skipped.
+`fixIterations` is the attempt count `debug-loop` itself reports back (phase
+4's "report success and the number of attempts it took"), summed if more
+than one flow needed its own invocation this run; `0` when every flow
+passed on the first try or the gate was skipped. `escalatedToHuman` is
+`true` only if `debug-loop` reached `maxFixAttempts` on this run without
+resolving a failure — the same run that then wrote a `blocked` marker
+instead of proceeding. If `jq`
 isn't available, construct the equivalent JSON line with `printf` instead.
 A failed log write never blocks the gate — note it in the report and move
 on; this is a diagnostic aid, not part of the pass/fail logic.
