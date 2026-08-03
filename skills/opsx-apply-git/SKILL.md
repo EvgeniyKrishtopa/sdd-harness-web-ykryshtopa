@@ -96,10 +96,9 @@ holds back the *whole* group, including its own non-blocked tasks, not just
 the one task carrying the marker — deliberately: an isolated group is
 trusted to run unattended precisely because nothing in it needs a human
 mid-way, and a block is evidence that trust didn't hold for this group, so
-none of it runs unattended until a human clears it. Case
-B can still pick up a blocked task deliberately, with a human already in the
-loop, but should say so explicitly rather than silently working past the
-marker.
+none of it runs unattended until a human clears it. Case B can still pick
+up a blocked task deliberately, with a human already in the loop, but
+should say so explicitly rather than silently working past the marker.
 
 Clearing a block is never automatic — no timeout, no retry-and-forget. Only
 a human removing the marker from `tasks.md`, or explicitly telling this
