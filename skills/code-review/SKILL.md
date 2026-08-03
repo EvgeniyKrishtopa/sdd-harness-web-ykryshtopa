@@ -118,8 +118,9 @@ its response — attribute it to whichever line represents the section that
 actually did the work; a skipped section logs `0`. `reviewConfidence` is the
 single `high`/`low` value `code-reviewer` stated for the whole review
 (§4 step 2 of `opsx-apply-git` reads this same value for its own
-low-without-CONFIRMED surfacing) — both log lines carry it since one review
-covered both gates. If `jq` isn't available,
+low-without-CONFIRMED surfacing) — the `code-review` line always carries it,
+and the `test-coverage` line carries the same value too, except it's empty
+when Gate 5 was skipped, mirroring `model` on that same line. If `jq` isn't available,
 construct the equivalent JSON lines with `printf` instead. A failed log
 write never blocks the gate — note it in the report and move on; this is a
 diagnostic aid, not part of the pass/fail logic.
