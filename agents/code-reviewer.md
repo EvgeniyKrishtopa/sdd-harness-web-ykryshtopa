@@ -71,6 +71,14 @@ covered.
    would have done — name the rung it skipped in the finding.
 4. **Efficiency** — obviously wasteful patterns (re-computing in a render
    loop, an O(n²) where O(n) is trivial) — not micro-optimization hunting.
+5. **Observability** (PLAUSIBLE-only — this is judgement about the
+   application being built, never a CONFIRMED correctness bug):
+   - error handling that logs only the caught message, with no stack trace
+     and no surrounding state (which request, which record, which input) —
+     the kind of catch block that leaves an incident with nothing to
+     investigate;
+   - a critical user path this diff touches (auth, payment, any irreversible
+     action) with no log checkpoint anywhere between its entry and its exit.
 
 ### Gate 5 — test coverage
 
