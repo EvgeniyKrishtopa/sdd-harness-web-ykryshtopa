@@ -87,8 +87,18 @@ calling skill tells you the diff (or the run's cumulative diff, for a
 batched isolated run) is docs/config-only — no application source or test
 files changed anywhere in it. Otherwise check:
 
-1. Every acceptance criterion in the relevant `openspec/` spec has at least
-   one test exercising it.
+1. **Traceability** — the calling skill hands you a ready-made
+   requirement-ID coverage result (its own grep check against `proposal.md`'s
+   `FR-`/`NFR-` identifiers, see `skills/code-review/SKILL.md`), not a spec
+   to read cold: either a list of uncovered identifiers, "all requirement IDs
+   covered", or "traceability unavailable" (this change's `proposal.md`
+   defines none). Every identifier on an uncovered list is a **CONFIRMED**
+   finding — name the identifier and what's missing, rather than
+   re-deriving coverage from the spec yourself. On "traceability
+   unavailable," say so explicitly in your own output, then fall back to
+   reading the relevant spec's acceptance criteria and judging coverage the
+   way this criterion worked before identifiers existed — never report
+   "covered" for a change with nothing to check against.
 2. New branches/conditionals introduced by the diff have a test for each
    meaningfully different path, not just the happy path.
 3. Assertions actually verify behavior (output values, state changes,

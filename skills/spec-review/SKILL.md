@@ -32,6 +32,12 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    than eyeballing it — native extended thinking covers this in one pass; the
    `sequential-thinking` MCP server this project used to require for it is
    redundant with that and has been removed (cost-optimization #39).
+4. Traceability is ID-based, not a general impression: `spec-reviewer`'s
+   checklist item 1 collects every `FR-`/`NFR-` identifier `proposal.md`
+   defines and checks `tasks.md` for both directions — every identifier
+   named by a task, every task naming an identifier. A change whose
+   `proposal.md` carries no identifiers is reported as **"traceability
+   unavailable"**, never as passing; see `agents/spec-reviewer.md`.
 
 `tasks.md` carries a third, unrelated marker this skill never writes:
 `<!-- blocked: <reason> -->`, on an individual task's own checkbox line

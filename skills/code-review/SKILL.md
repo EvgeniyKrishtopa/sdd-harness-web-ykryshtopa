@@ -17,6 +17,48 @@ group touched user-facing UI — after Gate 3 (web-qa) has passed or been
 ruled not applicable. Skipped entirely by `opsx-apply-git`'s own §4 step 1
 trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
 
+## Requirement-ID coverage (0 tokens, before delegating)
+
+Before spawning `code-reviewer`, compute Gate 5 criterion 1's answer by
+`grep` instead of handing the agent a spec to read cold — the same
+cost-optimization logic as the trivial-diff and Gate-6 prefilters in
+`opsx-apply-git`:
+
+```bash
+change="<change-slug>"
+proposal="openspec/changes/$change/proposal.md"
+ids_file=$(mktemp)
+grep -ohE '\b(FR|NFR)-[0-9]+\b' "$proposal" 2>/dev/null | sort -u > "$ids_file"
+if [ ! -s "$ids_file" ]; then
+  echo "traceability unavailable: no FR-/NFR- identifiers in $proposal"
+else
+  uncovered=""
+  while IFS= read -r id; do
+    grep -rlF "implements $id of $change" \
+      --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=openspec \
+      . >/dev/null 2>&1 || uncovered="$uncovered $id"
+  done < "$ids_file"
+  rm -f "$ids_file"
+  if [ -z "$uncovered" ]; then
+    echo "all requirement IDs covered"
+  else
+    echo "uncovered requirement IDs:$uncovered"
+  fi
+fi
+```
+
+The `while ... done < "$ids_file"` form (not a pipe into `while`) is deliberate, matching this project's own `.claudeignore` hook: piping into `while read` runs the loop in a subshell in some shells, silently discarding `uncovered` once the loop exits, and a plain `for id in $ids` relies on word-splitting that zsh does not perform on an unquoted expansion by default — either mistake here reports every change as fully covered regardless of what's actually missing.
+
+Pass this output to `code-reviewer` as context alongside the diff, so it
+reads a ready answer instead of independently deciding whether the spec is
+covered. The three possible outputs are not equivalent and must stay
+distinguishable all the way into the agent's report: **a named list of
+uncovered identifiers**, **"all requirement IDs covered"**, and
+**"traceability unavailable"** (this change's `proposal.md` carries no
+identifiers at all). Collapsing the third into the second is the exact
+silent failure this check exists to avoid — a change with zero identifiers
+would otherwise grep zero, subtract zero, and report full coverage.
+
 ## Action
 
 1. Determine the diff to review, per `opsx-apply-git`'s two cases: an
@@ -47,11 +89,12 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
 4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
    the `code-reviewer` subagent (`Agent` tool) with that diff, the
-   Gate-5-applicability note, the final-run status, the detected
-   `testRunner` and `coverageThreshold`, and any acceptance criteria as
-   context — overriding the agent's own frontmatter default for this run. If
-   the manifest or the key is missing, fall back to the agent's own default;
-   never block the gate on a missing override.
+   Gate-5-applicability note, the final-run status, the requirement-ID
+   coverage result computed above, the detected `testRunner` and
+   `coverageThreshold`, and any acceptance criteria as context — overriding
+   the agent's own frontmatter default for this run. If the manifest or the
+   key is missing, fall back to the agent's own default; never block the
+   gate on a missing override.
 5. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 

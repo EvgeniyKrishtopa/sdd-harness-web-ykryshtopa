@@ -64,6 +64,17 @@ A "group" is a numbered `##` heading in `tasks.md`, not a sub-task. Read the
 **An unmarked group counts as judgement-heavy** — never auto-run an
 unclassified group.
 
+### Requirement-ID markers
+
+If a task names the `FR-`/`NFR-` identifier it implements (`rules.tasks` in
+`openspec/config.yaml`, seeded by `init-harness` Step 2f, requires this),
+leave a matching `implements <ID> of <change-name>` comment — any comment
+syntax works, `//`, `/* */`, JSDoc, a docstring — in the code or test that
+actually satisfies it, while working the task below. This is the only thing
+`code-review`'s grep-based coverage check (§4 step 2;
+`skills/code-review/SKILL.md`) has to go on: skip the comment and the
+identifier reports as uncovered even though the work happened.
+
 ### Blocked tasks
 
 A task can also carry a third, independent marker: `<!-- blocked: <reason>
