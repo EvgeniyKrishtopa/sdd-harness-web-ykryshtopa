@@ -77,6 +77,12 @@ would otherwise grep zero, subtract zero, and report full coverage.
    isolated batch's cumulative diff (`git diff <parent>..HEAD`, covering
    every group's commit in the batch) or a judgement-heavy run's single
    group diff (the run *is* one group, so this is already the whole run).
+   For a large batch diff (over ~50 KB), `opsx-apply-git` hands this
+   delegation a file path and a `<parent>..HEAD` revision range instead of
+   the diff text itself (its own §4 step 2) — `Read` that file, or run
+   `git diff` over the given range directly; either produces the same diff
+   this step would otherwise have received inline. Below that threshold,
+   the diff arrives as text, as before.
 2. Determine whether the Gate 5 section applies: skip it only if that diff
    is docs/config-only (no application source or test files changed) — tell
    the delegated agent this explicitly so it doesn't spend effort walking a
@@ -100,8 +106,9 @@ would otherwise grep zero, subtract zero, and report full coverage.
    bar).
 4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
-   the `code-reviewer` subagent (`Agent` tool) with that diff, the
-   Gate-5-applicability note, the final-run status, the requirement-ID
+   the `code-reviewer` subagent (`Agent` tool) with that diff — text or
+   file-handoff, per step 1 — the Gate-5-applicability note, the final-run
+   status, the requirement-ID
    coverage result computed above, the detected `testRunner` and
    `coverageThreshold`, and any acceptance criteria as context — overriding
    the agent's own frontmatter default for this run. If the manifest or the

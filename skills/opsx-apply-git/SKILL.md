@@ -274,6 +274,23 @@ implement unattended is reviewed as one unit too, not group-by-group.
      in one pass.
    - **Case B (judgement-heavy)** — the single group's diff against the
      parent (the run *is* one group, so this is already the whole run).
+   Check that diff's size before handing it to `code-review` (`git diff
+   <parent>..HEAD | wc -c`): under ~50 KB, pass the diff text inline in the
+   delegation as before. Over ~50 KB, write it to a file via `mktemp`
+   (outside the repo, so it's never at risk of a stray `git add .`
+   picking it up) and pass `code-reviewer` that file's *path* plus the
+   `<parent>..HEAD` revision range instead of the text itself —
+   `code-reviewer` has both `Read` and `Bash`, so it reads the file or
+   re-runs the `git diff` itself. This threshold rarely fires in practice
+   (`isolated` groups are small by construction, and a run is at most five
+   of them), but the one diff this controller does hold onto for a whole
+   run — the batch's cumulative diff — is also the one genuinely large text
+   it passes anywhere. Delete the temp file once this run's review verdict
+   (including any `debug-loop` fix and re-review) is settled, whether or not
+   the threshold ended up being crossed. Subagent reports themselves stay
+   inline in the response either way — they're short findings lists, and
+   this controller needs them immediately to decide pause-or-continue;
+   wrapping a short report in a file would add a round-trip for nothing.
    Skip the Gate 5 section only if that cumulative diff is docs/config-only
    (no source or test files touched anywhere in the run) — a run that
    shipped source changes with no tests anywhere in it is exactly what that
