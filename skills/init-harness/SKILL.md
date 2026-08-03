@@ -79,6 +79,9 @@ whole failure this step exists to prevent.
 | `.claudeignore` | Step 7 | append missing lines |
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
+| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
+| `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
+| `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case B, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead |
 
 ### Upgrade mode
 
@@ -435,6 +438,30 @@ rather than merge targets. If a file already exists, read it first:
 - Only write straight over the file with no confirmation when it doesn't
   exist yet.
 
+Also seed this repo's continuity files — new in both first-install and
+upgrade mode, since a repo set up by an earlier version never got them:
+
+- Write an initial `PROGRESS.md` at the repo root from
+  `references/progress-template.md` if one doesn't already exist — same
+  never-overwrite rule as above. A fresh file starts with no current change,
+  no next steps, and a clock-in of "now"; after this point only
+  `opsx-apply-git` touches it, at its own run boundaries (see
+  `references/progress-template.md`).
+- Write `.gitattributes` with `PROGRESS.md merge=union` — append the line if
+  the file exists without it, leave everything else in it alone.
+  `PROGRESS.md` is the one file every task-group branch in this harness's
+  branch-per-group workflow can touch, so without this, every group's PR
+  would conflict on it. Nothing else in this harness needs `merge=union` —
+  in particular not `docs/decisions/`, whose whole design point is that two
+  branches produce two different files instead of contending for one (see
+  `references/decision-template.md`).
+- Check whether the project already has a `docs/adr/` directory. If it does,
+  tell the user to keep using it and don't create a competing
+  `docs/decisions/` alongside it. If it doesn't, there's nothing to create
+  yet — `docs/decisions/` comes into existence the first time
+  `opsx-apply-git` (§3 Case B) actually writes a decision that outlives its
+  change, not before.
+
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
 This plugin's `hooks/hooks.json` (commit/merge/push guards,
@@ -713,6 +740,16 @@ to asking before every commit instead of trusting it.
    - @.claude/harness.json — detected stack (framework, package manager,
      test runner, coverage threshold). Every skill and hook in this harness
      reads from here; do not re-detect any of it.
+   - PROGRESS.md — current change, status, and next steps as of the last
+     stop. `SessionStart` already prints its in-progress/blocked line and
+     Next steps section at the start of every session; read the file itself
+     for anything beyond that digest (the Done list, clock-in/out history). Not
+     `@`-imported — the hook already surfaces it, so importing it too would
+     load the same content twice.
+   - docs/decisions/ — one ADR-format file per architectural decision that
+     outlives a single change; see `docs/decisions/NNNN-*.md` if the
+     directory exists yet. Not auto-loaded — read the relevant file when a
+     past decision might be in play.
    ```
 
 4. Keep the block short. Gate 6 (`harness-review`) already checks that the

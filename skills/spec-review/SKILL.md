@@ -33,6 +33,14 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    `sequential-thinking` MCP server this project used to require for it is
    redundant with that and has been removed (cost-optimization #39).
 
+`tasks.md` carries a third, unrelated marker this skill never writes:
+`<!-- blocked: <reason> -->`, on an individual task's own checkbox line
+rather than a group's `##` heading. `opsx-apply-git` writes that one, at the
+moment a run stops without resolving the task — it has nothing to do with
+this skill's isolated/judgement-heavy classification, which is decided
+before implementation ever starts. Don't conflate the two when reading
+`tasks.md` back.
+
 ## Handling the result
 
 - **CONFIRMED finding** — show it to the user and ask whether to revise the

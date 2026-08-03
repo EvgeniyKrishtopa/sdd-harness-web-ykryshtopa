@@ -45,8 +45,8 @@ are the source of truth for branch naming, commit format, and gate order.
    re-reading its full proposal/design/every capability's spec on every
    single run, when a given run only ever touches one or two groups, spends
    context on files that aren't relevant to what this run is about to do:
-   - `tasks.md` itself — always; §3 depends on it to determine groups and
-     read the isolated/judgement-heavy marks.
+   - `tasks.md` itself — always; §3 depends on it to determine groups, read
+     the isolated/judgement-heavy marks, and read any `blocked` task marks.
    - `proposal.md` / `design.md` — only on this change's very first run (no
      group anywhere in `tasks.md` is committed yet), or later if a group's
      own ambiguity genuinely requires re-checking the original intent. Not
@@ -63,6 +63,46 @@ A "group" is a numbered `##` heading in `tasks.md`, not a sub-task. Read the
 `<!-- isolated -->` / `<!-- judgement-heavy -->` marks `spec-review` wrote.
 **An unmarked group counts as judgement-heavy** — never auto-run an
 unclassified group.
+
+### Blocked tasks
+
+A task can also carry a third, independent marker: `<!-- blocked: <reason>
+-->`, written on the task's own `- [ ]` line — never on the group's `##`
+heading, which only ever carries the isolated/judgement-heavy classification.
+This skill is the one that writes it, at the exact moment a run stops
+without resolving the task: Case A step 5's pause, or Case B step 2's pause
+that outlives the run. `spec-review` never writes it — that classification
+happens before implementation starts, with no task yet to block.
+
+That edit is committed on its own — a small standalone commit
+(`docs: mark <group>.<task> blocked — <reason>`), the same way every group's
+own checkbox flips are committed, never left as a bare uncommitted
+working-tree diff. Leaving it uncommitted would undercut the entire point of
+this marker: a reason for stopping that survives only in an uncommitted diff
+is exactly as fragile as one that survives only in chat, the failure #U3
+already fixed for `PROGRESS.md`. Like any other commit made mid-batch before
+this run reaches §4, it isn't pushed to `origin` until the run reaches (or,
+on resume, re-reaches) §4's push step — that's an existing property of this
+whole flow, not something new the marker introduces: an already-completed
+group sitting earlier in the same paused batch is in exactly the same
+committed-but-unpushed state until then. A session that resumes on this same
+branch (§1 step 1's leftover-branch check) finds the marker either way.
+
+A group containing any blocked task is never eligible for Case A's
+autonomous batch, regardless of its own isolated/judgement-heavy mark — skip
+past it when scanning for the next run's starting point, and if every
+remaining group is blocked, stop and report rather than inventing work. This
+holds back the *whole* group, including its own non-blocked tasks, not just
+the one task carrying the marker — deliberately: an isolated group is
+trusted to run unattended precisely because nothing in it needs a human
+mid-way, and a block is evidence that trust didn't hold for this group, so
+none of it runs unattended until a human clears it. Case B can still pick
+up a blocked task deliberately, with a human already in the loop, but
+should say so explicitly rather than silently working past the marker.
+
+Clearing a block is never automatic — no timeout, no retry-and-forget. Only
+a human removing the marker from `tasks.md`, or explicitly telling this
+skill to continue past it, clears it.
 
 ### Syncing the parent (used by both cases below)
 
@@ -122,7 +162,10 @@ case it is:
    left → end the batch, go to §4.
 5. Any pause during implementation (an error, an ambiguity, a design
    decision surfacing) stops the batch where it is — report and wait, never
-   commit a half-finished group. A CONFIRMED finding from the batch-level
+   commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
+   specific task line that caused the stop and commit that one-line edit on
+   its own (see §3's Blocked tasks section) — the task itself stays
+   uncommitted and unchecked; only the marker is committed. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
    is already committed; its fix lands as a new commit appended to the
    batch, never an amend of an earlier group's own commit.
@@ -132,7 +175,20 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Implement with the standard
-   guardrails, but pause and ask on every design decision or ambiguity.
+   guardrails, but pause and ask on every design decision or ambiguity. If
+   the run ends (report and stop, §4 step 7) before that question is
+   answered, write `<!-- blocked: <reason> -->` on the specific task line
+   waiting on it and commit that one-line edit on its own (see §3's Blocked
+   tasks section) — an ordinary pause answered within the same turn never
+   touches `tasks.md`; only one that outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
+   note it in the change's own `design.md` (it archives with the change,
+   which is fine — nothing outside this change needs it again); outlives this
+   change — a convention, a tool choice, a stance the *next* change will also
+   need → write it as a new `docs/decisions/NNNN-<slug>.md` per
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/decision-template.md`,
+   including its required `Alternatives Considered` section. Check for an
+   existing `docs/adr/` first — if the project already has one, use that
+   instead of creating `docs/decisions/` alongside it, and say so.
 3. Once green, confirm scope and — if this is also the *last* group with
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
@@ -267,9 +323,23 @@ implement unattended is reviewed as one unit too, not group-by-group.
    covering every group in this run. **Judgement-heavy run** → lead the PR
    body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
    open — the human owns the merge.
-7. **Tasks remain** → report progress and stop; the next `opsx-apply-git`
-   invocation re-syncs the parent from `origin` (only picks up this run's
-   work once its PR is merged). **No tasks remain** → continue to step 5.
+7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
+   current change and branch, last commit, done/in-progress/blocked groups
+   (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
+   the moment it stopped the run — see §3's Blocked tasks section — and
+   `references/progress-template.md`'s self-check: re-read what you wrote
+   and reconcile it against `tasks.md`'s real state before moving on) and
+   numbered next steps for whatever remains in this change. If `PROGRESS.md`
+   has a `## Paused changes` section and one of its lines names *this*
+   change, remove that line — this run means the change is active again,
+   not paused — and leave every other line in that section untouched; if no
+   line names this change, leave the whole section exactly as found (it
+   belongs to `opsx-propose-review`, see `references/progress-template.md`).
+   Report progress and stop, calling out any blocked task by name and reason
+   as its own line in the report rather than folding it into the general
+   summary — the next `opsx-apply-git` invocation re-syncs the parent from
+   `origin` (only picks up this run's work once its PR is merged). **No
+   tasks remain** → continue to §5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
@@ -302,8 +372,14 @@ archived a change that was never actually accepted (#19).
    second, narrower override of "never commit without being asked," same
    justification as §3's per-group commit override.
 4. Push the archive branch, open a PR into the parent. Leave it open.
-5. Report the full session: every group completed with PR URLs, final
-   `N/N tasks complete`, archive location, archive PR URL.
+5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
+   current change and no next steps remain for it, noting the archive
+   location and archive PR URL — the same self-checking regeneration as §4
+   step 7, just for a change that's now fully done rather than paused,
+   including the same `## Paused changes` prune-this-change-only-if-present
+   rule from §4 step 7. Then report the full session: every group completed
+   with PR URLs, final `N/N tasks complete`, archive location, archive PR
+   URL.
 
 ## Exceptions
 
