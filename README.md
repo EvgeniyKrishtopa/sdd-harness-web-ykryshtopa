@@ -282,10 +282,12 @@ policy once installed in your repo.
 
 The ratchet principle this plugin applies to what gets *added* — nothing
 new without a real signal — has a symmetric half: checking whether what's
-already built has gone stale. Once a month, temporarily disable one gate or
-downgrade one gate's model in `.claude/harness.json`, run the normal flow
-of changes, and compare `skills/harness-review/references/harness-stats.md`'s
-output from before and after. No measurable difference (verdict
+already built has gone stale. Once a month, temporarily skip one gate's
+delegation (no config flag for this — just don't invoke it for the trial
+window) or downgrade one gate's model via `.claude/harness.json`'s
+`models.*`, run the normal flow of changes, and compare
+`skills/harness-review/references/harness-stats.md`'s output from before
+and after. No measurable difference (verdict
 distribution, escalations, `reviewConfidence: low` share) → consider
 trimming that gate or model for good. A real difference → put it back and
 record what was tried and found as a new file in `docs/decisions/`. This is

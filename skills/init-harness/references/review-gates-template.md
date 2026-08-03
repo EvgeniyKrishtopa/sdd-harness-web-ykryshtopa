@@ -67,8 +67,10 @@ placeholders in the generated file.)
 
 ## Harness diet
 
-Once a month: disable one gate or downgrade one gate's model in
-`.claude/harness.json`, run the normal flow of changes for that stretch,
+Once a month: temporarily skip one gate's delegation (no config flag for
+this — just don't invoke it for the trial window) or downgrade one gate's
+model via `.claude/harness.json`'s `models.*`, run the normal flow of
+changes for that stretch,
 then compare the `harness-review` skill's stats summary (its
 `references/harness-stats.md` procedure, reading this repo's own
 `.claude/harness-log.jsonl`) from before and after. If nothing measurable

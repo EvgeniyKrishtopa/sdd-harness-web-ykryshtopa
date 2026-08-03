@@ -11,9 +11,10 @@ or as part of the monthly harness-diet ritual (`README.md`'s
 
 - On demand, whenever someone asks "how's the harness doing" / "what's our
   fix-loop rate" / "how much are we skipping".
-- As the "before" and "after" measurement in the harness-diet ritual
-  (disable a gate or downgrade a model for a month, run this before and
-  after, compare).
+- As the "before" and "after" measurement in the harness-diet ritual (skip
+  one gate's delegation, or downgrade one gate's model via `.claude/
+  harness.json`'s `models.*`, for a month, run this before and after,
+  compare).
 - Gate 6 (`harness-review`) prints a one-line digest of just the skipped
   fraction and escalation count every time it runs — see that skill's own
   `## Stats digest` section. This file is the full version of that number.
