@@ -11,7 +11,8 @@ the full done list — beyond that digest.
 
 ## Who writes it, and when
 
-Only `opsx-apply-git`, only at **run boundaries** — never per task, never on
+For the `Current change`/`Status`/`Next steps`/`Session log` sections: only
+`opsx-apply-git`, only at **run boundaries** — never per task, never on
 every `Stop`:
 
 - §4 step 7 (a run pauses with tasks remaining) — clock-out for this run.
@@ -21,6 +22,9 @@ One entry per PR, not per task-group inside a batch. Never let a model
 rewrite this file in free-form prose on every turn — that's tokens spent on
 every step, a growing source of noise, and (per the merge note below) a
 conflict manufactured on every group's branch instead of once per run.
+
+The `Paused changes` section is the one exception to this single-writer
+rule — see its own note below.
 
 ## Merge safety
 
@@ -65,16 +69,45 @@ a partial or interrupted write, not a perfect first draft.
 1. <next concrete step>
 2. <next concrete step>
 
+## Paused changes
+
+- <change-slug> — paused <YYYY-MM-DD>: <reason, one line>
+
 ## Session log
 
 - Clock-in: <ISO-8601 UTC> — Clock-out: <ISO-8601 UTC>
 ```
 
+The `Paused changes` section holds a *different* change than the one
+`Current change` describes — a whole change set aside to start another,
+not a task-level block inside the active one (that's the `Blocked:` line
+above, which stays scoped to the current change's own `tasks.md`). Absent
+entirely until `opsx-propose-review`'s project-level WIP check (#U5) first
+writes to it; omit the heading rather than leaving it empty.
+
+Two skills touch it, each in one direction only: `opsx-propose-review`
+appends a line when the user explicitly pauses an unarchived change to
+start a new one; `opsx-apply-git` removes that change's own line — nothing
+else in the section — the next time it reaches a run boundary (§4 step 7 /
+§5 step 5) *for that same paused change*, since resuming it implies it isn't
+paused anymore. Every other regeneration this file undergoes (a run
+boundary for whatever change is currently `Current change`, which is a
+*different* change than the one being resumed) must leave this section
+otherwise untouched, byte-for-byte, the same way `docs/decisions/` is never
+touched by anything but a new file: this is the one part of `PROGRESS.md`
+that falls outside the single-writer/run-boundary rule above, precisely
+because it describes a change that isn't the one currently running.
+
 Keep section headings exactly as shown (`## Current change`, `## Status`,
-`## Next steps`, `## Session log`) — the `SessionStart` hook locates them by
-these literal marker strings with `awk`, not by parsing markdown generally.
-Renaming a heading silently breaks the hook's extraction, with no error to
-notice it by.
+`## Next steps`, `## Session log`, `## Paused changes`) — the `SessionStart`
+hook locates `## Status`/`## Next steps` by these literal marker strings
+with `awk`, not by parsing markdown generally, and `opsx-apply-git`/
+`opsx-propose-review` locate `## Paused changes` the same way to add or
+remove a single line without disturbing the rest of the file. Renaming a
+heading silently breaks that extraction, with no error to notice it by.
+`## Paused changes` isn't part of the `SessionStart` digest itself (same as
+`## Current change` and `## Session log` — the hook only ever surfaces
+`Status`/`Next steps`); read the file directly for it.
 
 The `In progress:`/`Blocked:` lines and each numbered `Next steps` item must
 stay on a single physical line each — the hook's extraction is line-oriented

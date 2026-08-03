@@ -330,12 +330,17 @@ implement unattended is reviewed as one unit too, not group-by-group.
    the moment it stopped the run — see §3's Blocked tasks section — and
    `references/progress-template.md`'s self-check: re-read what you wrote
    and reconcile it against `tasks.md`'s real state before moving on) and
-   numbered next steps for whatever remains in this change. Report progress
-   and stop, calling out any blocked task by name and reason as its own line
-   in the report rather than folding it into the general summary — the next
-   `opsx-apply-git` invocation re-syncs the parent from `origin` (only picks
-   up this run's work once its PR is merged). **No tasks remain** → continue
-   to §5.
+   numbered next steps for whatever remains in this change. If `PROGRESS.md`
+   has a `## Paused changes` section and one of its lines names *this*
+   change, remove that line — this run means the change is active again,
+   not paused — and leave every other line in that section untouched; if no
+   line names this change, leave the whole section exactly as found (it
+   belongs to `opsx-propose-review`, see `references/progress-template.md`).
+   Report progress and stop, calling out any blocked task by name and reason
+   as its own line in the report rather than folding it into the general
+   summary — the next `opsx-apply-git` invocation re-syncs the parent from
+   `origin` (only picks up this run's work once its PR is merged). **No
+   tasks remain** → continue to §5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
@@ -371,9 +376,11 @@ archived a change that was never actually accepted (#19).
 5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
    current change and no next steps remain for it, noting the archive
    location and archive PR URL — the same self-checking regeneration as §4
-   step 7, just for a change that's now fully done rather than paused. Then
-   report the full session: every group completed with PR URLs, final
-   `N/N tasks complete`, archive location, archive PR URL.
+   step 7, just for a change that's now fully done rather than paused,
+   including the same `## Paused changes` prune-this-change-only-if-present
+   rule from §4 step 7. Then report the full session: every group completed
+   with PR URLs, final `N/N tasks complete`, archive location, archive PR
+   URL.
 
 ## Exceptions
 
