@@ -65,7 +65,10 @@ covered.
 2. **Reuse** — duplicated logic that already exists elsewhere in the diff's
    neighborhood; a new helper that reinvents an existing utility.
 3. **Simplification** — unnecessary abstraction, premature generalization,
-   dead code introduced by the change itself.
+   dead code introduced by the change itself. A new dependency or custom
+   helper added where `.claude/docs/laziness-ladder.md`'s earlier rungs
+   (stdlib, a platform feature, an already-installed dependency, one line)
+   would have done — name the rung it skipped in the finding.
 4. **Efficiency** — obviously wasteful patterns (re-computing in a render
    loop, an O(n²) where O(n) is trivial) — not micro-optimization hunting.
 

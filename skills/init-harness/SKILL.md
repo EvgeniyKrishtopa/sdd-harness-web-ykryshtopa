@@ -75,6 +75,7 @@ whole failure this step exists to prevent.
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
@@ -417,16 +418,18 @@ number without asking; different projects have different baselines.
 
 ## Step 5 — write the harness docs
 
-Write `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`
-into the target repo (see `references/git-conventions-template.md` and
-`references/review-gates-template.md` in this skill for the content to
+Write `.claude/docs/git-conventions.md`, `.claude/docs/review-gates.md`, and
+`.claude/docs/laziness-ladder.md` into the target repo (see
+`references/git-conventions-template.md`, `references/review-gates-template.md`,
+and `references/laziness-ladder-template.md` in this skill for the content to
 adapt — fill in the detected package manager's commands and the chosen
-coverage threshold rather than copying placeholders verbatim).
+coverage threshold rather than copying placeholders verbatim;
+`laziness-ladder-template.md` needs no substitution, copy it as-is).
 
-Do not silently overwrite either file on a re-run of this skill — the same
-"never clobber existing config" rule this skill already applies to hooks
+Do not silently overwrite any of the three on a re-run of this skill — the
+same "never clobber existing config" rule this skill already applies to hooks
 (Step 3), permissions (Step 6), `.claudeignore` (Step 7), and CLAUDE.md
-(Step 9) also applies here, even though these two are fully generated files
+(Step 9) also applies here, even though these are fully generated files
 rather than merge targets. If a file already exists, read it first:
 - If its content is identical to what this step would generate (modulo the
   substituted package-manager commands and coverage threshold), there's
@@ -743,6 +746,9 @@ to asking before every commit instead of trusting it.
      be assumed.
    - @.claude/docs/review-gates.md — the six automated review gates and
      their order.
+   - @.claude/docs/laziness-ladder.md — priority order to check before
+     writing new code; does not apply to trust-boundary validation,
+     data loss, security, or accessibility.
    - @.claude/harness.json — detected stack (framework, package manager,
      test runner, coverage threshold). Every skill and hook in this harness
      reads from here; do not re-detect any of it.

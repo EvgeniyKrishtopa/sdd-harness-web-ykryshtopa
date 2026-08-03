@@ -142,8 +142,10 @@ case it is:
 
 1. Sync the parent (see above), cut one batch branch off it
    (`<type>/<change>-isolated`, per git-conventions.md naming).
-2. For each isolated group in turn: implement its sub-tasks (minimal,
-   focused; mark `- [ ]` → `- [x]`). If a design decision surfaces mid-group,
+2. For each isolated group in turn: weigh what to build against
+   `.claude/docs/laziness-ladder.md` before writing anything new, then
+   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). If a
+   design decision surfaces mid-group,
    the classification was wrong — stop, leave it uncommitted, tell the user.
 3. Once green (its own verification + lint), confirm scope (`git status -s`,
    `git diff --stat` — no unrelated files) and commit the group's own
@@ -174,8 +176,10 @@ case it is:
 
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
-2. Announce why it's judgement-heavy. Implement with the standard
-   guardrails, but pause and ask on every design decision or ambiguity. If
+2. Announce why it's judgement-heavy. Weigh what to build against
+   `.claude/docs/laziness-ladder.md` before writing anything new, then
+   implement with the standard guardrails, but pause and ask on every design
+   decision or ambiguity. If
    the run ends (report and stop, §4 step 7) before that question is
    answered, write `<!-- blocked: <reason> -->` on the specific task line
    waiting on it and commit that one-line edit on its own (see §3's Blocked
