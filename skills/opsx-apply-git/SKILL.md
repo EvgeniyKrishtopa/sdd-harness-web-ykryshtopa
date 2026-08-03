@@ -45,8 +45,8 @@ are the source of truth for branch naming, commit format, and gate order.
    re-reading its full proposal/design/every capability's spec on every
    single run, when a given run only ever touches one or two groups, spends
    context on files that aren't relevant to what this run is about to do:
-   - `tasks.md` itself — always; §3 depends on it to determine groups and
-     read the isolated/judgement-heavy marks.
+   - `tasks.md` itself — always; §3 depends on it to determine groups, read
+     the isolated/judgement-heavy marks, and read any `blocked` task marks.
    - `proposal.md` / `design.md` — only on this change's very first run (no
      group anywhere in `tasks.md` is committed yet), or later if a group's
      own ambiguity genuinely requires re-checking the original intent. Not
@@ -74,10 +74,29 @@ without resolving the task: Case A step 5's pause, or Case B step 2's pause
 that outlives the run. `spec-review` never writes it — that classification
 happens before implementation starts, with no task yet to block.
 
+That edit is committed on its own — a small standalone commit
+(`docs: mark <group>.<task> blocked — <reason>`), the same way every group's
+own checkbox flips are committed, never left as a bare uncommitted
+working-tree diff. Leaving it uncommitted would undercut the entire point of
+this marker: a reason for stopping that survives only in an uncommitted diff
+is exactly as fragile as one that survives only in chat, the failure #U3
+already fixed for `PROGRESS.md`. Like any other commit made mid-batch before
+this run reaches §4, it isn't pushed to `origin` until the run reaches (or,
+on resume, re-reaches) §4's push step — that's an existing property of this
+whole flow, not something new the marker introduces: an already-completed
+group sitting earlier in the same paused batch is in exactly the same
+committed-but-unpushed state until then. A session that resumes on this same
+branch (§1 step 1's leftover-branch check) finds the marker either way.
+
 A group containing any blocked task is never eligible for Case A's
 autonomous batch, regardless of its own isolated/judgement-heavy mark — skip
 past it when scanning for the next run's starting point, and if every
-remaining group is blocked, stop and report rather than inventing work. Case
+remaining group is blocked, stop and report rather than inventing work. This
+holds back the *whole* group, including its own non-blocked tasks, not just
+the one task carrying the marker — deliberately: an isolated group is
+trusted to run unattended precisely because nothing in it needs a human
+mid-way, and a block is evidence that trust didn't hold for this group, so
+none of it runs unattended until a human clears it. Case
 B can still pick up a blocked task deliberately, with a human already in the
 loop, but should say so explicitly rather than silently working past the
 marker.
@@ -145,9 +164,9 @@ case it is:
 5. Any pause during implementation (an error, an ambiguity, a design
    decision surfacing) stops the batch where it is — report and wait, never
    commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
-   specific task line that caused the stop (see §3's Blocked tasks section);
-   the task itself stays uncommitted and unchecked, the marker is the only
-   edit this makes to `tasks.md` for it. A CONFIRMED finding from the batch-level
+   specific task line that caused the stop and commit that one-line edit on
+   its own (see §3's Blocked tasks section) — the task itself stays
+   uncommitted and unchecked; only the marker is committed. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
    is already committed; its fix lands as a new commit appended to the
    batch, never an amend of an earlier group's own commit.
@@ -160,9 +179,9 @@ case it is:
    guardrails, but pause and ask on every design decision or ambiguity. If
    the run ends (report and stop, §4 step 7) before that question is
    answered, write `<!-- blocked: <reason> -->` on the specific task line
-   waiting on it (see §3's Blocked tasks section) — an ordinary pause
-   answered within the same turn never touches `tasks.md`; only one that
-   outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
+   waiting on it and commit that one-line edit on its own (see §3's Blocked
+   tasks section) — an ordinary pause answered within the same turn never
+   touches `tasks.md`; only one that outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
    note it in the change's own `design.md` (it archives with the change,
    which is fine — nothing outside this change needs it again); outlives this
    change — a convention, a tool choice, a stance the *next* change will also
