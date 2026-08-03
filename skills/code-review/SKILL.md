@@ -29,8 +29,17 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
    checklist that doesn't apply.
 3. Determine whether this run is the change's **final run**: read
    `tasks.md` and check whether any `- [ ]` task remains anywhere in it once
-   this run's own groups are accounted for. None remaining → final run;
-   anything still open → not. Tell the delegated agent this explicitly — it
+   this run's own groups are accounted for — **excluding** any `- [ ]` task
+   that carries its own `<!-- blocked: ... -->` marker. A blocked task can
+   sit unchecked for many runs by design (`opsx-apply-git` §3 "Blocked
+   tasks" skips past a blocked group rather than waiting on it), so counting
+   it here would mark every later run "non-final" indefinitely, even ones
+   touching code the block has nothing to do with. None remaining (ignoring
+   blocked tasks) → final run; anything still open and *not* blocked → not.
+   If the only open items left are blocked ones, say so plainly to the user
+   alongside the verdict — a review proceeding as "final" specifically
+   because a block is being set aside is worth surfacing, not silently
+   assumed. Tell the delegated agent the final-run verdict explicitly — it
    only sees the diff and has no way to know this on its own, and it needs
    it to apply the Definition of Done's simplification-downgrade rule
    correctly (`review-gates.md`; `agents/code-reviewer.md`'s Verification

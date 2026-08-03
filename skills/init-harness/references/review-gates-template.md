@@ -41,7 +41,10 @@ change as a whole — not any one of them in isolation:
 2. **Runtime** — `.husky/pre-push` (the coverage-mode test run). Runs on
    every push.
 3. **System** — Gate 3 (`web-qa`), a real-browser pass over the change's
-   whole diff, run once on the last task group before Gate 4.
+   whole diff, run once on the last task group before Gate 4 *if the change
+   touched user-facing UI*; not applicable to a change that didn't (e.g.
+   backend/API-only), in which case Static and Runtime are the whole
+   contract for that change.
 
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a
