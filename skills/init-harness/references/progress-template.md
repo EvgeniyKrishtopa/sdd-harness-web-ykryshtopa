@@ -58,8 +58,7 @@ a partial or interrupted write, not a perfect first draft.
 
 - Done: <groups completed this change, e.g. "1, 2">
 - In progress: <group name, or "none">
-- Blocked: <group/task — reason (see the `<!-- blocked: ... -->` marker in
-  tasks.md), or "none">
+- Blocked: <group/task — reason, one line (see the `<!-- blocked: ... -->` marker in tasks.md), or "none">
 
 ## Next steps
 
@@ -76,3 +75,10 @@ Keep section headings exactly as shown (`## Current change`, `## Status`,
 these literal marker strings with `awk`, not by parsing markdown generally.
 Renaming a heading silently breaks the hook's extraction, with no error to
 notice it by.
+
+The `In progress:`/`Blocked:` lines and each numbered `Next steps` item must
+stay on a single physical line each — the hook's extraction is line-oriented
+and cannot reassemble a value that wraps onto a second line; a wrapped
+`Blocked:` reason (like the multi-line placeholder above) prints truncated,
+silently, with nothing to flag the cut. Write a long reason as one line, even
+an unwieldy one.

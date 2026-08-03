@@ -741,9 +741,9 @@ to asking before every commit instead of trusting it.
      test runner, coverage threshold). Every skill and hook in this harness
      reads from here; do not re-detect any of it.
    - PROGRESS.md — current change, status, and next steps as of the last
-     stop. `SessionStart` already prints its Status/Next steps sections at
-     the start of every session; read the file itself for anything beyond
-     that digest (clock-in/out history, the full done list). Not
+     stop. `SessionStart` already prints its in-progress/blocked line and
+     Next steps section at the start of every session; read the file itself
+     for anything beyond that digest (the Done list, clock-in/out history). Not
      `@`-imported — the hook already surfaces it, so importing it too would
      load the same content twice.
    - docs/decisions/ — one ADR-format file per architectural decision that
