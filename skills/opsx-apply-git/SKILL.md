@@ -272,9 +272,12 @@ implement unattended is reviewed as one unit too, not group-by-group.
    fix, before pushing — don't assume a fix scoped to the group that
    introduced the problem is automatically compatible with what later
    groups added on top of it. If `debug-loop` exhausts `maxFixAttempts`
-   instead of resolving the finding, treat it the same as any other pause
-   during implementation (§3 step 5): stop this run, leave the branch as is,
-   and report — don't push past it. Clean/PLAUSIBLE in both → continue.
+   instead of resolving the finding, this is report-only — every group in
+   the run is already committed by this point, so there's no open task line
+   to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
+   implementation). Stop this run, leave the branch as is, and report every
+   attempt's hypothesis to the human — don't push past it. Clean/PLAUSIBLE in
+   both → continue.
 3. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
    on this run's last group with pending tasks only, before spawning
    `harness-reviewer` at all, check whether this run touched anything it

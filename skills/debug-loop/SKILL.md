@@ -59,29 +59,39 @@ free first try.
 ## Escalate once the limit is reached
 
 - Do not attempt a fix beyond `maxFixAttempts`.
-- **Called from inside an `opsx-apply-git` run** (there's a live `tasks.md`
-  task line for the group currently in progress): write
-  `<!-- blocked: <reason> -->` on that specific task line and commit that
-  one-line edit on its own — exactly the mechanism `opsx-apply-git`'s own §3
-  "Blocked tasks" section already defines. Reuse it directly rather than
-  inventing a second way to mark a stop; this skill runs in the same session
-  that already has that context loaded. Keep `<reason>` compact enough to
-  survive as `PROGRESS.md`'s single physical `Blocked:` line (e.g.
-  `debug-loop: 2/2 attempts exhausted, see commit body`) and put the full
-  per-attempt hypothesis-and-result detail in that commit's own body, the
-  same "what, why, how it was validated" shape `git-conventions.md` already
-  requires of every commit. `opsx-apply-git`'s next run-boundary
-  regeneration (§4 step 7) then carries that reason into `PROGRESS.md` as it
-  already does for any other blocked task — nothing new to write there.
-- **Called with no active run/group context** (a standalone request, outside
-  `opsx-apply-git`): there's no `tasks.md` line to mark and no run boundary
-  that will regenerate `PROGRESS.md`. Say so plainly, and report the full
-  attempt history — each phase-3 hypothesis and its phase-4 result — directly
-  to the user instead of writing to either file.
-- Either way, hand the human every hypothesis from every attempt, not just
-  the last one — that's the entire point of recording the expectation in
-  phase 3: the escalation reads as "here's what we tried and why it didn't
-  hold," not "it didn't work twice."
+- **`web-qa` call site** — the failing group's task line is still uncommitted
+  at this point (`opsx-apply-git` runs Gate 3 *before* that group's own
+  commit): write `<!-- blocked: <reason> -->` on that specific task line,
+  first reverting its checkbox back to `- [ ]` if phase 1 of an earlier
+  attempt had already flipped it to `- [x]`, and commit that one-line edit on
+  its own — exactly the mechanism `opsx-apply-git`'s own §3 "Blocked tasks"
+  section already defines ("the task itself stays uncommitted and unchecked;
+  only the marker is committed"). Reuse it directly rather than inventing a
+  second way to mark a stop; this skill runs in the same session that
+  already has that context loaded. Keep `<reason>` compact enough to survive
+  as `PROGRESS.md`'s single physical `Blocked:` line (e.g. `debug-loop: 2/2
+  attempts exhausted, see commit body`) and put the full per-attempt
+  hypothesis-and-result detail in that commit's own body, the same "what,
+  why, how it was validated" shape `git-conventions.md` already requires of
+  every commit. `opsx-apply-git`'s next run-boundary regeneration (§4 step 7)
+  then carries that reason into `PROGRESS.md` as it already does for any
+  other blocked task — nothing new to write there.
+- **`code-review` call site** — this one never gets a blocked-marker. By the
+  time `code-review` runs (`opsx-apply-git` §4, after every group in the run
+  is already committed), there is no open task line left to mark — every
+  box in this run is already `- [x]` and its commit already made, and a
+  CONFIRMED finding on the run's cumulative diff doesn't necessarily trace to
+  one task anyway. Report-only: stop the run, leave the branch exactly as it
+  is (no push), and hand the human the full attempt history — the same
+  outcome `opsx-apply-git` §4 step 2 already describes for this case.
+- **Standalone, manual invocation** (no `opsx-apply-git` run in progress at
+  all): same as the `code-review` call site — there's no `tasks.md` line to
+  mark and no run boundary that will regenerate `PROGRESS.md`. Say so
+  plainly, and report the full attempt history directly to the user.
+- In every case, hand the human every hypothesis from every attempt, not
+  just the last one — that's the entire point of recording the expectation
+  in phase 3: the escalation reads as "here's what we tried and why it
+  didn't hold," not "it didn't work twice."
 
 ## What this loop does not do
 
@@ -99,10 +109,15 @@ silently rewritten history is not.
 - **`web-qa` (Gate 3) FAIL** — the entire fix loop in web-qa's "must-pass
   gate with a fix loop" section is this skill, scoped to the failing
   flow(s). A fix folds into the current group's own diff, same as before.
+  Uses the blocked-marker branch of Escalate above on exhaustion.
 - **`code-review` (Gate 4/5) CONFIRMED**, once the user has chosen "fix
   now" — the fix runs through this loop instead of a single ad hoc edit,
-  still landing as its own new commit appended to the run's branch.
+  still landing as its own new commit appended to the run's branch. Uses the
+  report-only branch of Escalate above on exhaustion — every group in the
+  run is already committed by the time this call site runs, so there is no
+  open task line left to mark.
 - **Direct, manual invocation** by the user for a failure outside any gate.
+  Uses the report-only branch of Escalate above on exhaustion.
 
 No subagent is spawned for any of these — this skill reads the diff, the
 gate's own output, and the attempt history straight out of the calling

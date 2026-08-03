@@ -53,7 +53,9 @@ marked not applicable).
   (typecheck/lint/tests) re-runs before push, since later groups in the
   batch may have built on the flawed one. Do not push past an unresolved
   CONFIRMED finding. If `debug-loop` exhausts `maxFixAttempts` without
-  resolving it, follow its escalation (blocked-marker + report) instead of
+  resolving it, follow its escalation for this call site — report-only, no
+  blocked-marker (every group in the run is already committed by this
+  point, so there's no open task line to mark) — and stop the run instead of
   pushing.
 - **Clean, or PLAUSIBLE-only in both sections** — proceed to Gate 6's own
   precondition (`opsx-apply-git` §4 step 3).
