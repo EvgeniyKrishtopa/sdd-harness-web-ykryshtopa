@@ -55,6 +55,29 @@ also hand over.
 5. Judge PASS/FAIL against what the change was supposed to do — not against
    your own assumptions about what "looks right."
 
+## UI States Matrix — the required minimum per surface
+
+For every user-facing surface a flow touches, check four states:
+**loading, error, empty, offline.** Each one gets a verdict — PASS, FAIL, or
+explicitly **not applicable** with a one-line reason (e.g. a static page
+that fetches nothing has no loading state to hit) — never a silent skip. A
+flow report that's missing one of the four with no stated reason is
+incomplete, not just optimistic; the happy path is the one state that never
+needed this checklist to get exercised, which is exactly why the other four
+do.
+
+How to exercise each one in a real browser: throttle or delay the network
+response for loading; force a failing response (a bad endpoint, an aborted
+request) for error; use an account/dataset with nothing in it for empty; and
+toggle the browser offline (or block the relevant request) for offline.
+
+Two more states — **syncing** and **conflict** — apply only to a surface
+this project's own background-sync mechanism actually touches; most
+projects don't have one. Check them where relevant and otherwise leave them
+out of the matrix entirely, rather than marking every surface "not
+applicable" for a concept the project doesn't have — that's noise, not a
+finding.
+
 ## Ruling out environment noise before calling FAIL
 
 A third-party API returning a rate-limit error, a slow external resource, or
@@ -69,8 +92,12 @@ A per-flow table: flow name, PASS/FAIL, and for any FAIL — what you did,
 what you expected, what actually happened, any console error involved, and
 the `browser_take_screenshot` you took for that failure. A PASS row never
 carries a screenshot — its `browser_snapshot` was enough to judge it and
-isn't worth repeating in the report. Do not suggest code fixes yourself;
-that's the calling skill's job once it has your report.
+isn't worth repeating in the report. Alongside it, a per-surface UI States
+Matrix — loading/error/empty/offline, plus syncing/conflict only where
+applicable — using the same PASS/FAIL/not-applicable-with-reason format;
+a FAIL row here follows the same screenshot rule as the flow table. Do not
+suggest code fixes yourself; that's the calling skill's job once it has
+your report.
 
 Once every flow has been checked, call `browser_close` to end the browser
 session cleanly before producing your report.
