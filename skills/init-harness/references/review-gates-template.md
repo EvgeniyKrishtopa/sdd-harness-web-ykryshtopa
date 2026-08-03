@@ -38,8 +38,13 @@ change as a whole — not any one of them in isolation:
 
 1. **Static** — `.husky/pre-commit` (typecheck + lint + lint-staged). Runs on
    every commit.
-2. **Runtime** — `.husky/pre-push` (the coverage-mode test run). Runs on
-   every push.
+2. **Runtime** — `.husky/pre-push` (the coverage-mode test run, then a
+   dependency-vulnerability audit — `{{PACKAGE_MANAGER}} audit` or its
+   equivalent, blocking on a high-or-above severity finding). Runs on every
+   push. The audit is blocking, not informational: an install command can't
+   add a vulnerable package in the first place (`permissions.deny` blocks
+   every package manager's install commands), so this is the check for what
+   was already in the lockfile, including transitively.
 3. **System** — Gate 3 (`web-qa`), a real-browser pass over the change's
    whole diff, run once on the last task group before Gate 4 *if the change
    touched user-facing UI*; not applicable to a change that didn't (e.g.

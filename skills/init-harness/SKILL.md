@@ -398,11 +398,23 @@ on every group — multiplied across a whole change. `pre-commit` stays fast
    only the files this commit actually touches — ask the user for the exact
    glob/command if the project's lint tooling isn't obvious from
    `package.json`.
-4. Write `.husky/pre-push` with the full coverage run:
+4. Write `.husky/pre-push` with the full coverage run, then a blocking
+   dependency-vulnerability audit, chained the same way as `pre-commit`
+   above so a high-or-above severity finding blocks the push:
    ```
-   <pm> test:coverage
+   <pm> test:coverage && <audit command>
    ```
-   (e.g. `yarn test:coverage`, or the npm/pnpm equivalent.)
+   The audit command's spelling depends on the detected package manager —
+   and, for yarn, on its major version, since the command changed between
+   yarn 1 (Classic) and yarn 2+ (Berry):
+   - `npm` → `npm audit --audit-level=high`
+   - `pnpm` → `pnpm audit --audit-level high`
+   - `yarn` → run `yarn --version` to tell which spelling applies: `1.x` →
+     `yarn audit --level high`; `2.x` or higher → `yarn npm audit --severity high`
+   Do not add `<pm> outdated` alongside the audit — it reports version drift,
+   not vulnerabilities, and would leave the hook permanently red on any
+   stale minor version. A check that's always red trains whoever runs it to
+   ignore the whole hook, which defeats the audit it sits next to.
 5. Do not overwrite an existing `.husky/pre-commit` or `.husky/pre-push`
    that already has content — read each first, and only append/merge the
    missing checks in, the same "never clobber existing config" rule used
