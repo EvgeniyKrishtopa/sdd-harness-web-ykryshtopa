@@ -19,8 +19,11 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
 
 ## Requirement-ID coverage (0 tokens, before delegating)
 
-Before spawning `code-reviewer`, compute Gate 5 criterion 1's answer by
-`grep` instead of handing the agent a spec to read cold — the same
+Skip this section entirely, without running it, when step 2 below (Gate 5
+applicability) will already rule the diff docs/config-only — there is
+nothing to check against and the grep would just discard its own result.
+Otherwise, before spawning `code-reviewer`, compute Gate 5 criterion 1's
+answer by `grep` instead of handing the agent a spec to read cold — the same
 cost-optimization logic as the trivial-diff and Gate-6 prefilters in
 `opsx-apply-git`:
 
@@ -34,7 +37,7 @@ if [ ! -s "$ids_file" ]; then
 else
   uncovered=""
   while IFS= read -r id; do
-    grep -rlF "implements $id of $change" \
+    grep -rlE "implements $id of $change([^A-Za-z0-9-]|\$)" \
       --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=openspec \
       . >/dev/null 2>&1 || uncovered="$uncovered $id"
   done < "$ids_file"
@@ -46,6 +49,15 @@ else
   fi
 fi
 ```
+
+The `([^A-Za-z0-9-]|$)` tail is load-bearing, not decoration: a plain
+`grep -F "implements $id of $change"` matches as a substring, so change
+`add-auth`'s `FR-1` would read as covered by a marker actually written for
+change `add-auth-v2` — two different changes, the second only sharing the
+first's slug as a prefix. Anchoring on what follows `$change` (end of line,
+or any character that can't extend a kebab-case slug) rules that out; kebab
+case has no ERE metacharacters, so `$change` and `$id` are safe to embed
+literally.
 
 The `while ... done < "$ids_file"` form (not a pipe into `while`) is deliberate, matching this project's own `.claudeignore` hook: piping into `while read` runs the loop in a subshell in some shells, silently discarding `uncovered` once the loop exits, and a plain `for id in $ids` relies on word-splitting that zsh does not perform on an unquoted expansion by default — either mistake here reports every change as fully covered regardless of what's actually missing.
 
