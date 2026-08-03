@@ -64,6 +64,28 @@ A "group" is a numbered `##` heading in `tasks.md`, not a sub-task. Read the
 **An unmarked group counts as judgement-heavy** — never auto-run an
 unclassified group.
 
+### Blocked tasks
+
+A task can also carry a third, independent marker: `<!-- blocked: <reason>
+-->`, written on the task's own `- [ ]` line — never on the group's `##`
+heading, which only ever carries the isolated/judgement-heavy classification.
+This skill is the one that writes it, at the exact moment a run stops
+without resolving the task: Case A step 5's pause, or Case B step 2's pause
+that outlives the run. `spec-review` never writes it — that classification
+happens before implementation starts, with no task yet to block.
+
+A group containing any blocked task is never eligible for Case A's
+autonomous batch, regardless of its own isolated/judgement-heavy mark — skip
+past it when scanning for the next run's starting point, and if every
+remaining group is blocked, stop and report rather than inventing work. Case
+B can still pick up a blocked task deliberately, with a human already in the
+loop, but should say so explicitly rather than silently working past the
+marker.
+
+Clearing a block is never automatic — no timeout, no retry-and-forget. Only
+a human removing the marker from `tasks.md`, or explicitly telling this
+skill to continue past it, clears it.
+
 ### Syncing the parent (used by both cases below)
 
 `git fetch origin && git pull --ff-only` (skip entirely if the parent has no
@@ -122,7 +144,10 @@ case it is:
    left → end the batch, go to §4.
 5. Any pause during implementation (an error, an ambiguity, a design
    decision surfacing) stops the batch where it is — report and wait, never
-   commit a half-finished group. A CONFIRMED finding from the batch-level
+   commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
+   specific task line that caused the stop (see §3's Blocked tasks section);
+   the task itself stays uncommitted and unchecked, the marker is the only
+   edit this makes to `tasks.md` for it. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
    is already committed; its fix lands as a new commit appended to the
    batch, never an amend of an earlier group's own commit.
@@ -132,8 +157,12 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Implement with the standard
-   guardrails, but pause and ask on every design decision or ambiguity. Route
-   each decision reached this way: scoped to this change's own lifetime →
+   guardrails, but pause and ask on every design decision or ambiguity. If
+   the run ends (report and stop, §4 step 7) before that question is
+   answered, write `<!-- blocked: <reason> -->` on the specific task line
+   waiting on it (see §3's Blocked tasks section) — an ordinary pause
+   answered within the same turn never touches `tasks.md`; only one that
+   outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
    note it in the change's own `design.md` (it archives with the change,
    which is fine — nothing outside this change needs it again); outlives this
    change — a convention, a tool choice, a stance the *next* change will also
@@ -278,14 +307,16 @@ implement unattended is reviewed as one unit too, not group-by-group.
    open — the human owns the merge.
 7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
    current change and branch, last commit, done/in-progress/blocked groups
-   (a blocked task carries its own `<!-- blocked: ... -->` reason, see
-   `opsx-apply-git`'s blocked-state handling below and
+   (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
+   the moment it stopped the run — see §3's Blocked tasks section — and
    `references/progress-template.md`'s self-check: re-read what you wrote
    and reconcile it against `tasks.md`'s real state before moving on) and
-   numbered next steps for whatever remains in this change. Then report
-   progress and stop; the next `opsx-apply-git` invocation re-syncs the
-   parent from `origin` (only picks up this run's work once its PR is
-   merged). **No tasks remain** → continue to §5.
+   numbered next steps for whatever remains in this change. Report progress
+   and stop, calling out any blocked task by name and reason as its own line
+   in the report rather than folding it into the general summary — the next
+   `opsx-apply-git` invocation re-syncs the parent from `origin` (only picks
+   up this run's work once its PR is merged). **No tasks remain** → continue
+   to §5.
 
 ## 5. Auto-archive once the run's own PR has merged
 
