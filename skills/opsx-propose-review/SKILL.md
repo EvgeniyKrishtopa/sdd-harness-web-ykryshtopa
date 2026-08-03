@@ -8,6 +8,35 @@ it ready to implement.
 
 ## Steps
 
+0. **Project-level WIP check (deterministic, 0 tokens), before proposing
+   anything.** `opsx-apply-git` already enforces WIP=1 *within* a single run
+   ("one run per invocation... do not start the next run in the same
+   session"); nothing enforced it across separate `opsx-propose-review`
+   invocations. Both failure modes this guards against — overreach (several
+   changes started, none finished) and under-finish (code scattered
+   everywhere, green nowhere) — happen at exactly this gap. Run
+   `npx openspec list` (or, if unavailable, list `openspec/changes/*/`
+   directories and exclude `archive/`) to check for a change already
+   proposed but not yet archived:
+   - **`openspec/` doesn't exist yet** → there is nothing to check — skip
+     straight to step 1, which stops and tells the user to run
+     `init-harness` first.
+   - **None found** → continue silently to step 1. Asking on every clean
+     proposal would just be noise.
+   - **One or more found** → name the change(s) and ask via
+     `AskUserQuestion`, offering three options — none of them a hard block:
+     1. **Continue the existing change** — stop this flow here and point the
+        user at `opsx-apply-git` for it instead.
+     2. **Pause it explicitly, with a reason** — record the reason in
+        `PROGRESS.md`'s `Blocked` line (`references/progress-template.md`,
+        #U3), so it's visible on the next `SessionStart`. This is the whole
+        change pausing, distinct from a task-level
+        `<!-- blocked: ... -->` marker (#U4) on one task inside a change.
+        Then continue to step 1 for the new change.
+     3. **Start the new one anyway, in parallel** — continue to step 1
+        without pausing the existing change. A deliberate choice the user is
+        allowed to make; the point of this check is to make it a choice, not
+        to forbid it.
 1. If `openspec/` doesn't exist yet in this repo, stop and tell the user to
    run `init-harness` first — this skill assumes OpenSpec is already
    initialized.
