@@ -47,13 +47,13 @@ uses for JSON parsing.
    values, e.g. skip-forms, excluded from both sides of that ratio).
 6. **VCR (Verified Completion Rate)** — `passing ÷ (passing + blocked)` from
    the *current* change's `tasks.md`, per `git-conventions.md`'s definition:
-   `- [x]` lines over the​ `- [x]` lines are the passing set. `blocked` tasks
-   are the ones marked with `- [ ]` plus a `<!-- blocked: ... -->` marker on
-   the same line (see `debug-loop`'s Escalate section — the checkbox is
-   reverted to unchecked before the marker is written). Tasks never started
-   (`- [ ]`, no marker) count in neither the numerator nor the denominator.
-   This reads `tasks.md` directly, not the log — the log has no per-task
-   granularity.
+   `- [x]` lines are the passing set (the numerator); `blocked` tasks — the
+   ones marked with `- [ ]` plus a `<!-- blocked: ... -->` marker on the
+   same line (see `debug-loop`'s Escalate section — the checkbox is
+   reverted to unchecked before the marker is written) — join passing tasks
+   in the denominator. Tasks never started (`- [ ]`, no marker) count in
+   neither the numerator nor the denominator. This reads `tasks.md`
+   directly, not the log — the log has no per-task granularity.
 7. **Rebuild Cost** — wall-clock time from the most recent `Clock-in:` line
    in `PROGRESS.md`'s `## Session log` section to the first gate run logged
    *after* that timestamp with a real pass (`verdict` is neither
@@ -114,7 +114,11 @@ fi
 
 echo "=== Gates, fix loop, review confidence, Rebuild Cost ==="
 if command -v jq >/dev/null 2>&1; then
-  jq -s -r --arg since "$clockin" '
+  # Two-stage: `fromjson?` drops any line that isn't valid JSON (a partial
+  # write from a killed process, say) instead of one bad line aborting the
+  # whole slurp with a parse error — the python3/node branches below already
+  # skip bad lines the same way, via their own try/except and try/catch.
+  jq -R 'fromjson?' "$LOG" | jq -s -r --arg since "$clockin" '
     (group_by(.gate)[] | {
       gate: .[0].gate, runs: length,
       verdicts: (group_by(.verdict) | map("\(.[0].verdict)=\(length)") | join(", ")),
@@ -140,7 +144,7 @@ if command -v jq >/dev/null 2>&1; then
        else "  Rebuild Cost: clock-in \($since) -> first passed gate \($firstPass)"
        end
      end)
-  ' "$LOG"
+  '
 elif command -v python3 >/dev/null 2>&1; then
   python3 - "$LOG" "$clockin" <<'PY'
 import json, sys, statistics

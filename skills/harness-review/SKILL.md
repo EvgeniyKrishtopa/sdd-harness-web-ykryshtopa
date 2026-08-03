@@ -113,11 +113,13 @@ without asking for it separately:
 
 ```bash
 if [ -s .claude/harness-log.jsonl ] && command -v jq >/dev/null 2>&1; then
-  jq -s -r '
+  # `fromjson?` drops any line that isn't valid JSON instead of one bad line
+  # aborting the whole slurp with a parse error.
+  jq -R 'fromjson?' .claude/harness-log.jsonl | jq -s -r '
     ((([.[] | select(.verdict=="skipped")] | length) / length * 100 * 10 | round) / 10) as $skippedPct |
     ([.[] | select(.escalatedToHuman == true)] | length) as $esc |
     "harness-stats: \($skippedPct)% of all logged gate runs skipped by 0-token prefilters, \($esc) escalation(s) to human. Full breakdown: references/harness-stats.md."
-  ' .claude/harness-log.jsonl
+  '
 fi
 ```
 
