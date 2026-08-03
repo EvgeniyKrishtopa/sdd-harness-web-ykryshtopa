@@ -75,6 +75,7 @@ whole failure this step exists to prevent.
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
@@ -397,11 +398,23 @@ on every group — multiplied across a whole change. `pre-commit` stays fast
    only the files this commit actually touches — ask the user for the exact
    glob/command if the project's lint tooling isn't obvious from
    `package.json`.
-4. Write `.husky/pre-push` with the full coverage run:
+4. Write `.husky/pre-push` with the full coverage run, then a blocking
+   dependency-vulnerability audit, chained the same way as `pre-commit`
+   above so a high-or-above severity finding blocks the push:
    ```
-   <pm> test:coverage
+   <pm> test:coverage && <audit command>
    ```
-   (e.g. `yarn test:coverage`, or the npm/pnpm equivalent.)
+   The audit command's spelling depends on the detected package manager —
+   and, for yarn, on its major version, since the command changed between
+   yarn 1 (Classic) and yarn 2+ (Berry):
+   - `npm` → `npm audit --audit-level=high`
+   - `pnpm` → `pnpm audit --audit-level high`
+   - `yarn` → run `yarn --version` to tell which spelling applies: `1.x` →
+     `yarn audit --level high`; `2.x` or higher → `yarn npm audit --severity high`
+   Do not add `<pm> outdated` alongside the audit — it reports version drift,
+   not vulnerabilities, and would leave the hook permanently red on any
+   stale minor version. A check that's always red trains whoever runs it to
+   ignore the whole hook, which defeats the audit it sits next to.
 5. Do not overwrite an existing `.husky/pre-commit` or `.husky/pre-push`
    that already has content — read each first, and only append/merge the
    missing checks in, the same "never clobber existing config" rule used
@@ -417,16 +430,18 @@ number without asking; different projects have different baselines.
 
 ## Step 5 — write the harness docs
 
-Write `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`
-into the target repo (see `references/git-conventions-template.md` and
-`references/review-gates-template.md` in this skill for the content to
+Write `.claude/docs/git-conventions.md`, `.claude/docs/review-gates.md`, and
+`.claude/docs/laziness-ladder.md` into the target repo (see
+`references/git-conventions-template.md`, `references/review-gates-template.md`,
+and `references/laziness-ladder-template.md` in this skill for the content to
 adapt — fill in the detected package manager's commands and the chosen
-coverage threshold rather than copying placeholders verbatim).
+coverage threshold rather than copying placeholders verbatim;
+`laziness-ladder-template.md` needs no substitution, copy it as-is).
 
-Do not silently overwrite either file on a re-run of this skill — the same
-"never clobber existing config" rule this skill already applies to hooks
+Do not silently overwrite any of the three on a re-run of this skill — the
+same "never clobber existing config" rule this skill already applies to hooks
 (Step 3), permissions (Step 6), `.claudeignore` (Step 7), and CLAUDE.md
-(Step 9) also applies here, even though these two are fully generated files
+(Step 9) also applies here, even though these are fully generated files
 rather than merge targets. If a file already exists, read it first:
 - If its content is identical to what this step would generate (modulo the
   substituted package-manager commands and coverage threshold), there's
@@ -743,6 +758,9 @@ to asking before every commit instead of trusting it.
      be assumed.
    - @.claude/docs/review-gates.md — the six automated review gates and
      their order.
+   - @.claude/docs/laziness-ladder.md — priority order to check before
+     writing new code; does not apply to trust-boundary validation,
+     data loss, security, or accessibility.
    - @.claude/harness.json — detected stack (framework, package manager,
      test runner, coverage threshold). Every skill and hook in this harness
      reads from here; do not re-detect any of it.

@@ -95,7 +95,8 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model code-reviewer actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from code-reviewer's own Output>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -105,7 +106,8 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
   --argjson durationMs 0 \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<same reviewConfidence, or empty if the Gate 5 section was skipped>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -113,7 +115,12 @@ Fill in the change slug and group number or range this run reviewed, each gate's
 verdict (`skipped` for `test-coverage` when its section didn't apply), and
 the wall-clock time spent from delegating to `code-reviewer` to receiving
 its response — attribute it to whichever line represents the section that
-actually did the work; a skipped section logs `0`. If `jq` isn't available,
+actually did the work; a skipped section logs `0`. `reviewConfidence` is the
+single `high`/`low` value `code-reviewer` stated for the whole review
+(§4 step 2 of `opsx-apply-git` reads this same value for its own
+low-without-CONFIRMED surfacing) — the `code-review` line always carries it,
+and the `test-coverage` line carries the same value too, except it's empty
+when Gate 5 was skipped, mirroring `model` on that same line. If `jq` isn't available,
 construct the equivalent JSON lines with `printf` instead. A failed log
 write never blocks the gate — note it in the report and move on; this is a
 diagnostic aid, not part of the pass/fail logic.

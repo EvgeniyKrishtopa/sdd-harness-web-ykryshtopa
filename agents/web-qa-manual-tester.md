@@ -74,3 +74,10 @@ that's the calling skill's job once it has your report.
 
 Once every flow has been checked, call `browser_close` to end the browser
 session cleanly before producing your report.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the run
+as a whole, plus one line naming why when `low` (a flow you couldn't fully
+exercise, an environment quirk that may not reflect production, a state you
+had to infer rather than observe). This is confidence in the run itself,
+separate from PASS/FAIL on any individual flow — an all-PASS report reached
+without enough confidence to trust it must say so.

@@ -65,9 +65,20 @@ covered.
 2. **Reuse** — duplicated logic that already exists elsewhere in the diff's
    neighborhood; a new helper that reinvents an existing utility.
 3. **Simplification** — unnecessary abstraction, premature generalization,
-   dead code introduced by the change itself.
+   dead code introduced by the change itself. A new dependency or custom
+   helper added where `.claude/docs/laziness-ladder.md`'s earlier rungs
+   (stdlib, a platform feature, an already-installed dependency, one line)
+   would have done — name the rung it skipped in the finding.
 4. **Efficiency** — obviously wasteful patterns (re-computing in a render
    loop, an O(n²) where O(n) is trivial) — not micro-optimization hunting.
+5. **Observability** (PLAUSIBLE-only — this is judgement about the
+   application being built, never a CONFIRMED correctness bug):
+   - error handling that logs only the caught message, with no stack trace
+     and no surrounding state (which request, which record, which input) —
+     the kind of catch block that leaves an incident with nothing to
+     investigate;
+   - a critical user path this diff touches (auth, payment, any irreversible
+     action) with no log checkpoint anywhere between its entry and its exit.
 
 ### Gate 5 — test coverage
 
@@ -95,3 +106,11 @@ skipped per above). Each section lists its findings (CONFIRMED/PLAUSIBLE)
 with file/line, the issue, and a concrete suggested fix; note explicitly if
 a section is clean. For Gate 5, also state the measured coverage delta if
 you can determine it.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole (both gates together), plus one line naming why when
+`low` (not enough context, the diff calls into a module you weren't shown,
+an external service call you can't verify by reading). This is confidence
+in the review itself, separate from CONFIRMED/PLAUSIBLE on any individual
+finding — a clean verdict reached without enough context to trust it must
+say so.
