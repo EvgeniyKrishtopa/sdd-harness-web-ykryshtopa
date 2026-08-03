@@ -263,13 +263,18 @@ implement unattended is reviewed as one unit too, not group-by-group.
    (no source or test files touched anywhere in the run) — a run that
    shipped source changes with no tests anywhere in it is exactly what that
    section exists to catch. CONFIRMED in either section → pause and ask
-   fix-now-or-continue; a fix lands as its own new commit appended to the
+   fix-now-or-continue; "fix now" runs through the `debug-loop` skill,
+   bounded by `.claude/harness.json`'s `maxFixAttempts`, rather than a single
+   ad hoc edit. A resulting fix lands as its own new commit appended to the
    run's branch, never an amend of an already-committed group. Since later
    groups in the same batch may have built on top of the flawed one, re-run
    the project's own verification (typecheck/lint/tests) after applying the
    fix, before pushing — don't assume a fix scoped to the group that
    introduced the problem is automatically compatible with what later
-   groups added on top of it. Clean/PLAUSIBLE in both → continue.
+   groups added on top of it. If `debug-loop` exhausts `maxFixAttempts`
+   instead of resolving the finding, treat it the same as any other pause
+   during implementation (§3 step 5): stop this run, leave the branch as is,
+   and report — don't push past it. Clean/PLAUSIBLE in both → continue.
 3. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
    on this run's last group with pending tasks only, before spawning
    `harness-reviewer` at all, check whether this run touched anything it

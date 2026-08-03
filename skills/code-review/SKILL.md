@@ -44,11 +44,17 @@ The subagent returns two labeled sections, Gate 4 and Gate 5 (or Gate 5
 marked not applicable).
 
 - **CONFIRMED finding in either section** — show it to the user and ask
-  whether to fix now or continue anyway. A fix lands as its own new commit
-  appended to the run's branch — never an amend of an already-committed
-  group — and the run's own verification (typecheck/lint/tests) re-runs
-  before push, since later groups in the batch may have built on the flawed
-  one. Do not push past an unresolved CONFIRMED finding.
+  whether to fix now or continue anyway. "Fix now" runs through the
+  `debug-loop` skill (reproduce the finding, isolate, diagnose with a
+  recorded expected effect, fix and reverify), bounded by
+  `.claude/harness.json`'s `maxFixAttempts`. A fix lands as its own new
+  commit appended to the run's branch — never an amend of an
+  already-committed group — and the run's own verification
+  (typecheck/lint/tests) re-runs before push, since later groups in the
+  batch may have built on the flawed one. Do not push past an unresolved
+  CONFIRMED finding. If `debug-loop` exhausts `maxFixAttempts` without
+  resolving it, follow its escalation (blocked-marker + report) instead of
+  pushing.
 - **Clean, or PLAUSIBLE-only in both sections** — proceed to Gate 6's own
   precondition (`opsx-apply-git` §4 step 3).
 
