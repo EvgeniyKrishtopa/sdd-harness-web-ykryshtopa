@@ -35,6 +35,17 @@ off-by-one, a race, a broken edge case). **PLAUSIBLE** covers
 style/simplification opinions and anything you can't fully trace to a real
 bug.
 
+The calling skill (`code-review`) tells you whether this run is the change's
+**final run** — no `tasks.md` groups still pending after it — or not; you
+only see the diff, so you cannot determine this yourself. **On a non-final
+run**, downgrade any simplification/refactor finding that would otherwise be
+CONFIRMED to PLAUSIBLE instead: this project's Definition of Done (see
+`review-gates.md`) treats the System layer (Gate 3) as not yet having
+covered the change as a whole, so a refactor pushed ahead of that is
+premature. Correctness, security, and every Gate 5 coverage finding are
+exempt from this downgrade in either section — they keep whatever verdict
+they'd otherwise earn on a final or non-final run alike.
+
 **Gate 5 (test coverage)** — **CONFIRMED** means a specific acceptance
 criterion or edge case genuinely has no test covering it, or an existing
 assertion is so loose it would pass even if the implementation were wrong

@@ -27,15 +27,23 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
    is docs/config-only (no application source or test files changed) — tell
    the delegated agent this explicitly so it doesn't spend effort walking a
    checklist that doesn't apply.
-3. Read `.claude/harness.json`'s `models.code` key (written by
+3. Determine whether this run is the change's **final run**: read
+   `tasks.md` and check whether any `- [ ]` task remains anywhere in it once
+   this run's own groups are accounted for. None remaining → final run;
+   anything still open → not. Tell the delegated agent this explicitly — it
+   only sees the diff and has no way to know this on its own, and it needs
+   it to apply the Definition of Done's simplification-downgrade rule
+   correctly (`review-gates.md`; `agents/code-reviewer.md`'s Verification
+   bar).
+4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
    the `code-reviewer` subagent (`Agent` tool) with that diff, the
-   Gate-5-applicability note, the detected `testRunner` and
-   `coverageThreshold`, and any acceptance criteria as context — overriding
-   the agent's own frontmatter default for this run. If the manifest or the
-   key is missing, fall back to the agent's own default; never block the
-   gate on a missing override.
-4. If invoked as `/code-review --fix`, apply the findings the subagent
+   Gate-5-applicability note, the final-run status, the detected
+   `testRunner` and `coverageThreshold`, and any acceptance criteria as
+   context — overriding the agent's own frontmatter default for this run. If
+   the manifest or the key is missing, fall back to the agent's own default;
+   never block the gate on a missing override.
+5. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 
 ## Handling the result
