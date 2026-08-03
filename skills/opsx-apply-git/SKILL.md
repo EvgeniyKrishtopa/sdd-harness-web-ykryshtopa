@@ -327,10 +327,25 @@ implement unattended is reviewed as one unit too, not group-by-group.
    commit any more — it simply lands as the next commit on the branch.
 4. Push the run's branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
-6. Open one PR from the run's branch into the parent (`gh pr create`),
-   covering every group in this run. **Judgement-heavy run** → lead the PR
-   body with `⚠️ Judgement-heavy: needs careful human review`. Leave it
-   open — the human owns the merge.
+6. Write the run's summary, then open the PR:
+   1. Compose a **"What changed and why"** section: 3-5 sentences of plain
+      language covering what this run actually did and why, in terms a
+      human who hasn't read the diff can follow. This is *not* satisfied by
+      a list of commit subjects, `git diff --stat` output, or "all gates
+      green" — none of those three describe the change, they describe
+      process, and the point of this section is to force the run to be
+      stated in words, which is only possible once it's actually
+      understood.
+   2. Print that section to the chat now, before running `gh pr create` —
+      this is the one point in an autonomous batch where a human watching
+      the session sees the run described in prose instead of tool output,
+      while there's still a chance to intervene before the PR opens.
+   3. Open one PR from the run's branch into the parent (`gh pr create`),
+      covering every group in this run, with the PR body **starting** with
+      this same section. **Judgement-heavy run** → the existing
+      `⚠️ Judgement-heavy: needs careful human review` marker still leads the
+      body, with the "What changed and why" section right after it. Leave
+      the PR open — the human owns the merge.
 7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
    current change and branch, last commit, done/in-progress/blocked groups
    (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
