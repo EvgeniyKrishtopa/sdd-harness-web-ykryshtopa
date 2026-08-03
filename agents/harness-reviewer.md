@@ -103,3 +103,10 @@ project:
 Every finding — CONFIRMED or PLAUSIBLE — gets shown with a suggested fix
 (this gate does not follow the CONFIRMED-only pause rule the other gates
 use). State clearly which findings are genuinely load-bearing vs. cosmetic.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole, plus one line naming why when `low` (not enough context,
+harness config that references something outside this diff, a policy call
+you can't verify by reading). This is confidence in the review itself,
+separate from CONFIRMED/PLAUSIBLE on any individual finding — a clean
+verdict reached without enough context to trust it must say so.

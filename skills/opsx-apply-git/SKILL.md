@@ -281,7 +281,16 @@ implement unattended is reviewed as one unit too, not group-by-group.
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
    attempt's hypothesis to the human — don't push past it. Clean/PLAUSIBLE in
-   both → continue.
+   both → continue. Separately from that verdict, `code-reviewer` also
+   reports its own `reviewConfidence`. On **Case A (isolated batch)**, a run
+   with no CONFIRMED finding but `reviewConfidence: low` still continues —
+   this does not block — but show the human the reason before pushing (step
+   4 below): a batch trusted enough to implement unattended got a clean
+   verdict the reviewer itself wasn't fully confident in, and that is worth
+   seeing even though it isn't worth stopping for. On **Case B
+   (judgement-heavy)**, the human is already in the loop for this run, so
+   `reviewConfidence: low` needs no separate surfacing here — it will be
+   visible in the same report they're already reading.
 3. **Gate 6 precondition (0 tokens), then `harness-review` if it applies** —
    on this run's last group with pending tasks only, before spawning
    `harness-reviewer` at all, check whether this run touched anything it
@@ -329,7 +338,10 @@ implement unattended is reviewed as one unit too, not group-by-group.
    Every group in the run is already committed by this point (§3), so
    there's no ordering constraint forcing this ahead of a group's own
    commit any more — it simply lands as the next commit on the branch.
-4. Push the run's branch (`git push -u origin <branch>`).
+4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
+   CONFIRMED finding, print `code-reviewer`'s stated reason to the chat now
+   — this is the surfacing that step 2 deferred to here. Then push the run's
+   branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
 6. Write the run's summary, then open the PR:
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain

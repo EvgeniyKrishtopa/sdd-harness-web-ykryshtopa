@@ -134,14 +134,16 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|confirmed|skipped>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model web-qa-manual-tester actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from web-qa-manual-tester's own Output; empty when skipped>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
 any FAIL found along the way (even if later fixed and re-passed), or
 `skipped` when this gate wasn't applicable; the wall-clock time across the
-whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
+whole fix loop; the model `web-qa-manual-tester` ran on; and its stated
+`reviewConfidence` (`group` is `-`:
 this gate covers the whole change, triggered on the last group). If `jq`
 isn't available, construct the equivalent JSON line with `printf` instead.
 A failed log write never blocks the gate — note it in the report and move

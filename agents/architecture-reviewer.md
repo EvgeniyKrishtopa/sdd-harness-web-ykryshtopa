@@ -50,3 +50,10 @@ most — note it, but do not treat it as blocking.
 For each finding: severity (CONFIRMED/PLAUSIBLE), file/line, what's wrong,
 why it matters (the traced consequence), and a suggested fix. If clean, say
 so plainly — do not manufacture a finding to seem thorough.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole, plus one line naming why when `low` (not enough context,
+the diff reaches code you weren't given, a design call that hinges on
+something you can't verify by reading). This is confidence in the review
+itself, separate from CONFIRMED/PLAUSIBLE on any individual finding — a
+clean verdict reached without enough context to trust it must say so.

@@ -79,14 +79,15 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model harness-reviewer actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from harness-reviewer's own Output>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
-the wall-clock time spent, and the model `harness-reviewer` ran on (`group`
-is `-`: this gate runs at change scope). A fourth verdict value,
+the wall-clock time spent, the model `harness-reviewer` ran on (`group`
+is `-`: this gate runs at change scope), and its stated `reviewConfidence`. A fourth verdict value,
 `skipped`, also appears under `"gate":"harness-review"` in this log — but
 is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
 precondition finds nothing to review and this delegation never runs at all

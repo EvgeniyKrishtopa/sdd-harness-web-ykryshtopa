@@ -106,3 +106,11 @@ skipped per above). Each section lists its findings (CONFIRMED/PLAUSIBLE)
 with file/line, the issue, and a concrete suggested fix; note explicitly if
 a section is clean. For Gate 5, also state the measured coverage delta if
 you can determine it.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole (both gates together), plus one line naming why when
+`low` (not enough context, the diff calls into a module you weren't shown,
+an external service call you can't verify by reading). This is confidence
+in the review itself, separate from CONFIRMED/PLAUSIBLE on any individual
+finding — a clean verdict reached without enough context to trust it must
+say so.

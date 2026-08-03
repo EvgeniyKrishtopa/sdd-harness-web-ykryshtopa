@@ -54,3 +54,11 @@ marked. If you are unsure, mark it `judgement-heavy` — the safe default.
 
 List findings (CONFIRMED/PLAUSIBLE) plus the classification table for every
 group, then confirm you wrote the markers into `tasks.md`.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole, plus one line naming why when `low` (proposal.md is
+ambiguous about scope, a requirement's testability can't be settled without
+information outside the spec, traceability is unavailable rather than
+satisfied). This is confidence in the review itself, separate from
+CONFIRMED/PLAUSIBLE on any individual finding — a clean verdict reached
+without enough context to trust it must say so.
