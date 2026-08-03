@@ -27,8 +27,30 @@ below) — never applied by you.
 1. **Stale claims** — does `CLAUDE.md`/`AGENTS.md` describe a command, file,
    or convention that no longer exists or changed shape?
 2. **CLAUDE.md/AGENTS.md hygiene** — is the root instruction file staying
-   under roughly 200 lines? Every rule should trace to a real past incident
-   or hard constraint, not be there "just in case."
+   under roughly 200 lines? Apply the **Deletion Test** to any rule that
+   looks like a candidate, not just ones near the limit: *if this line were
+   deleted, would Claude actually start erring in THIS project?* A rule that
+   traces to a real past incident or a hard constraint passes. Not sure →
+   it fails: delete it. It can come back later once a real failure in this
+   project demonstrates it's actually needed — cheaper to re-add a proven
+   line than to carry an unproven one on every session's context indefinitely.
+
+   A line that fails the test isn't necessarily worthless — it usually just
+   belongs somewhere else. Route it by what kind of knowledge it actually
+   is, using whichever of this project's five mechanisms fits:
+
+   | Kind of knowledge                              | Belongs in                       |
+   | ----------------------------------------------- | --------------------------------- |
+   | A rule that applies every session                 | `CLAUDE.md`/`AGENTS.md` (always loaded) |
+   | Domain or episodic knowledge, needed occasionally | a skill (loads on demand)         |
+   | Something that must happen deterministically      | a hook                            |
+   | A specialized check needing its own context       | a subagent                        |
+   | Deep reference material, rarely needed in full    | `.claude/docs/**`, linked          |
+
+   Never report a line as "just remove it" without naming where the
+   knowledge actually belongs, and never report a removal with nowhere for
+   it to land — a finding that discards a rule without a destination is
+   exactly the silent loss this checklist item exists to catch.
 3. **Cross-file consistency in the gate system** — do `.claude/docs/
    git-conventions.md`, `.claude/docs/review-gates.md`, the CLAUDE.md/
    AGENTS.md pointer block, `.claude/harness.json`, and `openspec/config.yaml`
