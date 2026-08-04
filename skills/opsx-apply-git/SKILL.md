@@ -407,14 +407,16 @@ implement unattended is reviewed as one unit too, not group-by-group.
    current change and branch, last commit, done/in-progress/blocked groups
    (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
    the moment it stopped the run — see §3's Blocked tasks section — and
-   `references/progress-template.md`'s self-check: re-read what you wrote
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`'s
+   self-check: re-read what you wrote
    and reconcile it against `tasks.md`'s real state before moving on) and
    numbered next steps for whatever remains in this change. If `PROGRESS.md`
    has a `## Paused changes` section and one of its lines names *this*
    change, remove that line — this run means the change is active again,
    not paused — and leave every other line in that section untouched; if no
    line names this change, leave the whole section exactly as found (it
-   belongs to `opsx-propose-review`, see `references/progress-template.md`).
+   belongs to `opsx-propose-review`, see
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`).
    Report progress and stop, calling out any blocked task by name and reason
    as its own line in the report rather than folding it into the general
    summary — the next `opsx-apply-git` invocation re-syncs the parent from

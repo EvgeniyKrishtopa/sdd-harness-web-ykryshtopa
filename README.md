@@ -90,7 +90,7 @@ your own marketplace entry at a tag or commit:
   "source": {
     "source": "github",
     "repo": "EvgeniyKrishtopa/sdd-harness-web-ykryshtopa",
-    "ref": "sdd-harness-web-ykryshtopa--v0.2.0"
+    "ref": "sdd-harness-web-ykryshtopa--v0.3.0"
   }
 }
 ```
@@ -252,8 +252,12 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 
 Five matching subagents live in `agents/` and are invoked by the skills
 above, not usually directly — `debug-loop` has no subagent of its own; it
-runs inline in the calling session. Four are strictly read-only (`Read`/`Grep`/
-`Glob` plus `Bash` scoped by their own prompts to inspection commands);
+runs inline in the calling session. None of them can write to your source.
+Three (`architecture-reviewer`, `code-reviewer`, `harness-reviewer`) are
+`Read`/`Grep`/`Glob` plus `Bash`, scoped by their own prompts to inspection
+commands; `web-qa-manual-tester` carries no `Bash` at all — it gets
+`Read`/`Grep`/`Glob` plus a fixed list of Playwright MCP browser tools, so
+it is read-only on code while driving a real browser;
 `spec-reviewer` additionally carries `Edit`, limited by its prompt to one
 job — writing the `<!-- isolated -->` / `<!-- judgement-heavy -->` marker
 onto a `tasks.md` heading, which is what `opsx-apply-git` reads to decide
@@ -315,8 +319,8 @@ This plugin previously also shipped a `sequential-thinking` MCP server for
 `architecture-review` and `spec-review`'s non-trivial-change reasoning.
 Removed: modern Claude models have native extended thinking that covers the
 same step-by-step reasoning in one pass, without the added round-trip cost
-of an external sequential-thinking tool call per "thought" (cost-optimization
-#39).
+of an external sequential-thinking tool call per "thought"
+(cost-optimization #39).
 
 ## Design principle
 

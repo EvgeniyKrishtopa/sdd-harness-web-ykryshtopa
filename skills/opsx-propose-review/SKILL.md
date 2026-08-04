@@ -33,7 +33,8 @@ it ready to implement.
         user at `opsx-apply-git` for it instead.
      2. **Pause it explicitly, with a reason** — add a line for it under
         `PROGRESS.md`'s `## Paused changes` section
-        (`references/progress-template.md`, create the section if it
+        (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`,
+        create the section if it
         doesn't exist yet), so it's visible to anyone reading the file. This
         is a *different* change than whatever `PROGRESS.md`'s own
         `Current change`/`Status` sections describe — never write it into

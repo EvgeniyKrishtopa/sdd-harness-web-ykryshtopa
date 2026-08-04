@@ -437,12 +437,24 @@ number without asking; different projects have different baselines.
 ## Step 5 — write the harness docs
 
 Write `.claude/docs/git-conventions.md`, `.claude/docs/review-gates.md`, and
-`.claude/docs/laziness-ladder.md` into the target repo (see
+`.claude/docs/laziness-ladder.md` into the target repo from
 `references/git-conventions-template.md`, `references/review-gates-template.md`,
-and `references/laziness-ladder-template.md` in this skill for the content to
-adapt — fill in the detected package manager's commands and the chosen
-coverage threshold rather than copying placeholders verbatim;
-`laziness-ladder-template.md` needs no substitution, copy it as-is).
+and `references/laziness-ladder-template.md` in this skill.
+
+Only one of the three carries placeholders. Substitute **all four** of them —
+a `{{...}}` left in a written file is a bug the user sees, and the template
+says so itself at the bottom:
+
+| Template | Substitute |
+| --- | --- |
+| `review-gates-template.md` | `{{PACKAGE_MANAGER}}`, `{{COVERAGE_THRESHOLD}}` (Step 4's answer), `{{FRAMEWORK}}`, `{{TEST_RUNNER}}` — all from Step 1's detection and the manifest |
+| `git-conventions-template.md` | nothing — it has no placeholders; copy as-is |
+| `laziness-ladder-template.md` | nothing; copy as-is |
+
+Keep this table and the templates in step: a release that adds a placeholder
+to one of these files **must** add it here in the same commit, the same rule
+Step 0's file inventory follows. A placeholder listed in a template but not
+here is the drift that ships a literal `{{FRAMEWORK}}` into someone's repo.
 
 Do not silently overwrite any of the three on a re-run of this skill — the
 same "never clobber existing config" rule this skill already applies to hooks
@@ -498,8 +510,10 @@ What the target repo's own `.claude/settings.json` **does** need is a
 `"permissions"` key — that's a project-level setting, not something a plugin
 can ship on the project's behalf. Merge `references/permissions-template.md`'s
 `allow`/`deny` arrays into the target repo's `.claude/settings.json`,
-substituting the detected package manager, build-output directory (`dist`
-for Vite, `.next` for Next.js), and lockfile — never overwrite an existing
+substituting all four of its placeholders — `{{PACKAGE_MANAGER}}`,
+`{{BUILD_DIR}}` (`dist` for Vite, `.next` for Next.js), `{{SERVE_SCRIPT}}`
+(`preview` for Vite, `start` for Next.js), and `{{LOCKFILE}}` — never
+overwrite an existing
 `permissions` block, merge and de-duplicate entries into it instead. This is
 the actually-enforced mechanism for hard blocks (secrets, destructive
 commands) — see that file's notes on why the three non-detected package
@@ -522,8 +536,9 @@ Step 6, nothing to install here) that reads `.claudeignore` and denies
 matching reads — see `references/claudeignore-template.md` for the full
 explanation and the template content.
 
-1. Write `.claudeignore` from that template (substituting build dir and
-   lockfile same as Step 6) — or append missing lines if one already exists.
+1. Write `.claudeignore` from that template, substituting its two
+   placeholders — `{{BUILD_DIR}}` and `{{LOCKFILE}}`, same values as Step 6
+   — or append missing lines if one already exists.
 2. When reporting in Step 10, state plainly that `.claudeignore` is a
    convenience/noise-reduction layer enforced by this plugin's own hook, not
    a Claude Code native feature, and that secrets/destructive-command
