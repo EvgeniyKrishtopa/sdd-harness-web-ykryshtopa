@@ -499,7 +499,8 @@ What the target repo's own `.claude/settings.json` **does** need is a
 can ship on the project's behalf. Merge `references/permissions-template.md`'s
 `allow`/`deny` arrays into the target repo's `.claude/settings.json`,
 substituting the detected package manager, build-output directory (`dist`
-for Vite, `.next` for Next.js), and lockfile — never overwrite an existing
+for Vite, `.next` for Next.js), serve-the-build script (`preview` for Vite,
+`start` for Next.js), and lockfile — never overwrite an existing
 `permissions` block, merge and de-duplicate entries into it instead. This is
 the actually-enforced mechanism for hard blocks (secrets, destructive
 commands) — see that file's notes on why the three non-detected package
