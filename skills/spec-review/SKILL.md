@@ -32,6 +32,20 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    than eyeballing it — native extended thinking covers this in one pass; the
    `sequential-thinking` MCP server this project used to require for it is
    redundant with that and has been removed (cost-optimization #39).
+4. Traceability is ID-based, not a general impression: `spec-reviewer`'s
+   checklist item 1 collects every `FR-`/`NFR-` identifier `proposal.md`
+   defines and checks `tasks.md` for both directions — every identifier
+   named by a task, every task naming an identifier. A change whose
+   `proposal.md` carries no identifiers is reported as **"traceability
+   unavailable"**, never as passing; see `agents/spec-reviewer.md`.
+
+`tasks.md` carries a third, unrelated marker this skill never writes:
+`<!-- blocked: <reason> -->`, on an individual task's own checkbox line
+rather than a group's `##` heading. `opsx-apply-git` writes that one, at the
+moment a run stops without resolving the task — it has nothing to do with
+this skill's isolated/judgement-heavy classification, which is decided
+before implementation ever starts. Don't conflate the two when reading
+`tasks.md` back.
 
 ## Handling the result
 
@@ -56,14 +70,20 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model spec-reviewer actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from spec-reviewer's own Output>" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock
-time spent from delegating to `spec-reviewer` to receiving its response, and
-the model it actually ran on (`group` is `-`: this gate runs at change
-scope). If `jq` isn't available, construct the equivalent JSON line with
+time spent from delegating to `spec-reviewer` to receiving its response, the
+model it actually ran on (`group` is `-`: this gate runs at change
+scope), and its stated `reviewConfidence`. `fixIterations`/`escalatedToHuman`
+are always `0`/`false` here, literally — never computed — because this gate
+runs before implementation starts; there is no `debug-loop` fix cycle for
+either field to describe. If `jq` isn't available, construct the equivalent JSON line with
 `printf` instead. A failed log write never blocks the gate — note it in the
 report and move on; this is a diagnostic aid, not part of the pass/fail
 logic.

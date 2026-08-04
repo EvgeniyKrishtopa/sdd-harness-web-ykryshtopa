@@ -1,7 +1,7 @@
 ---
 name: harness-reviewer
 description: >-
-  Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, .husky/**, plus this plugin's own skills/ and agents/ only when its own repo is under review) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
+  Read-only review of the project's own harness configuration (CLAUDE.md/AGENTS.md, .claude/harness.json, .claude/settings.json, .claude/docs/**, .husky/**, openspec/config.yaml, plus this plugin's own skills/ and agents/ only when its own repo is under review) for stale claims, internal inconsistency, and drift from authoring best practices. Invoked by the harness-review skill, not usually directly. <example>Context: The last task group of a change is about to be committed and touched a skill file. user: "Run harness review before we finish this change." assistant: "I'll use the harness-reviewer agent to check the harness config for drift the change should have updated."</example>
 tools: Read, Grep, Glob, Bash
 model: claude-haiku-4-5
 ---
@@ -27,14 +27,46 @@ below) — never applied by you.
 1. **Stale claims** — does `CLAUDE.md`/`AGENTS.md` describe a command, file,
    or convention that no longer exists or changed shape?
 2. **CLAUDE.md/AGENTS.md hygiene** — is the root instruction file staying
-   under roughly 200 lines? Every rule should trace to a real past incident
-   or hard constraint, not be there "just in case."
+   under roughly 200 lines? Apply the **Deletion Test** to any rule that
+   looks like a candidate, not just ones near the limit: *if this line were
+   deleted, would Claude actually start erring in THIS project?* A rule that
+   traces to a real past incident or a hard constraint passes. Not sure →
+   it fails: delete it. It can come back later once a real failure in this
+   project demonstrates it's actually needed — cheaper to re-add a proven
+   line than to carry an unproven one on every session's context indefinitely.
+
+   A line that fails the test isn't necessarily worthless — it usually just
+   belongs somewhere else. Route it by what kind of knowledge it actually
+   is, using whichever of this project's five mechanisms fits:
+
+   | Kind of knowledge                              | Belongs in                       |
+   | ----------------------------------------------- | --------------------------------- |
+   | A rule that applies every session                 | `CLAUDE.md`/`AGENTS.md` (always loaded) |
+   | Domain or episodic knowledge, needed occasionally | a skill (loads on demand)         |
+   | Something that must happen deterministically      | a hook                            |
+   | A specialized check needing its own context       | a subagent                        |
+   | Deep reference material, rarely needed in full    | `.claude/docs/**`, linked          |
+
+   Never report a line as "just remove it" without naming where the
+   knowledge actually belongs, and never report a removal with nowhere for
+   it to land — a finding that discards a rule without a destination is
+   exactly the silent loss this checklist item exists to catch.
 3. **Cross-file consistency in the gate system** — do `.claude/docs/
    git-conventions.md`, `.claude/docs/review-gates.md`, the CLAUDE.md/
-   AGENTS.md pointer block, and `.claude/harness.json` agree with each other
-   on gate order, naming, and behavior? This project has shipped the exact
-   same drift bug twice in one session before — treat this check as
-   load-bearing, not optional.
+   AGENTS.md pointer block, `.claude/harness.json`, and `openspec/config.yaml`
+   agree with each other on gate order, naming, and behavior? This project
+   has shipped the exact same drift bug twice in one session before — treat
+   this check as load-bearing, not optional.
+
+   `openspec/config.yaml` drifts more quietly than the rest, because nothing
+   fails when it is wrong — its `context:` block just keeps describing a
+   stack the project no longer has, and every artifact generated from it
+   inherits that. Compare it against `.claude/harness.json`: framework,
+   package manager, test runner, build directory. Check too that
+   `rules.proposal` still requires requirement identifiers and `rules.tasks`
+   still requires each task to name the one it implements — those two are
+   what later gates' traceability checks read, and a well-meaning edit that
+   drops them turns a mechanical check into a silent pass.
 4. **Stack manifest drift** — does `.claude/harness.json` still match the
    project (script names, coverage threshold, package manager, framework)?
    Has any skill grown its own "check for next.config/vite.config/lockfile"
@@ -43,18 +75,41 @@ below) — never applied by you.
 5. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
    never by hand)?
+6. **Harness version drift** — does `.claude/harness.json`'s `harnessVersion`
+   match the version of the plugin that is actually installed?
+
+   ```bash
+   jq -r '.harnessVersion // "(absent)"' .claude/harness.json 2>/dev/null
+   jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json" 2>/dev/null
+   ```
+
+   A mismatch — or an absent `harnessVersion`, which means the repo was set
+   up before that field existed — is a **CONFIRMED** finding, not a
+   PLAUSIBLE one: it is read off two files, with no judgement involved. It
+   means the plugin was updated but this repository's own files weren't, so
+   newer skills and hooks may be reading files that were never written here.
+   The fix to hand the user is one line: run `/init-harness`, which detects
+   this case itself and runs in upgrade mode.
+
+   Skip the check, and name which side was missing, whenever either command
+   above produces nothing rather than a version. Both cases are normal: no
+   `.claude/harness.json` means this plugin's own repo is under review
+   rather than a project that installed it, so there is no repo-side version
+   to compare; an unreadable `plugin.json` means `${CLAUDE_PLUGIN_ROOT}`
+   didn't resolve. Never report a match you couldn't make — a check that
+   can't run is not a check that passed.
 
 The next three checks only apply when this plugin's own repository — not a
 project that has installed it — is what's under review, since `agents/` and
 `skills/` are this plugin's own directories and never exist inside a target
 project:
 
-6. **Progressive disclosure** — are skill bodies lean, with detail pushed to
+7. **Progressive disclosure** — are skill bodies lean, with detail pushed to
    `references/` rather than everything crammed into `SKILL.md`?
-7. **Skill description quality** — does each skill's frontmatter description
+8. **Skill description quality** — does each skill's frontmatter description
    include concrete trigger phrases a user would actually say, not vague
    language?
-8. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
+9. **Frontmatter/tool scoping** — does each agent's `tools:` list match what
    it actually needs (read-only agents should never carry `Write`/`Edit`)?
    If an agent declared read-only still carries `Bash` (this plugin's own
    agents do, since git history/coverage inspection needs it — there's no
@@ -70,3 +125,10 @@ project:
 Every finding — CONFIRMED or PLAUSIBLE — gets shown with a suggested fix
 (this gate does not follow the CONFIRMED-only pause rule the other gates
 use). State clearly which findings are genuinely load-bearing vs. cosmetic.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole, plus one line naming why when `low` (not enough context,
+harness config that references something outside this diff, a policy call
+you can't verify by reading). This is confidence in the review itself,
+separate from CONFIRMED/PLAUSIBLE on any individual finding — a clean
+verdict reached without enough context to trust it must say so.

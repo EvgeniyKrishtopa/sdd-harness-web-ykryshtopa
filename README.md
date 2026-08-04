@@ -54,15 +54,18 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 9 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+list 10 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
 
 Restart Claude Code (or `/reload-plugins`) after installing: skills take
 effect immediately, but hooks, agents and MCP servers only load on start.
-Then run `/init-harness` once per repository (next section) — installing the
-plugin adds the skills and hooks, but writes nothing into your project.
+Then run `/init-harness` in each repository (next section) — installing the
+plugin adds the skills and hooks, but writes nothing into your project. Run
+it again after a `/plugin update`: the update refreshes the plugin, and
+`/init-harness` is what brings the repository's own files along with it (it
+detects that case itself and only fills in what's missing).
 
 ### Updating, pinning, removing
 
@@ -87,7 +90,7 @@ your own marketplace entry at a tag or commit:
   "source": {
     "source": "github",
     "repo": "EvgeniyKrishtopa/sdd-harness-web-ykryshtopa",
-    "ref": "sdd-harness-web-ykryshtopa--v0.2.0"
+    "ref": "sdd-harness-web-ykryshtopa--v0.3.0"
   }
 }
 ```
@@ -118,6 +121,30 @@ commit counts as a new one — is deliberately not used here: this harness's
 whole argument is that state should be explicit and reviewable, and "which
 version am I running" is exactly that kind of state.
 
+## Upgrading from 0.2.0
+
+**`/plugin update` only refreshes the plugin itself** — its skills, agents,
+and hooks. It writes nothing into your repository. A repo that `init-harness`
+already configured under 0.2.0 keeps its 0.2.0-shaped files until you run
+`/init-harness` again there; this is the one breaking change in 0.3.0, and
+it applies to every repository already using this harness.
+
+Run `/init-harness` after updating. It reads `.claude/harness.json`'s
+`harnessVersion` and compares it against the installed plugin's own
+`version`: absent or lower means an already-configured repo, so it switches
+to **upgrade mode** instead of re-running the full first-time questionnaire.
+Upgrade mode only fills in what's actually missing — new files, new manifest
+keys, new lines appended to existing config — and never overwrites a file
+you've customized without showing you the diff and asking first. Files new
+in 0.3.0 that a 0.2.0 repo doesn't have yet: `PROGRESS.md`, `docs/decisions/`
+(created on demand, the first time a decision outlives its change),
+`.claude/docs/laziness-ladder.md`, `openspec/config.yaml`'s `context`/`rules`
+keys, `.gitattributes`, and `.claude/harness.json`'s `harnessVersion`,
+`maxFixAttempts`, and `toolchainVerifiedAt` keys — plus a blocking
+dependency-vulnerability audit appended to `.husky/pre-push`. Running
+`/init-harness` again on a repo already at the current version says so
+plainly and changes nothing.
+
 ## First run
 
 ```
@@ -125,26 +152,40 @@ version am I running" is exactly that kind of state.
 ```
 
 Detects your framework, package manager, and test runner; installs and
-initializes OpenSpec; asks for your coverage threshold; writes
-`.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`; writes
-`.claude/harness.json` — the single machine-readable manifest every other
-skill and hook in this plugin reads instead of re-detecting your stack;
-creates or appends a short pointer block in `CLAUDE.md`/`AGENTS.md` so that
-those docs (and the auto-commit override they define) are actually
-discoverable — Claude Code doesn't load `.claude/docs/*.md` into context on
-its own the way it loads `CLAUDE.md`; merges a full `permissions` allow/deny
-list into your `.claude/settings.json`; writes `.claudeignore` plus its
-enforcement hook; installs native git hooks via Husky — `.husky/pre-commit`
-(typecheck + lint + `lint-staged`, kept fast since it fires once per task
-group) and `.husky/pre-push` (the full `test:coverage` run) — independent
-of Claude Code's own hooks, so bad commits and pushes are still blocked
-even with no agent involved.
+initializes OpenSpec in Expanded profile, seeding `openspec/config.yaml`
+with your project's detected context and artifact rules; asks for your
+coverage threshold; writes `.claude/docs/git-conventions.md`,
+`.claude/docs/review-gates.md`, and `.claude/docs/laziness-ladder.md`; seeds
+`PROGRESS.md` and `.gitattributes` (`PROGRESS.md merge=union`, so every
+task-group branch in this harness's branch-per-group workflow can touch it
+without conflicting) — `docs/decisions/` isn't created here; it appears
+later, on demand, the first time a decision actually outlives its change;
+writes `.claude/harness.json` — the single machine-readable manifest every
+other skill and hook in this plugin reads instead of re-detecting your
+stack, including `maxFixAttempts` (the `debug-loop` skill's fix-attempt cap
+before it escalates to you) — then **proves the detected toolchain actually
+runs**: the typecheck, lint, and coverage scripts are executed for real, not
+just detected, and only once all three genuinely pass does it write
+`harnessVersion` and `toolchainVerifiedAt`, the two keys that record a repo
+as fully configured for this plugin version; creates or appends a short
+pointer block in `CLAUDE.md`/`AGENTS.md` so that those docs (and the
+auto-commit override they define) are actually discoverable — Claude Code
+doesn't load `.claude/docs/*.md` into context on its own the way it loads
+`CLAUDE.md`; merges a full `permissions` allow/deny list into your
+`.claude/settings.json`; writes `.claudeignore` plus its enforcement hook;
+installs native git hooks via Husky — `.husky/pre-commit` (typecheck + lint
++ `lint-staged`, kept fast since it fires once per task group) and
+`.husky/pre-push` (the full `test:coverage` run, then a blocking
+dependency-vulnerability audit) — independent of Claude Code's own hooks, so
+bad commits and pushes are still blocked even with no agent involved.
 
 This plugin's own Claude Code hooks (`hooks/hooks.json` — commit/merge/push
 guards, `.claudeignore` enforcement, typecheck-before-stop, and a
-`SessionStart` banner printing branch/status/recent commits) apply
-automatically to any repo where the plugin is enabled, the same way its
-skills and agents do. The commit/merge/push guards are plain shell — they
+`SessionStart` banner printing branch/status/recent commits, plus — once
+`PROGRESS.md` exists — its `Status` and `Next steps` sections, so a new
+session's first read answers what `git log` alone can't) apply automatically
+to any repo where the plugin is enabled, the same way its skills and agents
+do. The commit/merge/push guards are plain shell — they
 escalate to a confirmation prompt on a protected-branch commit, a
 secret-shaped or unusually large staged diff, or a force-push, and stay out
 of the way otherwise; no model call is involved. `/init-harness` does not copy them into your project's
@@ -181,7 +222,15 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
    `code-review` [Gate 4 + Gate 5 in one delegation] → `harness-review`) run
    automatically once per run, after every group in it is already
    committed and before push — not once per group — per
-   `.claude/docs/review-gates.md`.
+   `.claude/docs/review-gates.md`. Gate 3 checks every user-facing surface
+   against a required UI States Matrix (loading/error/empty/offline, plus
+   syncing/conflict where a project actually has background sync); Gate 5's
+   coverage check is grep-based against the change's own `FR-`/`NFR-`
+   requirement IDs when the proposal defines them, not judgement alone — an
+   uncovered ID surfaces by name before `code-reviewer` even runs. A
+   `web-qa` FAIL or a `code-review` CONFIRMED finding you choose to fix runs
+   through `debug-loop` — a bounded, four-phase fix loop that escalates to
+   you instead of retrying forever.
 4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
    from that merge.
 5. On the last group, `opsx-apply-git` archives the change via its own PR.
@@ -190,7 +239,7 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 
 | Skill | Gate | Purpose |
 |---|---|---|
-| `init-harness` | — | One-time scaffolder: detects stack, installs OpenSpec, writes docs/hooks |
+| `init-harness` | — | Scaffolder: detects stack, installs OpenSpec, writes docs/hooks; re-run after a plugin update to upgrade the repo |
 | `opsx-propose-review` | 1-2 | Propose a change, run architecture + spec review |
 | `opsx-apply-git` | 3-6 | Implement a run inside the branch-per-group workflow |
 | `opsx-update-review` | 1-2 | Revise an existing change's plan |
@@ -199,10 +248,16 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 | `web-qa` | 3 | Real-browser QA via Playwright MCP, must-pass with a fix loop |
 | `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
+| `debug-loop` | — (not a gate) | Bounded, four-phase fix loop for a `web-qa` FAIL or a `code-review` CONFIRMED finding you chose to fix; caps at `maxFixAttempts` and escalates to you instead of retrying forever |
 
 Five matching subagents live in `agents/` and are invoked by the skills
-above, not usually directly. Four are strictly read-only (`Read`/`Grep`/
-`Glob` plus `Bash` scoped by their own prompts to inspection commands);
+above, not usually directly — `debug-loop` has no subagent of its own; it
+runs inline in the calling session. None of them can write to your source.
+Three (`architecture-reviewer`, `code-reviewer`, `harness-reviewer`) are
+`Read`/`Grep`/`Glob` plus `Bash`, scoped by their own prompts to inspection
+commands; `web-qa-manual-tester` carries no `Bash` at all — it gets
+`Read`/`Grep`/`Glob` plus a fixed list of Playwright MCP browser tools, so
+it is read-only on code while driving a real browser;
 `spec-reviewer` additionally carries `Edit`, limited by its prompt to one
 job — writing the `<!-- isolated -->` / `<!-- judgement-heavy -->` marker
 onto a `tasks.md` heading, which is what `opsx-apply-git` reads to decide
@@ -264,8 +319,8 @@ This plugin previously also shipped a `sequential-thinking` MCP server for
 `architecture-review` and `spec-review`'s non-trivial-change reasoning.
 Removed: modern Claude models have native extended thinking that covers the
 same step-by-step reasoning in one pass, without the added round-trip cost
-of an external sequential-thinking tool call per "thought" (cost-optimization
-#39).
+of an external sequential-thinking tool call per "thought"
+(cost-optimization #39).
 
 ## Design principle
 
@@ -274,3 +329,27 @@ Gates 1, 2, 4, 5 pause only on a CONFIRMED finding; PLAUSIBLE-only or clean
 reviews never block. Gates 3 and 6 are must-pass/always-shown by design —
 see `.claude/docs/review-gates.md` (written by `init-harness`) for the full
 policy once installed in your repo.
+
+Every review agent also states `reviewConfidence: high` or `low` for the
+review as a whole, separately from CONFIRMED/PLAUSIBLE on any individual
+finding — it's confidence in the review itself (enough context, no unread
+dependency, nothing outside what the diff showed), not in what it found.
+`low` never blocks on its own; a clean, low-confidence review still passes.
+It's a narrower signal than a verdict: a note that this particular pass had
+less to go on than usual, worth weighing if you're deciding how much to
+trust a clean result rather than a reason to distrust the harness broadly.
+
+## Harness diet
+
+The ratchet principle this plugin applies to what gets *added* — nothing
+new without a real signal — has a symmetric half: checking whether what's
+already built has gone stale. Once a month, temporarily skip one gate's
+delegation (no config flag for this — just don't invoke it for the trial
+window) or downgrade one gate's model via `.claude/harness.json`'s
+`models.*`, run the normal flow of changes, and compare
+`skills/harness-review/references/harness-stats.md`'s output from before
+and after. No measurable difference (verdict
+distribution, escalations, `reviewConfidence: low` share) → consider
+trimming that gate or model for good. A real difference → put it back and
+record what was tried and found as a new file in `docs/decisions/`. This is
+documented for project consumers too, in `review-gates-template.md`.

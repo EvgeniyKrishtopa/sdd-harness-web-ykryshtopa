@@ -51,6 +51,14 @@ verdict() { # verdict <name> <expected-substring> <actual>
     fail=$((fail + 1))
   fi
 }
+verdict_absent() { # verdict_absent <name> <unwanted-substring> <actual>
+  if printf '%s' "$3" | grep -q "$2"; then
+    printf '  [FAIL] %s\n         got: %s\n' "$1" "$(printf '%s' "$3" | head -c 300)"
+    fail=$((fail + 1))
+  else
+    printf '  [PASS] %s\n' "$1"; pass=$((pass + 1))
+  fi
+}
 bash_in() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1"; }
 
 echo "== sdd-harness-web-ykryshtopa :: hook behaviour =="
@@ -60,6 +68,51 @@ echo
 echo "-- SessionStart --"
 verdict "prints branch, status and recent commits" "=== Recent commits ===" \
   "$(sh "$CMD/session.sh" </dev/null 2>&1)"
+
+# #U3: SessionStart also surfaces PROGRESS.md's Status/Next steps, but only
+# when the file exists — a repo that hasn't adopted it yet must see nothing
+# extra, not an empty "=== Progress ===" header.
+rm -f PROGRESS.md
+out="$(CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
+verdict "no PROGRESS.md -> exits 0" "EXIT=0" "$out"
+verdict_absent "no PROGRESS.md -> prints no Progress section" "=== Progress" "$out"
+
+cat > PROGRESS.md <<'EOF'
+# Progress
+
+## Current change
+- Change: demo-change
+- Branch: feature/demo
+- Last commit: abc123 -- demo commit
+
+## Status
+- Done: 1
+- In progress: none
+- Blocked: none
+
+## Next steps
+1. Do the first documented thing
+2. Do the second documented thing
+
+## Session log
+- Clock-in: 2026-08-01T00:00:00Z -- Clock-out: 2026-08-01T01:00:00Z
+EOF
+out="$(CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
+verdict "with PROGRESS.md -> prints Progress section" "=== Progress" "$out"
+verdict "with PROGRESS.md -> prints next steps" "Do the first documented thing" "$out"
+verdict "with PROGRESS.md -> exits 0" "EXIT=0" "$out"
+
+# Malformed structure (no recognizable "## Status"/"## Next steps" headings,
+# a stray "##" inside a body line): must not crash the hook, just print
+# nothing extra.
+cat > PROGRESS.md <<'EOF'
+Just some free text someone dropped in this file by hand.
+### An unrelated heading level
+A line that mentions ## Status without being one.
+EOF
+out="$(CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
+verdict "malformed PROGRESS.md -> exits 0, does not crash" "EXIT=0" "$out"
+rm -f PROGRESS.md
 echo
 
 echo "-- PreToolUse: git commit guard --"

@@ -55,6 +55,29 @@ also hand over.
 5. Judge PASS/FAIL against what the change was supposed to do — not against
    your own assumptions about what "looks right."
 
+## UI States Matrix — the required minimum per surface
+
+For every user-facing surface a flow touches, check four states:
+**loading, error, empty, offline.** Each one gets a verdict — PASS, FAIL, or
+explicitly **not applicable** with a one-line reason (e.g. a static page
+that fetches nothing has no loading state to hit) — never a silent skip. A
+flow report that's missing one of the four with no stated reason is
+incomplete, not just optimistic; the happy path is the one state that never
+needed this checklist to get exercised, which is exactly why the other four
+do.
+
+How to exercise each one in a real browser: throttle or delay the network
+response for loading; force a failing response (a bad endpoint, an aborted
+request) for error; use an account/dataset with nothing in it for empty; and
+toggle the browser offline (or block the relevant request) for offline.
+
+Two more states — **syncing** and **conflict** — apply only to a surface
+this project's own background-sync mechanism actually touches; most
+projects don't have one. Check them where relevant and otherwise leave them
+out of the matrix entirely, rather than marking every surface "not
+applicable" for a concept the project doesn't have — that's noise, not a
+finding.
+
 ## Ruling out environment noise before calling FAIL
 
 A third-party API returning a rate-limit error, a slow external resource, or
@@ -63,14 +86,31 @@ condition and re-run rather than failing the flow outright. The app must
 still degrade gracefully in that case (no crash, no blank screen) — that
 part *is* worth failing on if it breaks.
 
+This carve-out is for noise encountered incidentally while testing a flow —
+never for a failure you deliberately induced to exercise the error or
+offline state above. A forced bad endpoint or a toggled-offline browser
+behaving exactly as arranged is the test working, not an environment
+condition to excuse; judge it PASS/FAIL like any other state.
+
 ## Output
 
 A per-flow table: flow name, PASS/FAIL, and for any FAIL — what you did,
 what you expected, what actually happened, any console error involved, and
 the `browser_take_screenshot` you took for that failure. A PASS row never
 carries a screenshot — its `browser_snapshot` was enough to judge it and
-isn't worth repeating in the report. Do not suggest code fixes yourself;
-that's the calling skill's job once it has your report.
+isn't worth repeating in the report. Alongside it, a per-surface UI States
+Matrix — loading/error/empty/offline, plus syncing/conflict only where
+applicable — using the same PASS/FAIL/not-applicable-with-reason format;
+a FAIL row here follows the same screenshot rule as the flow table. Do not
+suggest code fixes yourself; that's the calling skill's job once it has
+your report.
 
 Once every flow has been checked, call `browser_close` to end the browser
 session cleanly before producing your report.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the run
+as a whole, plus one line naming why when `low` (a flow you couldn't fully
+exercise, an environment quirk that may not reflect production, a state you
+had to infer rather than observe). This is confidence in the run itself,
+separate from PASS/FAIL on any individual flow — an all-PASS report reached
+without enough confidence to trust it must say so.

@@ -63,14 +63,21 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model architecture-reviewer actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from architecture-reviewer's own Output>" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock
 time spent from delegating to `architecture-reviewer` to receiving its
-response, and the model it actually ran on (`group` is `-`: this gate runs
-at change scope, not per task group). If `jq` isn't available, construct the
+response, the model it actually ran on (`group` is `-`: this gate runs
+at change scope, not per task group), and its stated `reviewConfidence`.
+`fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
+never computed — because this gate reviews a proposed design or a diff
+directly; there is no `debug-loop` fix cycle attached to Gate 1 for either
+field to describe. If `jq` isn't available, construct the
 equivalent JSON line with `printf` instead. A failed log write never blocks
 the gate — note it in the report and move on; this is a diagnostic aid, not
 part of the pass/fail logic.

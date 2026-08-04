@@ -6,9 +6,11 @@ inside it. Never overwrite an existing `permissions` block wholesale; merge
 array entries, de-duplicating.
 
 Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
-`pnpm`), `{{BUILD_DIR}}` with `dist` (Vite) or `.next` (Next.js), and
-`{{LOCKFILE}}` with the detected lockfile (`yarn.lock`/`package-lock.json`/
-`pnpm-lock.yaml`). Do not leave literal placeholders in the written file.
+`pnpm`), `{{BUILD_DIR}}` with `dist` (Vite) or `.next` (Next.js),
+`{{SERVE_SCRIPT}}` with the framework's serve-the-build script (`preview` for
+Vite, `start` for Next.js), and `{{LOCKFILE}}` with the detected lockfile
+(`yarn.lock`/`package-lock.json`/`pnpm-lock.yaml`). Do not leave literal
+placeholders in the written file.
 
 ```json
 {
@@ -18,7 +20,7 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
       "Bash({{PACKAGE_MANAGER}} lint:*)",
       "Bash({{PACKAGE_MANAGER}} dev:*)",
       "Bash({{PACKAGE_MANAGER}} build:*)",
-      "Bash({{PACKAGE_MANAGER}} preview:*)",
+      "Bash({{PACKAGE_MANAGER}} {{SERVE_SCRIPT}}:*)",
       "Bash({{PACKAGE_MANAGER}} test:*)",
       "Bash({{PACKAGE_MANAGER}} test:run:*)",
       "Bash({{PACKAGE_MANAGER}} test:coverage:*)",
@@ -111,6 +113,20 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   these permission entries.
 - `{{BUILD_DIR}}` is `dist` for Vite, `.next` for Next.js — read the detected
   framework from Step 1, don't hardcode one.
+- `{{SERVE_SCRIPT}}` is the same story one level less obvious: the script
+  that serves an already-built app is `preview` on Vite and `start` on
+  Next.js. This entry used to say `preview` outright, which on a Next.js
+  project left a dead allow rule for a script that doesn't exist while the
+  one that does prompted every time. Nothing in this harness *runs* either —
+  no gate needs them, and the manifest tracks only `dev`/`typecheck`/`lint`/
+  `testCoverage` — so this is convenience, not correctness. Substitute it
+  from the detected framework anyway: a template that claims to detect the
+  stack shouldn't ship one framework's script name to the other.
+  If the project's script is named something else entirely, use its real
+  key — the same "never invent a script name" rule as everywhere else. If
+  the project has no such script (a library, an app that's never served from
+  its own build), drop the line rather than writing a name that resolves to
+  nothing.
 - This `permissions.deny` list is only as strong as `allow` is narrow: a
   broad `allow` entry defeats every `deny` rule it overlaps with, since
   Claude Code doesn't enforce `deny` against a tool call that `allow`
@@ -132,8 +148,9 @@ Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
   writes there only handed the agent a way to author skill files that steer
   every later session in that repo. Everything else `init-harness` writes
   once (`.claude/settings.json`, `.claudeignore`, `CLAUDE.md`, `.husky/**`)
-  is deliberately left to prompt — a one-time scaffolder asking before it
-  edits your instruction file is the correct amount of friction.
+  is deliberately left to prompt — a scaffolder that runs a handful of times
+  over a repo's life asking before it edits your instruction file is the
+  correct amount of friction.
 - `allow` deliberately excludes `Bash(node -e:*)`, `Bash(node -p:*)`,
   `Bash(cat:*)`, `Bash(for *)`, and bare `Write`/`Edit`: each is a generic
   enough primitive to read or overwrite any file in the repo — including

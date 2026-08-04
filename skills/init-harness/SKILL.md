@@ -1,9 +1,135 @@
 ---
 name: init-harness
-description: One-time scaffolder that detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky). This plugin's Claude Code hooks apply automatically and need no per-project copy. Use once when adding this harness to a new or existing web project.
+description: Scaffolds this harness into a repository, and upgrades a repository an earlier version of the plugin already set up. Detects the project's framework (Vite or Next.js) and package manager, installs and initializes OpenSpec, seeds openspec/config.yaml with the project's context and artifact rules so changes are drafted knowing what this project is, writes .claude/docs/git-conventions.md and review-gates.md, writes the single-source-of-truth .claude/harness.json manifest every other skill and hook reads, creates or appends a pointer block to CLAUDE.md/AGENTS.md so that documentation and the auto-commit override are actually discoverable, merges permissions and .claudeignore into the target repo, and installs native git pre-commit/pre-push hooks (Husky), then proves the detected typecheck/lint/test scripts actually run and pass before declaring the repo configured. This plugin's Claude Code hooks apply automatically and need no per-project copy. Use when adding this harness to a new or existing web project, and again after "/plugin update" — "set up the harness", "init the harness here", "I just updated the plugin", "bring this repo up to the new harness version".
 ---
 
-Run this once per repository, before using any other skill in this plugin.
+Run this when adding the harness to a repository, and again after the plugin
+itself is updated — Step 0 decides which of the two is happening. Run it
+before using any other skill in this plugin.
+
+## Step 0 — first-time install, or upgrade of a repo an earlier version set up?
+
+This skill used to be a one-shot scaffolder. It isn't anymore: every release
+that adds a file to the target repo (see the inventory below) has to reach
+repositories that were set up by an earlier version, not just new ones.
+`/plugin update` refreshes the skills, agents, and hooks — everything that
+lives *in the plugin*. Nothing that lives *in the repository* changes until
+this skill runs again. Deciding which mode to run in is therefore the first
+thing that happens, before any detection or any question to the user.
+
+Read the plugin's own version and the version this repo was last set up with:
+
+```bash
+plugin_version="$(jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json")"
+repo_version="$(jq -r '.harnessVersion // empty' .claude/harness.json 2>/dev/null)"
+```
+
+Never hardcode the plugin version in this skill's text — it is read from
+`.claude-plugin/plugin.json` through `${CLAUDE_PLUGIN_ROOT}` every time, so
+it cannot drift away from the manifest at the next version bump. Note that
+`.claude/harness.json`'s `"version": 1` is a *different* number: it is the
+schema version of the manifest itself, it is not the plugin's version, and
+the two are never compared against each other or collapsed into one field.
+
+Then take exactly one of these four branches:
+
+1. **`.claude/harness.json` doesn't exist** → FIRST-TIME INSTALL. Run Steps
+   1-10 below as written.
+2. **`harnessVersion` equals `plugin_version`** → nothing to do. Say so —
+   naming the version — and stop without touching anything. (Re-running the
+   whole questionnaire against an already-configured repo, which is what
+   this skill did before, wastes the user's time re-answering questions the
+   manifest already holds.) If the user explicitly asks for a re-run anyway
+   — to repair a file they deleted, say — run the upgrade-mode step list.
+3. **`harnessVersion` is absent, or lower than `plugin_version`** → UPGRADE
+   MODE, below. Absent means the repo was set up by a version older than the
+   one that introduced this field, so it is treated as the oldest possible
+   version, not as a fresh install.
+4. **`harnessVersion` is *higher* than `plugin_version`** → the installed
+   plugin is older than the one that configured this repo. Say so and stop.
+   Do not "upgrade" downward: rewriting the manifest to the older version
+   would silently claim the repo lost features it still has.
+
+Compare versions as versions, not as strings: `0.10.0` sorts *below* `0.9.0`
+lexically. Use `sort -V` (or compare the three numeric components) —
+
+```bash
+older="$(printf '%s\n%s\n' "$repo_version" "$plugin_version" | sort -V | head -1)"
+```
+
+`$repo_version` is behind when it isn't equal to `$plugin_version` and is
+the `$older` of the two.
+
+### The file inventory this skill owns
+
+Upgrade mode walks this list; so does Gate 6 when it checks for drift. Every
+future release that teaches this skill to write a new file into the target
+repo **must add it here in the same commit** — a file that exists only in
+the first-time path reaches new repositories and no one else, which is the
+whole failure this step exists to prevent.
+
+| Path | Written by | Merge rule |
+| --- | --- | --- |
+| `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
+| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys; never touch `schema`, never replace existing content without asking |
+| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
+| `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
+| `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
+| `.claudeignore` | Step 7 | append missing lines |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
+| `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
+| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
+| `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
+| `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case B, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead |
+
+### Upgrade mode
+
+Run only the steps that create or extend files, and only for what is
+actually missing. Concretely:
+
+- **Skip every question the manifest already answers.** The coverage
+  threshold (Step 4), the detected framework, package manager, test runner,
+  build dir, lockfile, and script names (Step 1) are all in
+  `.claude/harness.json` already — read them from there. Only detect, or
+  ask, what the manifest doesn't have (a key added by a newer version, or
+  one a user removed).
+- **Leave the global OpenSpec config alone.** Step 2c changes a setting that
+  is global to the user's machine and affects their other projects. In
+  upgrade mode, run `npx openspec config list` and check the workflow list
+  (Step 2c's own check): if `new`, `continue`, and `verify` are all present,
+  there is nothing to do — do not re-prompt, and do not re-write the file.
+  Only if one is genuinely missing does Step 2c's normal conversation apply.
+- **Walk the inventory above** and apply each row's merge rule: create what
+  is absent, append what is missing from what exists, and never overwrite a
+  file the user may have edited without showing them the diff first. This is
+  the rule this skill already follows everywhere; upgrade mode adds no new
+  license to overwrite.
+- **Verify the toolchain** — Step 8b runs in upgrade mode too. A script the
+  project renamed since the repo was set up is exactly the kind of drift an
+  upgrade should surface.
+- **Then write `harnessVersion`** (Step 8b writes it, not Step 8), and only
+  then, gated on exactly what Step 8b itself gates on: the three toolchain
+  checks passing, plus Step 2c's workflow check earlier in the run. If either
+  of those stopped the whole run, leave `harnessVersion` at its old value —
+  a version number claiming an upgrade that didn't finish is worse than no
+  version number, since the next run would skip via branch 2 above instead
+  of re-attempting it. A user **declining a single file's template diff**
+  (Step 5) is a different, narrower kind of outcome: only that one file is
+  left as-is, the run continues, and it does not by itself withhold
+  `harnessVersion` — the repo choosing to keep a customized doc over the
+  newest template text is still fully configured for this plugin version.
+- **Report what changed** (Step 10): the version transition
+  (`<old or "unversioned"> → <new>`), each file created, each file appended
+  to, and each file left alone. "Already up to date" is a real and common
+  outcome — say it plainly rather than implying work happened.
+
+Upgrade mode is the *only* way a repo picks up a new release's files. Do not
+add automatic migration to `SessionStart` or any other hook: writing into the
+user's repository without them asking is something this harness does nowhere
+else. Version drift is *detected* automatically (Gate 6, checklist item 6)
+and *fixed* on command.
 
 ## Step 1 — detect the project
 
@@ -154,6 +280,85 @@ config to notice if someone later runs `openspec config reset` or trims the
 selection, and a hardcoded "everything" list makes every such regression
 look like a match.
 
+### 2f — seed `openspec/config.yaml` with this project's context and rules
+
+`openspec init` (2b) creates `openspec/config.yaml` with nothing but default
+schema settings. It is OpenSpec's own extension point: whatever `context:`
+and `rules:` it holds get mixed into every artifact OpenSpec generates —
+`proposal.md`, `design.md`, `tasks.md`, the delta specs. Left at its
+defaults, every change in this repo is drafted by an agent that knows
+nothing about the project, and Gates 1 and 2 spend their budget reviewing
+artifacts that were generated blind. Shaping the artifact before generation
+is cheaper than catching its shape at review — the same argument the review
+gates themselves rest on, except this hook is OpenSpec's, not ours.
+
+Read the file first. `openspec init` wrote it, so it exists; treat every key
+already in it as the user's. In particular **leave `schema:` alone** — it
+selects the artifact set OpenSpec generates and is not ours to change. Add
+only what is missing, and when a key we want is already present with
+different content, show the difference and ask rather than replacing.
+
+1. **`context:`** — a block scalar. Fill the technical half from what Step 1
+   already detected: framework, package manager, test runner, build output
+   directory, dev server URL, and the top-level source layout. Do not invent
+   anything here; every line is a fact already in hand.
+2. Then ask the user, **once**, for three to five lines on what the project
+   actually is — its domain, who uses it, the nouns that matter. This is the
+   half no detection can produce, and the half that most changes an
+   artifact's usefulness. Ask once, plainly, and accept a short answer. If
+   they decline or skip it, write the technical half alone and move on.
+   Never write a guessed domain: an invented description is worse than none,
+   because every future artifact inherits it and nobody re-reads a file that
+   looks already filled in.
+3. **`rules.proposal`** — one rule, and it is load-bearing: every requirement
+   carries a stable identifier. Use `FR-<n>` for functional and `NFR-<n>` for
+   non-functional requirements, unique within the change, and never renumbered
+   once written. Without identifiers, "is every requirement implemented?" can
+   only ever be answered by a model's impression of a document. With them, it
+   is a `grep`. Later gates depend on this being true of every proposal.
+4. **`rules.tasks`** — two rules: each task names the requirement identifier
+   it implements, and verification is a task in the list rather than
+   something left for a human to remember afterwards. The first makes the
+   proposal-to-task link traceable in the same mechanical way; the second is
+   why a group can be considered done at all.
+
+Keep it to this. It is tempting to specify a full house style for
+`proposal.md` — sections, ordering, headings — and a project that wants one
+should add it. A portable plugin should not: a structure grown around one
+product's design system and information architecture is exactly the kind of
+thing that fits its author and nobody else. The rules above are the minimum
+the gates actually need to function.
+
+The resulting file looks like this — the values are this project's, not
+these:
+
+```yaml
+schema: spec-driven          # written by `openspec init`; left untouched
+
+context: |
+  Vite + React + TypeScript app; yarn; Vitest for tests; builds to dist/;
+  dev server on http://localhost:5173. Source under src/, routes in
+  src/routes/.
+  Reviewed by the sdd-harness-web-ykryshtopa harness — see
+  .claude/docs/review-gates.md for the gates and their order.
+  <the user's three to five lines about the domain, or nothing at all>
+
+rules:
+  proposal:
+    - Give every requirement a stable identifier — FR-1, FR-2 for functional
+      requirements, NFR-1, NFR-2 for non-functional ones. Unique within the
+      change. Never renumber an identifier once it is written.
+  tasks:
+    - Every task states the requirement identifier it implements.
+    - Verification belongs in the task list as its own task, not left as a
+      manual check after the fact.
+```
+
+Record nothing about this file in `.claude/harness.json` — `openspec/
+config.yaml` is OpenSpec's, and a second copy of its contents in our manifest
+would be one more pair of things to drift apart. Gate 6 reads the file
+itself.
+
 ## Step 3 — install native git hooks (not just Claude Code hooks): fast checks on commit, full coverage on push
 
 This plugin's Claude Code hooks (`hooks/hooks.json`, active automatically
@@ -187,7 +392,9 @@ on every group — multiplied across a whole change. `pre-commit` stays fast
    equivalents — use whatever script names actually exist in this project's
    `package.json`; don't invent script names that aren't there, ask the user
    if the mapping isn't obvious.) No test run here — that's `pre-push`,
-   below.
+   below. Step 8b runs both of these names for real and stops the whole
+   setup if either doesn't resolve, so a wrong guess here is caught during
+   setup rather than on the user's first commit.
 3. Configure `lint-staged` — in `package.json`'s `"lint-staged"` key, or a
    `.lintstagedrc.json` if the project already has one of those instead —
    to run the project's lint/format tooling against staged files only, e.g.
@@ -197,11 +404,23 @@ on every group — multiplied across a whole change. `pre-commit` stays fast
    only the files this commit actually touches — ask the user for the exact
    glob/command if the project's lint tooling isn't obvious from
    `package.json`.
-4. Write `.husky/pre-push` with the full coverage run:
+4. Write `.husky/pre-push` with the full coverage run, then a blocking
+   dependency-vulnerability audit, chained the same way as `pre-commit`
+   above so a high-or-above severity finding blocks the push:
    ```
-   <pm> test:coverage
+   <pm> test:coverage && <audit command>
    ```
-   (e.g. `yarn test:coverage`, or the npm/pnpm equivalent.)
+   The audit command's spelling depends on the detected package manager —
+   and, for yarn, on its major version, since the command changed between
+   yarn 1 (Classic) and yarn 2+ (Berry):
+   - `npm` → `npm audit --audit-level=high`
+   - `pnpm` → `pnpm audit --audit-level high`
+   - `yarn` → run `yarn --version` to tell which spelling applies: `1.x` →
+     `yarn audit --level high`; `2.x` or higher → `yarn npm audit --severity high`
+   Do not add `<pm> outdated` alongside the audit — it reports version drift,
+   not vulnerabilities, and would leave the hook permanently red on any
+   stale minor version. A check that's always red trains whoever runs it to
+   ignore the whole hook, which defeats the audit it sits next to.
 5. Do not overwrite an existing `.husky/pre-commit` or `.husky/pre-push`
    that already has content — read each first, and only append/merge the
    missing checks in, the same "never clobber existing config" rule used
@@ -217,16 +436,30 @@ number without asking; different projects have different baselines.
 
 ## Step 5 — write the harness docs
 
-Write `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md`
-into the target repo (see `references/git-conventions-template.md` and
-`references/review-gates-template.md` in this skill for the content to
-adapt — fill in the detected package manager's commands and the chosen
-coverage threshold rather than copying placeholders verbatim).
+Write `.claude/docs/git-conventions.md`, `.claude/docs/review-gates.md`, and
+`.claude/docs/laziness-ladder.md` into the target repo from
+`references/git-conventions-template.md`, `references/review-gates-template.md`,
+and `references/laziness-ladder-template.md` in this skill.
 
-Do not silently overwrite either file on a re-run of this skill — the same
-"never clobber existing config" rule this skill already applies to hooks
+Only one of the three carries placeholders. Substitute **all four** of them —
+a `{{...}}` left in a written file is a bug the user sees, and the template
+says so itself at the bottom:
+
+| Template | Substitute |
+| --- | --- |
+| `review-gates-template.md` | `{{PACKAGE_MANAGER}}`, `{{COVERAGE_THRESHOLD}}` (Step 4's answer), `{{FRAMEWORK}}`, `{{TEST_RUNNER}}` — all from Step 1's detection and the manifest |
+| `git-conventions-template.md` | nothing — it has no placeholders; copy as-is |
+| `laziness-ladder-template.md` | nothing; copy as-is |
+
+Keep this table and the templates in step: a release that adds a placeholder
+to one of these files **must** add it here in the same commit, the same rule
+Step 0's file inventory follows. A placeholder listed in a template but not
+here is the drift that ships a literal `{{FRAMEWORK}}` into someone's repo.
+
+Do not silently overwrite any of the three on a re-run of this skill — the
+same "never clobber existing config" rule this skill already applies to hooks
 (Step 3), permissions (Step 6), `.claudeignore` (Step 7), and CLAUDE.md
-(Step 9) also applies here, even though these two are fully generated files
+(Step 9) also applies here, even though these are fully generated files
 rather than merge targets. If a file already exists, read it first:
 - If its content is identical to what this step would generate (modulo the
   substituted package-manager commands and coverage threshold), there's
@@ -237,6 +470,30 @@ rather than merge targets. If a file already exists, read it first:
   file the user may have customized without them seeing what would change.
 - Only write straight over the file with no confirmation when it doesn't
   exist yet.
+
+Also seed this repo's continuity files — new in both first-install and
+upgrade mode, since a repo set up by an earlier version never got them:
+
+- Write an initial `PROGRESS.md` at the repo root from
+  `references/progress-template.md` if one doesn't already exist — same
+  never-overwrite rule as above. A fresh file starts with no current change,
+  no next steps, and a clock-in of "now"; after this point only
+  `opsx-apply-git` touches it, at its own run boundaries (see
+  `references/progress-template.md`).
+- Write `.gitattributes` with `PROGRESS.md merge=union` — append the line if
+  the file exists without it, leave everything else in it alone.
+  `PROGRESS.md` is the one file every task-group branch in this harness's
+  branch-per-group workflow can touch, so without this, every group's PR
+  would conflict on it. Nothing else in this harness needs `merge=union` —
+  in particular not `docs/decisions/`, whose whole design point is that two
+  branches produce two different files instead of contending for one (see
+  `references/decision-template.md`).
+- Check whether the project already has a `docs/adr/` directory. If it does,
+  tell the user to keep using it and don't create a competing
+  `docs/decisions/` alongside it. If it doesn't, there's nothing to create
+  yet — `docs/decisions/` comes into existence the first time
+  `opsx-apply-git` (§3 Case B) actually writes a decision that outlives its
+  change, not before.
 
 ## Step 6 — merge permissions allow/deny into `.claude/settings.json`
 
@@ -253,8 +510,10 @@ What the target repo's own `.claude/settings.json` **does** need is a
 `"permissions"` key — that's a project-level setting, not something a plugin
 can ship on the project's behalf. Merge `references/permissions-template.md`'s
 `allow`/`deny` arrays into the target repo's `.claude/settings.json`,
-substituting the detected package manager, build-output directory (`dist`
-for Vite, `.next` for Next.js), and lockfile — never overwrite an existing
+substituting all four of its placeholders — `{{PACKAGE_MANAGER}}`,
+`{{BUILD_DIR}}` (`dist` for Vite, `.next` for Next.js), `{{SERVE_SCRIPT}}`
+(`preview` for Vite, `start` for Next.js), and `{{LOCKFILE}}` — never
+overwrite an existing
 `permissions` block, merge and de-duplicate entries into it instead. This is
 the actually-enforced mechanism for hard blocks (secrets, destructive
 commands) — see that file's notes on why the three non-detected package
@@ -277,8 +536,9 @@ Step 6, nothing to install here) that reads `.claudeignore` and denies
 matching reads — see `references/claudeignore-template.md` for the full
 explanation and the template content.
 
-1. Write `.claudeignore` from that template (substituting build dir and
-   lockfile same as Step 6) — or append missing lines if one already exists.
+1. Write `.claudeignore` from that template, substituting its two
+   placeholders — `{{BUILD_DIR}}` and `{{LOCKFILE}}`, same values as Step 6
+   — or append missing lines if one already exists.
 2. When reporting in Step 10, state plainly that `.claudeignore` is a
    convenience/noise-reduction layer enforced by this plugin's own hook, not
    a Claude Code native feature, and that secrets/destructive-command
@@ -296,6 +556,8 @@ rest around it:
 ```json
 {
   "version": 1,
+  "harnessVersion": "0.3.0",
+  "toolchainVerifiedAt": "2026-08-01T12:00:00Z",
   "framework": "vite",
   "packageManager": "yarn",
   "runCmd": "yarn",
@@ -312,6 +574,7 @@ rest around it:
   "devServerUrl": "http://localhost:5173",
   "trivialDiffThreshold": 10,
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
+  "maxFixAttempts": 2,
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "models": {
     "architecture": "claude-opus-5",
@@ -325,6 +588,22 @@ rest around it:
 ```
 
 Field notes:
+- `version` — the schema version of *this manifest*. It changes only when the
+  shape of this file changes in a way readers have to know about. It is not
+  the plugin's version and never stands in for it.
+- `harnessVersion` — the version of *the plugin* that last configured this
+  repository, read at run time from
+  `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (Step 0). Write the value
+  that command returns; the `"0.3.0"` above is the shape, not a constant to
+  copy. Step 8b writes it, not this step, and only once every step of this
+  run has succeeded — it is the claim "this repo is fully configured for
+  that plugin version",
+  and Step 0's branch 2 and Gate 6's checklist item 6 both trust it. A run
+  that stopped early leaves the old value (or none) in place.
+- `toolchainVerifiedAt` — written by Step 8b, alongside `harnessVersion` and
+  under the same rule: only once the three scripts were actually run and
+  actually passed. Its absence means they weren't, which is what lets a
+  later run tell a proven toolchain from an assumed one.
 - `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
@@ -348,6 +627,11 @@ Field notes:
   fix in a `.md` file doesn't need a full review pass. A user who wants a
   stricter or looser bar edits this manifest directly; there's no separate
   prompt for it.
+- `maxFixAttempts` — seed with `2`, the same don't-ask-unless-raised
+  treatment as `trivialDiffThreshold`. The `debug-loop` skill reads it to
+  bound a `web-qa` fix loop or a `code-review` CONFIRMED fix attempt before
+  escalating to a human. A user who wants a stricter or looser bar edits
+  this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
 - `models` — one entry per review-gate agent plus a `default` fallback. Seed
   it with the values shown above, not with whatever each `agents/*.md`
@@ -365,6 +649,102 @@ Field notes:
 Every field must be a real detected or user-confirmed value. Never leave a
 literal placeholder token in the written file — if a value can't be
 determined, ask the user rather than guessing.
+
+Two keys are deliberately not written here: `harnessVersion` and
+`toolchainVerifiedAt`. Both are claims about a run that has finished
+successfully, and this run hasn't — Step 8b writes them once it passes.
+Write every other key now, because Step 8b verifies exactly the values this
+step recorded, not a fresh guess at them.
+
+## Step 8b — prove the toolchain actually runs
+
+Everything up to here has *detected* a toolchain. Nothing has *run* it. Those
+script names are not decoration: Step 3 already wrote them into
+`.husky/pre-commit`, and this plugin's `Stop` hook builds
+`<runCmd> <scripts.typecheck>` straight out of the manifest. If a project
+calls its script `type-check`, `tsc`, or `types` — all more common than
+`typecheck` — then `pre-commit` fails on every single commit with "script not
+found", and the `Stop` hook reports the package manager's complaint as if it
+were a type error. Neither failure surfaces during setup. Both surface on the
+first real task group, by which point the cause is three steps back.
+
+Step 3 and Step 8 both already say "don't invent script names, ask the user."
+That instruction was in 0.1.0 too, and the bug shipped anyway. An instruction
+to be careful is not a check. This step is the check: four commands, once in
+a repository's lifetime.
+
+Run it in both first-install and upgrade mode, on a clean tree (if the tree
+is dirty, say so and ask the user to commit or stash first — a lint failure
+from the user's own uncommitted work would be blamed on the harness).
+
+1. **The keys exist.** For each of `scripts.typecheck`, `scripts.lint`, and
+   `scripts.testCoverage`, confirm the name in the manifest is a real key in
+   `package.json`:
+
+   ```bash
+   for key in typecheck lint testCoverage; do
+     name="$(jq -r --arg k "$key" '.scripts[$k]' .claude/harness.json)"
+     jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
+       || echo "MISSING: harness.json scripts.$key = \"$name\" is not in package.json"
+   done
+   ```
+
+   Anything missing: stop and ask the user which script actually does that
+   job (offer the closest matches from `jq -r '.scripts | keys[]'
+   package.json`). If they name one, correct **both** `.claude/harness.json`
+   and the `.husky/` hook that embeds it — the two hold the same name in two
+   places, and fixing one leaves the other broken. If the project genuinely
+   has no such script, that is a real gap in the project, not something to
+   paper over with a guess: say so and stop.
+
+2. **Typecheck and lint pass.** Run `<runCmd> <scripts.typecheck>` and
+   `<runCmd> <scripts.lint>`. Both must exit 0. A non-zero exit on a clean
+   tree means this harness would block the user's every commit from the
+   moment it is installed — via `.husky/pre-commit`, which chains exactly
+   these two. Report which one failed and its output, and stop. Don't offer
+   to relax the hook: the hook is correct, the repository isn't green.
+
+3. **The tests run *and* at least one passes.** Run
+   `<runCmd> <scripts.testCoverage>`. Read the count, don't just read the
+   exit code: Vitest and Jest both exit 1 on zero matched tests by default,
+   but `--passWithNoTests` flips that to 0, and it is common enough in
+   starter templates and CI scripts to be worth not trusting. A green exit
+   from a runner that matched nothing is an empty `pre-push`, not a passing
+   one. Confirm from the output that at least one test actually passed; the
+   format follows the detected `testRunner` (Vitest: `Tests  N passed`;
+   Jest: `Tests:  N passed`), and "No test files found" / "0 total" is a
+   failure of this step. Report it as such and stop —
+   a project with no tests can still use the rest of the harness, but the
+   user should decide that knowingly rather than discover it when Gate 5
+   reviews coverage that was never collected.
+
+4. **Any of the three not satisfied → stop the whole `init-harness` run.**
+   Name what didn't match, and leave `harnessVersion` and
+   `toolchainVerifiedAt` unwritten. The repository isn't configured, so
+   nothing should claim it is: an unwritten version means the next run comes
+   back through Step 0's upgrade branch rather than skipping as
+   already-current.
+
+   Say one more thing before stopping, if the run stopped at item 1 with no
+   correct script name to substitute: `.claude/harness.json` still holds the
+   name that doesn't resolve, and this plugin's `Stop` hook reads
+   `scripts.typecheck` from it on every turn regardless of whether the repo
+   was ever verified. Until the user adds the script or corrects the
+   manifest by hand, that hook will keep reporting a "script not found" as
+   though it were a type error. The user needs to know that, because
+   stopping here doesn't undo it.
+
+5. **All three satisfied** → write both remaining manifest keys:
+
+   ```json
+   { "harnessVersion": "<plugin version from Step 0>", "toolchainVerifiedAt": "2026-08-01T12:00:00Z" }
+   ```
+
+   `toolchainVerifiedAt` is an ISO-8601 UTC timestamp (`date -u
+   +%Y-%m-%dT%H:%M:%SZ`) — the shape above is not a value to copy. It is what
+   lets a later upgrade run, and Gate 6, tell "these commands were proven to
+   work" from "these names were assumed to be right", which is the whole
+   difference this step exists to record.
 
 ## Step 9 — create or append CLAUDE.md's harness pointer block
 
@@ -399,9 +779,22 @@ to asking before every commit instead of trusting it.
      be assumed.
    - @.claude/docs/review-gates.md — the six automated review gates and
      their order.
+   - @.claude/docs/laziness-ladder.md — priority order to check before
+     writing new code; does not apply to trust-boundary validation,
+     data loss, security, or accessibility.
    - @.claude/harness.json — detected stack (framework, package manager,
      test runner, coverage threshold). Every skill and hook in this harness
      reads from here; do not re-detect any of it.
+   - PROGRESS.md — current change, status, and next steps as of the last
+     stop. `SessionStart` already prints its in-progress/blocked line and
+     Next steps section at the start of every session; read the file itself
+     for anything beyond that digest (the Done list, clock-in/out history). Not
+     `@`-imported — the hook already surfaces it, so importing it too would
+     load the same content twice.
+   - docs/decisions/ — one ADR-format file per architectural decision that
+     outlives a single change; see `docs/decisions/NNNN-*.md` if the
+     directory exists yet. Not auto-loaded — read the relevant file when a
+     past decision might be in play.
    ```
 
 4. Keep the block short. Gate 6 (`harness-review`) already checks that the
@@ -410,8 +803,21 @@ to asking before every commit instead of trusting it.
 
 ## Step 10 — report
 
-Summarize what was detected (framework, package manager, test runner),
-confirm OpenSpec is initialized, state the coverage threshold chosen, and
+In upgrade mode, report the shorter form Step 0 describes — version
+transition, files created, files appended to, files left alone — not the
+full first-install summary below, which mostly restates what the user
+already has.
+
+Either mode: state that the three scripts were run and passed (Step 8b),
+naming them — this is the one thing in the report the user can't infer from
+the file list, and it is the difference between "the harness found these
+names" and "the harness ran these commands".
+
+For a first-time install: summarize what was detected (framework, package manager, test runner),
+confirm OpenSpec is initialized and say whether `openspec/config.yaml`
+(Step 2f) got the user's domain description or only the technical half —
+they can still add it later, and knowing it's missing is what prompts them
+to. State the coverage threshold chosen, and
 list the files written — including confirming the native pre-commit and
 pre-push hooks are now in place (Step 3), noting that this plugin's Claude Code hooks are
 already active with nothing to install (Step 6), the
@@ -423,3 +829,7 @@ was created or appended to — say plainly that this is required for the
 auto-commit override at group/archive boundaries to apply. Tell the user
 their harness is ready and that `opsx-propose-review` is the next command to
 run when they want to start their first spec-driven change.
+
+Either mode: mention that after a future `/plugin update`, running this skill
+again is what brings this repository's own files up to the new version — the
+plugin update alone doesn't, and Gate 6 will flag the gap in the meantime.

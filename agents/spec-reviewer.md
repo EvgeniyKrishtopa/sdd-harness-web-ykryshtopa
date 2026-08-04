@@ -30,8 +30,19 @@ finding is **PLAUSIBLE**.
 
 ## What to check
 
-1. Every requirement in the specs has at least one task implementing it, and
-   every task traces back to a requirement — no orphans either direction.
+1. **Traceability by ID.** `proposal.md`'s requirements each carry a stable
+   `FR-<n>`/`NFR-<n>` identifier (per `openspec/config.yaml`'s
+   `rules.proposal`, seeded by `init-harness`). Collect every identifier
+   `proposal.md` defines, then check `tasks.md` in both directions: every
+   identifier is named by at least one task (`rules.tasks` requires each
+   task to state the identifier it implements), and no task fails to name
+   one. An orphan in either direction is a **CONFIRMED** finding — name the
+   specific identifier or task, not just "some tasks are untraceable." If
+   `proposal.md` defines no identifiers at all, say so explicitly —
+   **"traceability unavailable for this change"** — rather than reporting
+   the reverse check as passed: a change with zero identifiers has nothing
+   for this check to find wrong, and that is a different, worse fact than
+   "everything traces," not the same one.
 2. Acceptance criteria are testable as written (concrete, observable), not
    vague ("should work well").
 3. The design doesn't silently contradict the proposal's stated scope.
@@ -54,3 +65,11 @@ marked. If you are unsure, mark it `judgement-heavy` — the safe default.
 
 List findings (CONFIRMED/PLAUSIBLE) plus the classification table for every
 group, then confirm you wrote the markers into `tasks.md`.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole, plus one line naming why when `low` (proposal.md is
+ambiguous about scope, a requirement's testability can't be settled without
+information outside the spec, traceability is unavailable rather than
+satisfied). This is confidence in the review itself, separate from
+CONFIRMED/PLAUSIBLE on any individual finding — a clean verdict reached
+without enough context to trust it must say so.

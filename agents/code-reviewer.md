@@ -35,6 +35,19 @@ off-by-one, a race, a broken edge case). **PLAUSIBLE** covers
 style/simplification opinions and anything you can't fully trace to a real
 bug.
 
+The calling skill (`code-review`) tells you whether this run is the change's
+**final run** — no `tasks.md` groups still pending after it — or not; you
+only see the diff, so you cannot determine this yourself. **On a non-final
+run**, downgrade any **Simplification**, **Reuse**, or **Efficiency**
+finding (the three quality-opinion categories below) that would otherwise be
+CONFIRMED to PLAUSIBLE instead: this project's Definition of Done (see
+`review-gates.md`) treats the System layer (Gate 3) as not yet having
+covered the change as a whole, so a stylistic cleanup pushed ahead of that is
+premature. **Correctness** findings and every Gate 5 coverage finding are
+exempt from this downgrade — they keep whatever verdict they'd otherwise
+earn on a final or non-final run alike; a null-deref or an uncovered edge
+case is a bug regardless of how many groups are still open.
+
 **Gate 5 (test coverage)** — **CONFIRMED** means a specific acceptance
 criterion or edge case genuinely has no test covering it, or an existing
 assertion is so loose it would pass even if the implementation were wrong
@@ -52,9 +65,20 @@ covered.
 2. **Reuse** — duplicated logic that already exists elsewhere in the diff's
    neighborhood; a new helper that reinvents an existing utility.
 3. **Simplification** — unnecessary abstraction, premature generalization,
-   dead code introduced by the change itself.
+   dead code introduced by the change itself. A new dependency or custom
+   helper added where `.claude/docs/laziness-ladder.md`'s earlier rungs
+   (stdlib, a platform feature, an already-installed dependency, one line)
+   would have done — name the rung it skipped in the finding.
 4. **Efficiency** — obviously wasteful patterns (re-computing in a render
    loop, an O(n²) where O(n) is trivial) — not micro-optimization hunting.
+5. **Observability** (PLAUSIBLE-only — this is judgement about the
+   application being built, never a CONFIRMED correctness bug):
+   - error handling that logs only the caught message, with no stack trace
+     and no surrounding state (which request, which record, which input) —
+     the kind of catch block that leaves an incident with nothing to
+     investigate;
+   - a critical user path this diff touches (auth, payment, any irreversible
+     action) with no log checkpoint anywhere between its entry and its exit.
 
 ### Gate 5 — test coverage
 
@@ -63,8 +87,18 @@ calling skill tells you the diff (or the run's cumulative diff, for a
 batched isolated run) is docs/config-only — no application source or test
 files changed anywhere in it. Otherwise check:
 
-1. Every acceptance criterion in the relevant `openspec/` spec has at least
-   one test exercising it.
+1. **Traceability** — the calling skill hands you a ready-made
+   requirement-ID coverage result (its own grep check against `proposal.md`'s
+   `FR-`/`NFR-` identifiers, see `skills/code-review/SKILL.md`), not a spec
+   to read cold: either a list of uncovered identifiers, "all requirement IDs
+   covered", or "traceability unavailable" (this change's `proposal.md`
+   defines none). Every identifier on an uncovered list is a **CONFIRMED**
+   finding — name the identifier and what's missing, rather than
+   re-deriving coverage from the spec yourself. On "traceability
+   unavailable," say so explicitly in your own output, then fall back to
+   reading the relevant spec's acceptance criteria and judging coverage the
+   way this criterion worked before identifiers existed — never report
+   "covered" for a change with nothing to check against.
 2. New branches/conditionals introduced by the diff have a test for each
    meaningfully different path, not just the happy path.
 3. Assertions actually verify behavior (output values, state changes,
@@ -82,3 +116,11 @@ skipped per above). Each section lists its findings (CONFIRMED/PLAUSIBLE)
 with file/line, the issue, and a concrete suggested fix; note explicitly if
 a section is clean. For Gate 5, also state the measured coverage delta if
 you can determine it.
+
+Also state `reviewConfidence: high` or `reviewConfidence: low` for the
+review as a whole (both gates together), plus one line naming why when
+`low` (not enough context, the diff calls into a module you weren't shown,
+an external service call you can't verify by reading). This is confidence
+in the review itself, separate from CONFIRMED/PLAUSIBLE on any individual
+finding — a clean verdict reached without enough context to trust it must
+say so.

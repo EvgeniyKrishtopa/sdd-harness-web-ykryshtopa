@@ -85,24 +85,37 @@ Gate 4.
    Playwright MCP itself; the agent's `tools:` list carries both spellings
    for that reason. Scope its
    flows to the *whole change's* diff against the parent branch, not just
-   the last group, so the final pass covers everything the change touched.
-2. The subagent relays a per-flow PASS/FAIL report.
+   the last group, so the final pass covers everything the change touched
+   — including the UI States Matrix (loading/error/empty/offline)
+   `agents/web-qa-manual-tester.md` requires for each touched surface. An
+   unaddressed state reads the same as an unexercised flow: incomplete, not
+   a pass by default.
+2. The subagent relays a per-flow PASS/FAIL report, plus the per-surface UI
+   States Matrix — loading/error/empty/offline each PASS/FAIL or explicitly
+   not applicable with a reason, never silently omitted; syncing/conflict
+   included the same way only on a project with background sync, otherwise
+   left out of the matrix entirely rather than marked not-applicable.
 
 ## This is a must-pass gate with a fix loop, not CONFIRMED/PLAUSIBLE
 
-- **All-PASS** → proceed to Gate 4.
-- **Any FAIL**:
-  1. First rule out an environment condition (a third-party API rate limit,
-     a flaky animation timing) — note it and re-run rather than treating it
-     as a defect, though the app must still degrade gracefully.
-  2. For a genuine failure, suggest a concrete fix and get the user's
-     approval before changing anything.
-  3. Apply the approved fix — it folds into this group's own diff, so
-     `code-review` (Gate 4 + Gate 5) reviews it too — and re-run `web-qa` on
-     the affected flow(s). Repeat until all-PASS.
-  4. Do not proceed to Gate 4 past a FAIL on the default path. The only
-     exception is an explicit human "proceed anyway," recorded in the
-     group's commit body.
+- **All-PASS** (every flow, and every applicable UI state) → proceed to
+  Gate 4.
+- **Any FAIL**, in a flow or in any applicable UI state → run the
+  `debug-loop` skill, scoped to the failing flow(s) or state(s):
+  reproduce / isolate (its environment-first check — rule out a third-party
+  API rate limit, flaky animation timing, note it and re-run rather than
+  treating it as a defect, though the app must still degrade gracefully — is
+  what used to be this step's own step 1) / diagnose with a recorded
+  expected effect / fix and reverify that exact scenario, bounded by
+  `.claude/harness.json`'s `maxFixAttempts` (default 2). An approved fix
+  folds into this group's own diff, so `code-review` (Gate 4 + Gate 5)
+  reviews it too, and this gate re-runs on the affected flow(s) after each
+  attempt.
+  - **All-PASS within the limit** → proceed to Gate 4.
+  - **Limit exhausted** → `debug-loop` escalates (blocked-marker + hypothesis
+    report to the human). Do not proceed to Gate 4 on the default path. The
+    only exception is an explicit human "proceed anyway," recorded in the
+    group's commit body.
 
 ## Tear down the dev server whenever this gate exits
 
@@ -131,7 +144,10 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|confirmed|skipped>" \
   --argjson durationMs <elapsed-ms> \
   --arg model "<model web-qa-manual-tester actually ran on>" \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model}')" \
+  --arg reviewConfidence "<high|low, from web-qa-manual-tester's own Output; empty when skipped>" \
+  --argjson fixIterations <total debug-loop attempts across every FAIL this run, 0 if none> \
+  --argjson escalatedToHuman <true iff any debug-loop invocation this run hit maxFixAttempts> \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -139,7 +155,15 @@ Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
 any FAIL found along the way (even if later fixed and re-passed), or
 `skipped` when this gate wasn't applicable; the wall-clock time across the
 whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
-this gate covers the whole change, triggered on the last group). If `jq`
+this gate covers the whole change, triggered on the last group). Also fill
+in its stated `reviewConfidence`, empty when this gate was skipped.
+`fixIterations` is the attempt count `debug-loop` itself reports back (phase
+4's "report success and the number of attempts it took"), summed if more
+than one flow needed its own invocation this run; `0` when every flow
+passed on the first try or the gate was skipped. `escalatedToHuman` is
+`true` only if `debug-loop` reached `maxFixAttempts` on this run without
+resolving a failure — the same run that then wrote a `blocked` marker
+instead of proceeding. If `jq`
 isn't available, construct the equivalent JSON line with `printf` instead.
 A failed log write never blocks the gate — note it in the report and move
 on; this is a diagnostic aid, not part of the pass/fail logic.
