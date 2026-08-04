@@ -344,6 +344,89 @@ for f in skills/*/SKILL.md agents/*.md; do
 done
 echo
 
+# --- Check for 0.3.0 surfaces (#U17) ----------------------------------------
+
+echo "-- 0.3.0 surfaces --"
+
+# harnessVersion's documented example in init-harness Step 8 must be
+# semver-shaped, the same shape plugin.json's own "version" is checked
+# against above. The SKILL.md text is explicit that the example value itself
+# ("0.3.0") is "the shape, not a constant to copy" -- so this checks form,
+# not equality with plugin.json.
+INIT_SKILL="skills/init-harness/SKILL.md"
+if [ -f "$INIT_SKILL" ]; then
+  example_version="$(grep -m1 '"harnessVersion":' "$INIT_SKILL" | sed -E 's/.*"harnessVersion":[[:space:]]*"([^"]*)".*/\1/')"
+  if printf '%s' "$example_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
+    ok "$INIT_SKILL's Step 8 harnessVersion example (\"$example_version\") is shaped like a semver version"
+  else
+    bad "$INIT_SKILL's Step 8 harnessVersion example is missing or not semver-shaped"
+  fi
+
+  if grep -q '"maxFixAttempts"' "$INIT_SKILL" && grep -q '"toolchainVerifiedAt"' "$INIT_SKILL"; then
+    ok "$INIT_SKILL documents maxFixAttempts and toolchainVerifiedAt in the Step 8 manifest example"
+  else
+    bad "$INIT_SKILL's Step 8 manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
+  fi
+else
+  bad "$INIT_SKILL does not exist"
+fi
+
+# Every harness-log.jsonl line literal -- one per gate skill, plus
+# opsx-apply-git's two skip forms -- must emit the exact same field set.
+# This is the check that would have caught "updated five places out of
+# seven" (#U13's own risk, named in the plan) instead of a human noticing a
+# missing field months later while reading harness-stats output.
+log_line_fields() {
+  # field names only, in order, comma-joined, from one object literal line
+  printf '%s\n' "$1" | grep -oE '[A-Za-z]+:' | tr -d ':' | tr '\n' ','
+}
+
+log_lines="$(grep -rn 'ts:\$ts' skills/*/SKILL.md 2>/dev/null)"
+if [ -z "$log_lines" ]; then
+  bad "no harness-log.jsonl line literals found under skills/*/SKILL.md"
+else
+  first_fields=""; first_loc=""; mismatches=""; total=0
+  while IFS= read -r logline; do
+    [ -z "$logline" ] && continue
+    loc="$(printf '%s' "$logline" | cut -d: -f1,2)"
+    content="$(printf '%s' "$logline" | cut -d: -f3-)"
+    fields="$(log_line_fields "$content")"
+    total=$((total + 1))
+    if [ -z "$first_fields" ]; then
+      first_fields="$fields"; first_loc="$loc"
+    elif [ "$fields" != "$first_fields" ]; then
+      mismatches="$mismatches $loc"
+    fi
+  done <<LOGEOF
+$log_lines
+LOGEOF
+  if [ -n "$mismatches" ]; then
+    bad "harness-log.jsonl line field set differs from $first_loc ($first_fields) at:$mismatches"
+  else
+    ok "all $total harness-log.jsonl line literals (every gate + opsx-apply-git's two skip forms) share the same field set"
+  fi
+fi
+
+# debug-loop's description needs to name concrete trigger phrases, not just
+# describe what the skill generically does -- that's what lets Claude's own
+# skill-matcher and a human reader tell when to reach for it.
+DEBUG_LOOP_SKILL="skills/debug-loop/SKILL.md"
+if [ -f "$DEBUG_LOOP_SKILL" ]; then
+  desc="$(extract_frontmatter "$DEBUG_LOOP_SKILL" | grep '^description:')"
+  missing=""
+  for phrase in "maxFixAttempts" "web-qa FAIL" "CONFIRMED finding"; do
+    printf '%s' "$desc" | grep -qF "$phrase" || missing="$missing [$phrase]"
+  done
+  if [ -n "$desc" ] && [ -z "$missing" ]; then
+    ok "$DEBUG_LOOP_SKILL's frontmatter description names concrete trigger phrases"
+  else
+    bad "$DEBUG_LOOP_SKILL's frontmatter description is missing or missing trigger phrase(s):$missing"
+  fi
+else
+  bad "$DEBUG_LOOP_SKILL does not exist"
+fi
+echo
+
 # --- Check 4: the official validator, when the CLI is available ------------
 
 echo "-- claude plugin validate --"

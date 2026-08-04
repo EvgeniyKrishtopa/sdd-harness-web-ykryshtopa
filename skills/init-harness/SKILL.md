@@ -110,10 +110,16 @@ actually missing. Concretely:
   project renamed since the repo was set up is exactly the kind of drift an
   upgrade should surface.
 - **Then write `harnessVersion`** (Step 8b writes it, not Step 8), and only
-  then. If any step stopped — a missing workflow, a failing toolchain check,
-  a diff the user declined — leave `harnessVersion` at its old value. A version number
-  claiming an upgrade that didn't finish is worse than no version number:
-  the next run would skip via branch 2 above.
+  then, gated on exactly what Step 8b itself gates on: the three toolchain
+  checks passing, plus Step 2c's workflow check earlier in the run. If either
+  of those stopped the whole run, leave `harnessVersion` at its old value —
+  a version number claiming an upgrade that didn't finish is worse than no
+  version number, since the next run would skip via branch 2 above instead
+  of re-attempting it. A user **declining a single file's template diff**
+  (Step 5) is a different, narrower kind of outcome: only that one file is
+  left as-is, the run continues, and it does not by itself withhold
+  `harnessVersion` — the repo choosing to keep a customized doc over the
+  newest template text is still fully configured for this plugin version.
 - **Report what changed** (Step 10): the version transition
   (`<old or "unversioned"> → <new>`), each file created, each file appended
   to, and each file left alone. "Already up to date" is a real and common

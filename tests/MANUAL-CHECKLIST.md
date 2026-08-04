@@ -10,14 +10,17 @@ all three are quiet failures with no error message a human would stumble
 onto without a real run.
 
 Run this checklist:
-- before merging `bugfix/harness-improve` into `main`,
+- before merging a release's integration branch into `main`,
 - after any change that touches `hooks/hooks.json`, an `agents/*.md`
   frontmatter block, `skills/init-harness/**`, or the manifest schema.
 
 Use both fixtures in `tests/fixtures/` — they deliberately differ on every
 axis the harness claims to generalize across (framework, package manager,
 test runner). A fix that only gets tried against one of them is unverified
-on the other.
+on the other. **Run the whole checklist to completion on both fixtures
+before merging into `main`** — 0.2.0's live passes only ever ran against
+`vite-vitest-yarn`; `next-jest-pnpm` never got a full live run before that
+release shipped. Don't repeat that gap for 0.3.0.
 
 Run both automated scripts **first**, every time — they're free, need no
 network, and between them they cover the manifest shapes, the frontmatter,
@@ -53,7 +56,7 @@ The plugin must be tested against a repo it doesn't already live inside.
    claude plugin details sdd-harness-web-ykryshtopa
    ```
 
-   `details` is the fast sanity check: it must list 9 skills, 5 agents by
+   `details` is the fast sanity check: it must list 10 skills, 5 agents by
    name, 3 hook events and 1 MCP server. Agents showing up unnamed or
    missing means their frontmatter failed to parse. Undo afterwards with
    `claude plugin uninstall` + `claude plugin marketplace remove`.
@@ -122,6 +125,77 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
 
 ---
 
+## 1a. Upgrading from 0.2.0 (`init-harness` upgrade mode) (#U1, #U18)
+
+This is the release's one breaking change (see README's "Upgrading from
+0.2.0" section) and the scenario 0.2.0 itself never got a real fixture for —
+verify it end to end, on a repo genuinely configured by the *old* plugin,
+not one that merely lacks a `harnessVersion` key by coincidence.
+
+1. Get a real 0.2.0 checkout of the plugin: `git worktree add
+   /tmp/plugin-0.2.0 f416d53` (the commit `harness-audit/v0.3.0/00-README.txt`
+   itself names as this release's base — the tip of `bugfix/harness-improve`
+   before any 0.3.0 work landed; use the
+   `sdd-harness-web-ykryshtopa--v0.2.0` tag instead if one has been pushed by
+   the time you run this).
+2. In a **fresh** copy of a fixture, `claude plugin marketplace add
+   /tmp/plugin-0.2.0` and install from it, then run `/init-harness`
+   (first-time path). Confirm `.claude/harness.json` has **no**
+   `harnessVersion` key afterward — that's what makes this a genuine
+   "pre-#U1" repo, not just an unlucky one.
+3. Hand-edit `.claude/docs/git-conventions.md`: append one custom paragraph
+   that isn't in the template. This simulates a real user's customization
+   that upgrade mode must not clobber.
+4. Point the marketplace at the current checkout instead (whatever branch or
+   worktree holds the plugin version under test — `git branch --show-current`
+   if unsure) and reinstall — this is the manual stand-in for
+   `/plugin update`, which only refreshes the plugin half, never the
+   repository.
+5. Run `/init-harness` again in the **same** fixture repo (not a new one).
+   Step 0 must select branch 3 (UPGRADE MODE) — confirm the skill says so
+   explicitly, naming the version transition, rather than silently
+   re-running the full first-time questionnaire.
+6. Confirm the new files/keys actually appear, per the inventory table in
+   `skills/init-harness/SKILL.md`'s Step 0:
+   - `PROGRESS.md` created at the repo root (fresh, no current change);
+   - `.claude/docs/laziness-ladder.md` created;
+   - `openspec/config.yaml` gains its `context`/`rules` keys without its
+     `schema` key or any other existing content being touched;
+   - `.gitattributes` gains the `PROGRESS.md merge=union` line;
+   - `.claude/harness.json` gains `harnessVersion`, `maxFixAttempts`, and
+     `toolchainVerifiedAt`.
+7. Confirm the hand-edited paragraph from step 3 survived — `init-harness`
+   must show the diff and ask before touching a file that already differs
+   from the template, never overwrite it silently. Decline the overwrite and
+   confirm the custom paragraph is still there afterward.
+8. Confirm `.claude/harness.json`'s `harnessVersion` now equals this
+   checkout's `plugin.json` version, and that Step 10's report states the
+   transition as `<old or "unversioned"> -> <new>`, plus a per-file list of
+   created/appended/left-alone — not just "done."
+9. Run `/init-harness` a **third** time. Step 0 must select branch 2
+   (`harnessVersion` already equals `plugin_version`) — confirm it says so
+   and stops, touching nothing, rather than re-running the upgrade walk.
+
+## 1b. Blocking dependency audit on `pre-push` (#U12)
+
+1. On a fixture already configured by the current `init-harness`, read
+   `.husky/pre-push` directly — confirm it chains `<pm> test:coverage && <audit
+   command>`, with the audit command's spelling matching this fixture's
+   package manager (and, for yarn, its major version — `yarn audit --level
+   high` for 1.x, `yarn npm audit --severity high` for 2.x+).
+2. Add a devDependency at a version with a known high-or-above severity
+   advisory, install it, and attempt `git push`. Confirm the push is
+   blocked (non-zero exit) and the audit's own output — naming the
+   vulnerable package — reaches the terminal, not swallowed by the chain.
+3. Upgrade or remove that dependency and push again — confirm it now
+   succeeds (assuming coverage also passes).
+4. Confirm `.husky/pre-push` does **not** also run `<pm> outdated` — Step
+   3 item 4 of `init-harness` explicitly rules this out, since a
+   version-drift check left in the same chain would leave the hook
+   permanently red on any stale minor version and train people to ignore it.
+
+---
+
 ## 2. Security / permissions (independent of stack)
 
 1. `Read` a `.env` file directly (Read tool) — denied.
@@ -187,6 +261,31 @@ Record for this pass: fixture name, plugin commit/branch under test, date.
    specific broken flow, blocking (must-pass, not advisory).
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
+
+## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
+
+`debug-loop` is not a gate — it never appears in `review-gates.md` and never
+blocks on its own. It's the thing a gate calls into when it has a concrete
+failure to fix, and the whole point of 0.3.0's #U6 is that it stops instead
+of looping forever.
+
+1. Set `.claude/harness.json`'s `maxFixAttempts` to `2` for a controlled
+   run.
+2. Introduce a genuine UI bug the gate will FAIL on, but shape it so a
+   plausible fix attempt still doesn't resolve it (e.g. the visible bug is a
+   symptom of a root cause one directory away from where a naive fix would
+   look) — run Gate 3 on it. Confirm `debug-loop` runs exactly 2 attempts,
+   each visibly structured as its four phases (reproduce, isolate, diagnose,
+   fix-and-reverify), and then **escalates to a human** with a clear message
+   naming the failure — not a third silent attempt, not a generic timeout.
+3. Confirm `.claude/harness-log.jsonl`'s line for that run records
+   `fixIterations: 2` and `escalatedToHuman: true`.
+4. Repeat with a CONFIRMED `code-review` finding whose suggested fix, once
+   applied, still fails re-verification — confirm the same cap and
+   escalation apply there too, not just to `web-qa` FAILs.
+5. Repeat with a bug that a fix genuinely resolves on the **first** attempt
+   (`maxFixAttempts` still `2`) — confirm `debug-loop` does not run a second,
+   unnecessary attempt: `fixIterations: 1`, `escalatedToHuman: false`.
 
 ## 6-7. Gate 4 + Gate 5 — code-review (merged, one delegation, #33)
 
@@ -309,10 +408,10 @@ Precondition (#35):
 
 ## Sign-off
 
-| Fixture            | §0 setup | §1 manifest | §2 security | Gate 1 | Gate 2 | Gate 3 | Gate 4 | Gate 5 | Gate 6 | §9 workflow | Date | Notes |
-|--------------------|----------|-------------|--------------|--------|--------|--------|--------|--------|--------|-------------|------|-------|
-| vite-vitest-yarn   |          |             |              |        |        |        |        |        |        |             |      |       |
-| next-jest-pnpm     |          |             |              |        |        |        |        |        |        |             |      |       |
+| Fixture            | §0 setup | §1 manifest | §1a upgrade | §1b audit | §2 security | Gate 1 | Gate 2 | Gate 3 | §5a debug-loop | Gate 4 | Gate 5 | Gate 6 | §9 workflow | Date | Notes |
+|--------------------|----------|-------------|-------------|-----------|--------------|--------|--------|--------|----------------|--------|--------|--------|-------------|------|-------|
+| vite-vitest-yarn   |          |             |             |           |              |        |        |        |                |        |        |        |             |      |       |
+| next-jest-pnpm     |          |             |             |           |              |        |        |        |                |        |        |        |             |      |       |
 
 Fill in PASS/FAIL per cell. A FAIL blocks merging whatever change triggered
 this run of the checklist — file it as a new finding rather than waving it
