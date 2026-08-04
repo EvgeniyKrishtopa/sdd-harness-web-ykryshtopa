@@ -146,10 +146,11 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 3. Hand-edit `.claude/docs/git-conventions.md`: append one custom paragraph
    that isn't in the template. This simulates a real user's customization
    that upgrade mode must not clobber.
-4. Point the marketplace at the current checkout instead (the
-   `feature/upgrade-pt7` worktree, or wherever this session's changes live)
-   and reinstall — this is the manual stand-in for `/plugin update`, which
-   only refreshes the plugin half, never the repository.
+4. Point the marketplace at the current checkout instead (whatever branch or
+   worktree holds the plugin version under test — `git branch --show-current`
+   if unsure) and reinstall — this is the manual stand-in for
+   `/plugin update`, which only refreshes the plugin half, never the
+   repository.
 5. Run `/init-harness` again in the **same** fixture repo (not a new one).
    Step 0 must select branch 3 (UPGRADE MODE) — confirm the skill says so
    explicitly, naming the version transition, rather than silently
