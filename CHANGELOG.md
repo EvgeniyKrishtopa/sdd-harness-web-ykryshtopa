@@ -9,6 +9,106 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.3.0
+
+**Repositories `init-harness` already configured under 0.2.0 must run
+`/init-harness` again, in upgrade mode, after updating this plugin.**
+`/plugin update` only refreshes the plugin itself — its skills, agents, and
+hooks; nothing in your repository changes until `/init-harness` runs there
+again. This is the one breaking change in this release. See README's
+"Upgrading from 0.2.0" for what upgrade mode adds and how it protects your
+existing customizations.
+
+### Added — continuity across sessions
+
+- `PROGRESS.md` and `docs/decisions/` ADRs, plus a `SessionStart` digest
+  that now prints `PROGRESS.md`'s Status and Next steps, not just
+  branch/status/recent commits — a new session's first read now answers
+  what `git log -5` alone couldn't.
+- `blocked` as a third `tasks.md` task state, alongside done/pending.
+- Project-level WIP=1: `opsx-propose-review` refuses to start a new change
+  while a previous one sits unarchived, naming it instead of silently
+  proceeding.
+
+### Added — bounded debug loop and recovery
+
+- `debug-loop` skill: a bounded, four-phase fix loop (reproduce, isolate,
+  diagnose, fix-and-reverify) that escalates to a human at `maxFixAttempts`
+  instead of retrying forever — the one place in this harness where cost
+  could previously run unbounded. Not a gate; doesn't block on its own.
+- A plain-language run summary (3-5 sentences, what changed and why) now
+  required in the run's PR body and chat output, not just a commit list.
+- Definition of Done named explicitly as an ordered Static -> Runtime ->
+  System contract, with "don't refactor before green" as a stated rule.
+
+### Added — review quality
+
+- Laziness ladder (`.claude/docs/laziness-ladder.md`): checked before
+  writing new code, referenced from `code-reviewer`'s Simplification
+  criterion and from `opsx-apply-git` before implementing a group.
+- `code-reviewer` now also judges the observability of the application
+  being built (PLAUSIBLE-only) — error handling that swallows context,
+  critical paths with no log checkpoint.
+- `reviewConfidence: high`/`low` added to all five review agents' Output —
+  confidence in the review itself, separate from CONFIRMED/PLAUSIBLE on any
+  individual finding; `low` never blocks on its own.
+- A blocking dependency-vulnerability audit (`<pm> audit`/equivalent,
+  high-or-above severity) chained onto `.husky/pre-push` after the coverage
+  run.
+- Requirement-ID (`FR-`/`NFR-`) traceability: a 0-token grep check surfaces
+  an uncovered identifier by name before `code-reviewer` even runs, and
+  reports "traceability unavailable" rather than a false "all covered" when
+  a proposal defines no identifiers.
+- Gate 6 (`harness-review`)'s CLAUDE.md hygiene check expanded into a
+  Deletion Test with a knowledge-routing table.
+- Gate 3 (`web-qa`) now requires a UI States Matrix per user-facing
+  surface — loading/error/empty/offline, each with a verdict or an explicit
+  "not applicable," never a silent skip.
+
+### Added — measurability
+
+- `fixIterations`, `escalatedToHuman`, and `reviewConfidence` fields added
+  to every `.claude/harness-log.jsonl` line — all six gates and both of
+  `opsx-apply-git`'s skip forms write the identical field set.
+- `harness-stats` (`skills/harness-review/references/harness-stats.md`): a
+  0-token shell+jq read over the log — verdict/duration distribution,
+  fixIterations spread, escalation count, VCR, Rebuild Cost. No model call
+  in this path.
+- File-handoff: a run's diff over ~50 KB is written to a temp file and
+  handed to `code-reviewer` by path instead of inlined as text.
+- A monthly "harness diet" ritual, operationalizing this plugin's own
+  ratchet principle: temporarily trim one gate or model, compare
+  `harness-stats` before/after, keep the trim only on a real difference.
+
+### Fixed — release blockers
+
+- **Upgrade path.** `init-harness` now detects whether a repo was already
+  configured by an earlier version (`.claude/harness.json`'s new
+  `harnessVersion` key) and switches to upgrade mode: fill in what's
+  missing, never silently overwrite a customized file. Gate 6 also checks
+  for version drift independently.
+- **Toolchain proof.** `init-harness` now actually *runs* the detected
+  `typecheck`/`lint`/`test:coverage` scripts and confirms they pass — not
+  just that the names exist in `package.json` — before writing
+  `toolchainVerifiedAt` and `harnessVersion`. A renamed script now fails
+  setup instead of silently shipping a dead `.husky/pre-commit`.
+- `init-harness` seeds `openspec/config.yaml` with the project's detected
+  context and artifact rules; the file is now in Gate 6's drift-check scope.
+
+### Tests and docs
+
+- `tests/hook-behaviour.sh` and `tests/smoke-json-schema.sh` extended to
+  cover every new surface above: `SessionStart`'s three `PROGRESS.md`
+  states, the new manifest keys' shape, identical `harness-log.jsonl` field
+  sets across all eight write sites, and `debug-loop`'s frontmatter.
+- `tests/MANUAL-CHECKLIST.md` gained an upgrade-from-0.2.0 scenario (a real
+  0.2.0 checkout, `/plugin update`, `/init-harness` in upgrade mode), a
+  `maxFixAttempts`-exhaustion scenario, and a blocking-pre-push-audit
+  scenario.
+- README brought current with this release end to end: the new "Upgrading
+  from 0.2.0" section, a corrected skill count, `init-harness`'s full file
+  inventory, the `debug-loop` row, and `reviewConfidence`.
+
 ## 0.2.0
 
 The plugin's first working release. 0.1.0 shipped several defects that made
