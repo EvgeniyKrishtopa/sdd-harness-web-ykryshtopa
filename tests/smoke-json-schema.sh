@@ -425,6 +425,32 @@ if [ -f "$DEBUG_LOOP_SKILL" ]; then
 else
   bad "$DEBUG_LOOP_SKILL does not exist"
 fi
+
+# Every {{PLACEHOLDER}} that appears in an init-harness reference template
+# must also be named in SKILL.md, which is where the substitution is
+# actually instructed. The two drift in one direction only: a placeholder
+# added to a template and not to the skill ships a literal "{{FRAMEWORK}}"
+# into a user's repo, and nothing else in this suite would notice. Both
+# defects of this shape found so far -- a Vite script name hardcoded where a
+# substitution belonged, and Step 5 naming two of four placeholders -- were
+# caught by reading, which is exactly the method that doesn't scale.
+tmpl_missing=""
+tmpl_total=0
+for tmpl in skills/init-harness/references/*.md; do
+  [ -f "$tmpl" ] || continue
+  for ph in $(grep -o '{{[A-Z_]*}}' "$tmpl" 2>/dev/null | sort -u); do
+    tmpl_total=$((tmpl_total + 1))
+    grep -qF "$ph" "$INIT_SKILL" 2>/dev/null \
+      || tmpl_missing="$tmpl_missing [$(basename "$tmpl"):$ph]"
+  done
+done
+if [ "$tmpl_total" -eq 0 ]; then
+  bad "no {{PLACEHOLDER}} tokens found in skills/init-harness/references/ -- did the templates move?"
+elif [ -n "$tmpl_missing" ]; then
+  bad "placeholder(s) in a template but never named in $INIT_SKILL:$tmpl_missing"
+else
+  ok "all $tmpl_total template placeholders are named in $INIT_SKILL's substitution instructions"
+fi
 echo
 
 # --- Check 4: the official validator, when the CLI is available ------------
