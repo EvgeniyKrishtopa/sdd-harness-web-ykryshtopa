@@ -133,7 +133,7 @@ verify it end to end, on a repo genuinely configured by the *old* plugin,
 not one that merely lacks a `harnessVersion` key by coincidence.
 
 1. Get a real 0.2.0 checkout of the plugin: `git worktree add
-   /tmp/plugin-0.2.0 f416d53` (the commit `harness-audit/v0.3.0/00-README.txt`
+   /tmp/plugin-0.2.0 f416d53` (the commit `harness-audit/v0.3.0-implemented/00-README.txt`
    itself names as this release's base — the tip of `bugfix/harness-improve`
    before any 0.3.0 work landed; use the
    `sdd-harness-web-ykryshtopa--v0.2.0` tag instead if one has been pushed by
