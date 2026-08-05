@@ -54,7 +54,7 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 10 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+list 11 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
