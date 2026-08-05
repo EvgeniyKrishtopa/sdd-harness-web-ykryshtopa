@@ -82,3 +82,9 @@ it for good. If something did change, put it back and record what you
 tried and what you found as a new file in `docs/decisions/`. This is the
 same ratchet principle this harness applies to what gets *added* — it's
 also supposed to apply to what's already here.
+
+Same cadence, separate ritual: run the `dead-code-report` skill about once a
+month too. None of the six gates above ever looks at code a task stopped
+referencing without touching it, so that only accumulates unless something
+goes looking on a schedule. It only reports and drafts a change proposal —
+it never deletes anything itself.
