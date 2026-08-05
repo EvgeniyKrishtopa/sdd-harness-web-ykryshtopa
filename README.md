@@ -54,7 +54,7 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 10 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+list 11 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
@@ -249,6 +249,7 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 | `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 | `debug-loop` | — (not a gate) | Bounded, four-phase fix loop for a `web-qa` FAIL or a `code-review` CONFIRMED finding you chose to fix; caps at `maxFixAttempts` and escalates to you instead of retrying forever |
+| `dead-code-report` | — (not a gate) | Finds unused files/exports/deps via knip plus the project's own lint rules, sorts findings into three confidence groups, ends with a change-proposal draft; never deletes anything. Run manually, roughly monthly |
 
 Five matching subagents live in `agents/` and are invoked by the skills
 above, not usually directly — `debug-loop` has no subagent of its own; it
