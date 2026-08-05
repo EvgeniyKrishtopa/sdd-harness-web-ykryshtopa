@@ -344,6 +344,46 @@ for f in skills/*/SKILL.md agents/*.md; do
 done
 echo
 
+# --- Check: instruction length (V-4) ----------------------------------------
+
+echo "-- Instruction length --"
+
+# A hard 250-line cap would go red immediately on two instructions that
+# already passed it before this rule existed, and the workflow requires a
+# green test before merging any session -- so a flat cap would drag "split
+# up two large instructions" into this change uninvited. Grandfathering
+# today's size as a per-file ceiling avoids that: no file may grow, but
+# nothing has to be split right now either. See
+# harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 8.
+SKILL_LINE_CAP=250
+grandfathered_skill_cap() {
+  case "$1" in
+    init-harness) echo 835 ;;
+    opsx-apply-git) echo 475 ;;
+    *) echo "" ;;
+  esac
+}
+
+for f in skills/*/SKILL.md; do
+  skill_name="$(basename "$(dirname "$f")")"
+  lines="$(wc -l < "$f" | tr -d ' ')"
+  cap="$(grandfathered_skill_cap "$skill_name")"
+  if [ -n "$cap" ]; then
+    if [ "$lines" -le "$cap" ]; then
+      ok "$f is $lines lines (grandfathered cap: $cap)"
+    else
+      bad "$f grew to $lines lines, past its grandfathered cap of $cap lines"
+    fi
+  else
+    if [ "$lines" -le "$SKILL_LINE_CAP" ]; then
+      ok "$f is $lines lines (limit: $SKILL_LINE_CAP)"
+    else
+      bad "$f is $lines lines, over the $SKILL_LINE_CAP-line limit"
+    fi
+  fi
+done
+echo
+
 # --- Check for 0.3.0 surfaces (#U17) ----------------------------------------
 
 echo "-- 0.3.0 surfaces --"

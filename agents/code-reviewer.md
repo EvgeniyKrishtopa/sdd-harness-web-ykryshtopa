@@ -106,7 +106,13 @@ files changed anywhere in it. Otherwise check:
 4. The diff doesn't reduce the project's coverage number below its
    configured threshold (read `coverageThreshold` from
    `.claude/harness.json` — never assume a fixed percentage or re-read
-   `vite.config.ts`/`jest.config.*` directly).
+   `vite.config.ts`/`jest.config.*` directly). If the diff is
+   deletion-dominated, a rising coverage number proves nothing and is not
+   an argument for the diff: what gets deleted is, as a rule, exactly the
+   code nobody was calling, which is exactly the code nobody wrote tests
+   for either. In that case, check not the number but whether the deleted
+   code is genuinely unused anywhere — including references by string
+   name, config-driven wiring, and dynamic calls.
 
 ## Output
 
