@@ -49,7 +49,10 @@ change as a whole — not any one of them in isolation:
    whole diff, run once on the last task group before Gate 4 *if the change
    touched user-facing UI*; not applicable to a change that didn't (e.g.
    backend/API-only), in which case Static and Runtime are the whole
-   contract for that change.
+   contract for that change. Like the first two layers, it now leaves files
+   behind: a passed flow the human agreed to keep is saved as a
+   `@playwright/test` scenario under `webQaScenariosDir`, and every later
+   Gate 3 run replays the accumulated set before its own click pass.
 
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a

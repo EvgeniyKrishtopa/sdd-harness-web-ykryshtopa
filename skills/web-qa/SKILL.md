@@ -21,7 +21,8 @@ Gate 4.
 ## Read the stack manifest, then run the dev server as a scoped background process
 
 1. Read `.claude/harness.json` (written by `init-harness`) for `framework`,
-   `runCmd`, `scripts.dev`, and `devServerUrl`. Do not re-detect the
+   `runCmd`, `scripts.dev`, `devServerUrl`, and `webQaScenariosDir` (see
+   "Replay recorded scenarios" below). Do not re-detect the
    framework from config files or the package manager from lockfiles — that
    duplicated logic is exactly what caused this skill to drift out of sync
    with `init-harness` before (it didn't know about `next.config.mjs`). If
@@ -69,6 +70,33 @@ Gate 4.
    never comes up hang the gate forever. If the timeout is hit, tear down
    (below) and report it as a Gate 3 failure.
 
+## Replay recorded scenarios before the manual pass
+
+Read `.claude/harness.json`'s `webQaScenariosDir` key (a repo set up by a
+version of `init-harness` older than the one that added this key won't have
+it — tell the user to re-run `init-harness` to pick it up, then continue
+without a replay this time rather than blocking the gate on it). If the
+directory exists and holds at least one recorded scenario file, run the
+accumulated suite first: `npx playwright test <webQaScenariosDir>`. Zero
+model tokens, seconds instead of a click pass.
+
+This is the only part of this gate that checks flows the *current* diff
+didn't touch: cart changing what it hands off to checkout doesn't necessarily
+show up in checkout's own diff, and the manual pass below stays scoped to
+this change's diff, not the whole app, so nothing else in this gate would
+ever re-open checkout on its own. See
+`harness-audit/v0.4.0-planned/01-review-blind-spots.txt` point 3 for the
+incident this closes.
+
+- **Any failure here** feeds into the same fix loop as a manual-tester FAIL,
+  below — a regression the replay catches is exactly as real as one the
+  model finds by clicking, and blocks Gate 4 the same way.
+- **All-PASS, or nothing recorded yet** → continue to the manual pass
+  unchanged. A recorded scenario that's stale (selectors renamed, flow
+  restructured) will surface as a failure here too, on its own — treat that
+  the same as any other fix-loop failure rather than deleting the scenario
+  to make the gate green.
+
 ## Action
 
 1. Read `.claude/harness.json`'s `models.webQa` key (written by
@@ -86,7 +114,9 @@ Gate 4.
    for that reason. Scope its
    flows to the *whole change's* diff against the parent branch, not just
    the last group, so the final pass covers everything the change touched
-   — including the UI States Matrix (loading/error/empty/offline)
+   — the replay above already re-verified whatever earlier changes recorded,
+   so this pass is what covers what's actually new — including the UI States
+   Matrix (loading/error/empty/offline)
    `agents/web-qa-manual-tester.md` requires for each touched surface. An
    unaddressed state reads the same as an unexercised flow: incomplete, not
    a pass by default.
@@ -116,6 +146,47 @@ Gate 4.
     report to the human). Do not proceed to Gate 4 on the default path. The
     only exception is an explicit human "proceed anyway," recorded in the
     group's commit body.
+
+## Propose recording a passed scenario as a Playwright test
+
+Once a flow reaches a final PASS — first try, or after the fix loop settles
+— **propose** saving it as a regular Playwright test in the project, one
+flow at a time. Never record automatically, and never bundle more than one
+flow into a single yes/no: the human decides per scenario, because a report
+that records everything that happened to pass turns into a pile of
+overlapping, half-duplicate tests within a few months, and that pile is a
+maintenance debt, not a safety net — see
+`harness-audit/v0.4.0-planned/05-design-rationale.txt` decision 6.
+
+1. Ask (`AskUserQuestion` fits well here — one scenario, a clear yes/no) for
+   each individually-passed flow, after the whole gate's fix loop has
+   settled — don't ask mid-fix-loop about a flow that might still fail. A
+   flow that's one-off, purely cosmetic, or mostly asserted "eyeballed by the
+   model" content is a reasonable one to decline; a flow worth protecting
+   against exactly the March/April checkout-vs-cart regression above is a
+   reasonable one to keep.
+2. On accept, read `.claude/harness.json`'s `webQaScenariosDir` key for
+   where the file goes; write `<webQaScenariosDir>/<flow-slug>.spec.ts`
+   (kebab-case from the flow's name), authored against `@playwright/test`'s
+   own API (`page.goto`, `page.getByRole(...).click()`,
+   `expect(...).toBeVisible()`, …) — translate the steps the MCP session
+   actually took into their `@playwright/test` equivalents, not a literal
+   transcript of MCP tool calls, which don't run outside that server.
+3. **First scenario ever recorded in this project**: `permissions.deny`
+   (written by `init-harness`) blocks every package manager's install
+   command, on purpose, and this gate doesn't get an exception. If
+   `@playwright/test` isn't already a devDependency, stop and ask the user
+   to run `<pm> add -D @playwright/test` themselves, then continue once
+   they confirm; likewise, if no `playwright.config.ts`/`.js` exists yet,
+   write a minimal one with `testDir` pointing at `webQaScenariosDir` — if
+   one already exists, only check it covers that directory and tell the
+   user if it doesn't, rather than rewriting a config they may have tuned.
+4. Run `npx playwright test <the new file>` right after writing it, before
+   calling the scenario recorded. A file that doesn't pass standalone
+   protects nothing — it just looks like coverage. Fix it or don't keep it;
+   don't leave a red spec file behind silently.
+5. Tell the user plainly what got recorded and what got declined this run —
+   the report from step 1's per-flow answers, not a single aggregate line.
 
 ## Tear down the dev server whenever this gate exits
 
