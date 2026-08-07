@@ -259,7 +259,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
-       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
+       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",skipReason:"мелкое изменение",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
        >> .claude/harness-log.jsonl
    done
    ```
@@ -359,7 +359,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    mkdir -p .claude
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
-     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",durationMs:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
+     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",skipReason:"настройки плагина не менялись",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
      >> .claude/harness-log.jsonl
    ```
    If `jq` isn't available, construct the equivalent line with `printf`
@@ -384,7 +384,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    — this is the surfacing that step 2 deferred to here. Then push the run's
    branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
-6. Write the run's summary, then open the PR:
+6. Write the run's summary, log this run's CONFIRMED findings (`references/log-findings.md`), then open the PR:
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain
       language covering what this run actually did and why, in terms a
       human who hasn't read the diff can follow. This is *not* satisfied by
