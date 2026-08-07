@@ -12,9 +12,14 @@ position.
 ## 0.4.1
 
 A correctness fix in `dead-code-report`'s safety net, first automated
-coverage for the scripts 0.4.0 shipped, and a progressive-disclosure pass
-over the two largest instructions. Nothing in a configured repository
-changes — no new manifest keys, no re-run of `/init-harness` required.
+coverage for the scripts 0.4.0 added, and a progressive-disclosure pass over
+the two largest instructions. Nothing in this release adds a manifest key or
+changes a configured repository.
+
+**That does not mean you can skip `/init-harness`.** 0.4.0 and 0.4.1 reach
+users as one update, so a repository last configured under 0.3.0 still needs
+the upgrade-mode run 0.4.0 describes below, to pick up `webQaScenariosDir`.
+Only a repository already at 0.4.0 has nothing to do here.
 
 ### Fixed
 
