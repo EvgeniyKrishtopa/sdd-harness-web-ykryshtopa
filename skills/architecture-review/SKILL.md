@@ -61,12 +61,14 @@ printf '%s\n' "$(jq -nc \
   --arg group "-" \
   --arg gate "architecture-review" \
   --arg verdict "<clean|plausible|confirmed>" \
+  --arg skipReason "" \
   --argjson durationMs <elapsed-ms> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block> \
   --arg model "<model architecture-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from architecture-reviewer's own Output>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -74,6 +76,13 @@ Fill in the change slug, the verdict this run resolved to, the wall-clock
 time spent from delegating to `architecture-reviewer` to receiving its
 response, the model it actually ran on (`group` is `-`: this gate runs
 at change scope, not per task group), and its stated `reviewConfidence`.
+`skipReason` is always empty here — this gate never logs `verdict:
+"skipped"` itself. `tokensTotal` is the `subagent_tokens` figure from the
+`<usage>` block the environment appends after the `architecture-reviewer`
+delegation returns (see `harness-audit/v0.4.0-planned/03-log-fields.txt`
+point 5) — never estimate this from `durationMs` or any other proxy; if
+that block is absent, write `0` and say so in the report rather than
+guessing.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
 never computed — because this gate reviews a proposed design or a diff
 directly; there is no `debug-loop` fix cycle attached to Gate 1 for either

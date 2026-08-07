@@ -77,12 +77,14 @@ printf '%s\n' "$(jq -nc \
   --arg group "-" \
   --arg gate "harness-review" \
   --arg verdict "<clean|plausible|confirmed>" \
+  --arg skipReason "" \
   --argjson durationMs <elapsed-ms> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block> \
   --arg model "<model harness-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from harness-reviewer's own Output>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -90,6 +92,14 @@ Fill in the change slug, the verdict this run resolved to (`confirmed` if
 any finding was raised regardless of whether the user chose to apply it),
 the wall-clock time spent, the model `harness-reviewer` ran on (`group`
 is `-`: this gate runs at change scope), and its stated `reviewConfidence`.
+`skipReason` is always empty on this line — this agent's own line never
+logs `verdict: "skipped"` (see the fourth-value note below for the line
+that does). `tokensTotal` is the `subagent_tokens` figure from the
+`<usage>` block the environment appends after the `harness-reviewer`
+delegation returns (see `harness-audit/v0.4.0-planned/03-log-fields.txt`
+point 5) — never estimate this from `durationMs` or any other proxy; if
+that block is absent, write `0` and say so in the report rather than
+guessing.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
 never computed — because an approved finding here is applied directly and
 committed (see above), not run through `debug-loop`'s bounded retry cycle.
@@ -97,7 +107,9 @@ A fourth verdict value,
 `skipped`, also appears under `"gate":"harness-review"` in this log — but
 is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
 precondition finds nothing to review and this delegation never runs at all
-(cost-optimization #35). If `jq` isn't available, construct the equivalent
+(cost-optimization #35); that line carries `skipReason:"настройки плагина
+не менялись"`, `durationMs:0`, and `tokensTotal:0`, since nothing ran. If
+`jq` isn't available, construct the equivalent
 JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic
 aid, not part of the pass/fail logic.
@@ -116,8 +128,9 @@ if [ -s .claude/harness-log.jsonl ] && command -v jq >/dev/null 2>&1; then
   # `fromjson?` drops any line that isn't valid JSON instead of one bad line
   # aborting the whole slurp with a parse error.
   jq -R 'fromjson?' .claude/harness-log.jsonl | jq -s -r '
-    ((([.[] | select(.verdict=="skipped")] | length) / length * 100 * 10 | round) / 10) as $skippedPct |
-    ([.[] | select(.escalatedToHuman == true)] | length) as $esc |
+    (map(select(.kind != "finding"))) as $runs |
+    ((([$runs[] | select(.verdict=="skipped")] | length) / ($runs | length) * 100 * 10 | round) / 10) as $skippedPct |
+    ([$runs[] | select(.escalatedToHuman == true)] | length) as $esc |
     "harness-stats: \($skippedPct)% of all logged gate runs skipped by 0-token prefilters, \($esc) escalation(s) to human. Full breakdown: references/harness-stats.md."
   '
 fi

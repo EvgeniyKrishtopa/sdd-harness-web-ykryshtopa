@@ -213,12 +213,14 @@ printf '%s\n' "$(jq -nc \
   --arg group "-" \
   --arg gate "web-qa" \
   --arg verdict "<clean|confirmed|skipped>" \
+  --arg skipReason "<интерфейс не затронут, when verdict is skipped; empty otherwise>" \
   --argjson durationMs <elapsed-ms> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block, 0 when skipped> \
   --arg model "<model web-qa-manual-tester actually ran on>" \
   --arg reviewConfidence "<high|low, from web-qa-manual-tester's own Output; empty when skipped>" \
   --argjson fixIterations <total debug-loop attempts across every FAIL this run, 0 if none> \
   --argjson escalatedToHuman <true iff any debug-loop invocation this run hit maxFixAttempts> \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -226,8 +228,14 @@ Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
 any FAIL found along the way (even if later fixed and re-passed), or
 `skipped` when this gate wasn't applicable; the wall-clock time across the
 whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
-this gate covers the whole change, triggered on the last group). Also fill
-in its stated `reviewConfidence`, empty when this gate was skipped.
+this gate covers the whole change, triggered on the last group). `skipReason`
+is the closed-list reason matching this gate's own applicability check —
+`интерфейс не затронут` exactly when `verdict` is `skipped`, empty
+otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
+`tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
+environment appends after the `web-qa-manual-tester` delegation returns
+(point 5, `harness-audit/v0.4.0-planned/03-log-fields.txt`), `0` when
+skipped or when that block is absent — never estimate it from a proxy.
 `fixIterations` is the attempt count `debug-loop` itself reports back (phase
 4's "report success and the number of attempts it took"), summed if more
 than one flow needed its own invocation this run; `0` when every flow
