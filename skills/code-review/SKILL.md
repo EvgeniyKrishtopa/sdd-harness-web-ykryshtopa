@@ -155,12 +155,14 @@ printf '%s\n' "$(jq -nc \
   --arg group "<group-number-or-range>" \
   --arg gate "code-review" \
   --arg verdict "<clean|plausible|confirmed>" \
+  --arg skipReason "" \
   --argjson durationMs <elapsed-ms> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block> \
   --arg model "<model code-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from code-reviewer's own Output>" \
   --argjson fixIterations <total debug-loop attempts across every CONFIRMED finding fixed this run, 0 if none> \
   --argjson escalatedToHuman <true iff debug-loop hit maxFixAttempts on this run> \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -168,12 +170,14 @@ printf '%s\n' "$(jq -nc \
   --arg group "<same group-number-or-range>" \
   --arg gate "test-coverage" \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
+  --arg skipReason "<только документация, when verdict is skipped; empty otherwise>" \
   --argjson durationMs 0 \
+  --argjson tokensTotal 0 \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
   --arg reviewConfidence "<same reviewConfidence, or empty if the Gate 5 section was skipped>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,durationMs:$durationMs,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -181,7 +185,20 @@ Fill in the change slug and group number or range this run reviewed, each gate's
 verdict (`skipped` for `test-coverage` when its section didn't apply), and
 the wall-clock time spent from delegating to `code-reviewer` to receiving
 its response — attribute it to whichever line represents the section that
-actually did the work; a skipped section logs `0`. `reviewConfidence` is the
+actually did the work; a skipped section logs `0`. `skipReason` follows the
+same rule: only the `test-coverage` line ever carries a value, and only
+`только документация` — the one closed-list reason that matches "Gate 5
+section was docs/config-only" — filled in exactly when that line's own
+`verdict` is `skipped`, empty otherwise; the `code-review` line's
+`skipReason` is always empty, since that line never logs `skipped` itself.
+`tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
+environment appends after the `code-reviewer` delegation returns (see
+`harness-audit/v0.4.0-implemented/03-log-fields.txt` point 5) — attributed
+entirely to the `code-review` line, the same way `durationMs` is, since one
+delegation produces one `<usage>` block covering both sections; the
+`test-coverage` line always logs `0` here too. Never estimate either figure
+from a proxy; if the `<usage>` block is absent, write `0` and say so in the
+report. `reviewConfidence` is the
 single `high`/`low` value `code-reviewer` stated for the whole review
 (§4 step 2 of `opsx-apply-git` reads this same value for its own
 low-without-CONFIRMED surfacing) — the `code-review` line always carries it,

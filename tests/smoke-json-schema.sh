@@ -354,12 +354,24 @@ echo "-- Instruction length --"
 # up two large instructions" into this change uninvited. Grandfathering
 # today's size as a per-file ceiling avoids that: no file may grow, but
 # nothing has to be split right now either. See
-# harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 8.
+# harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 8.
+# Ratchet: whenever one of these files is split, its cap tightens to the new
+# size in the same commit. 0.4.1 moved the conditional and reference-shaped
+# parts of both into references/ (init-harness 838 -> 408, opsx-apply-git
+# 475 -> 441), so the old ceilings would have left room to grow straight back
+# into the size the split just removed.
+#
+# opsx-apply-git lands at 441 rather than the 433 the first pass reached: §5's
+# numbered steps had to come back inline as a one-line-each outline, because
+# four other files cite them ("§5.3", "§5 step 5") and one of those citations
+# ships inside the block written into the user's own CLAUDE.md. A numbered step
+# other skills cite is a public anchor, not detail — the §-citation check below
+# is what now keeps that true.
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in
-    init-harness) echo 835 ;;
-    opsx-apply-git) echo 475 ;;
+    init-harness) echo 408 ;;
+    opsx-apply-git) echo 441 ;;
     *) echo "" ;;
   esac
 }
@@ -394,21 +406,28 @@ echo "-- 0.3.0 surfaces --"
 # ("0.3.0") is "the shape, not a constant to copy" -- so this checks form,
 # not equality with plugin.json.
 INIT_SKILL="skills/init-harness/SKILL.md"
-if [ -f "$INIT_SKILL" ]; then
-  example_version="$(grep -m1 '"harnessVersion":' "$INIT_SKILL" | sed -E 's/.*"harnessVersion":[[:space:]]*"([^"]*)".*/\1/')"
+# The manifest example moved out of SKILL.md into this reference when Step 8
+# was split for progressive disclosure. The checks below follow the content,
+# not the filename: what matters is that the example a run copies from is
+# semver-shaped and still names the keys later releases added.
+MANIFEST_REF="skills/init-harness/references/manifest-schema.md"
+if [ ! -f "$INIT_SKILL" ]; then
+  bad "$INIT_SKILL does not exist"
+elif [ ! -f "$MANIFEST_REF" ]; then
+  bad "$MANIFEST_REF does not exist — Step 8's manifest example has no home"
+else
+  example_version="$(grep -m1 '"harnessVersion":' "$MANIFEST_REF" | sed -E 's/.*"harnessVersion":[[:space:]]*"([^"]*)".*/\1/')"
   if printf '%s' "$example_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
-    ok "$INIT_SKILL's Step 8 harnessVersion example (\"$example_version\") is shaped like a semver version"
+    ok "$MANIFEST_REF's harnessVersion example (\"$example_version\") is shaped like a semver version"
   else
-    bad "$INIT_SKILL's Step 8 harnessVersion example is missing or not semver-shaped"
+    bad "$MANIFEST_REF's harnessVersion example is missing or not semver-shaped"
   fi
 
-  if grep -q '"maxFixAttempts"' "$INIT_SKILL" && grep -q '"toolchainVerifiedAt"' "$INIT_SKILL"; then
-    ok "$INIT_SKILL documents maxFixAttempts and toolchainVerifiedAt in the Step 8 manifest example"
+  if grep -q '"maxFixAttempts"' "$MANIFEST_REF" && grep -q '"toolchainVerifiedAt"' "$MANIFEST_REF"; then
+    ok "$MANIFEST_REF documents maxFixAttempts and toolchainVerifiedAt in the manifest example"
   else
-    bad "$INIT_SKILL's Step 8 manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
+    bad "$MANIFEST_REF's manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
   fi
-else
-  bad "$INIT_SKILL does not exist"
 fi
 
 # Every harness-log.jsonl line literal -- one per gate skill, plus
@@ -490,6 +509,109 @@ elif [ -n "$tmpl_missing" ]; then
   bad "placeholder(s) in a template but never named in $INIT_SKILL:$tmpl_missing"
 else
   ok "all $tmpl_total template placeholders are named in $INIT_SKILL's substitution instructions"
+fi
+echo
+
+# --- Check: progressive disclosure is wired up ------------------------------
+
+echo "-- Progressive disclosure --"
+
+# A SKILL.md loads in full every time its skill fires; a references/ file
+# loads only when the instruction says to read it. That split is only safe
+# while every extracted file is actually pointed at -- an unreferenced
+# reference is not "documentation kept nearby", it is an instruction that
+# silently stopped running. This is the check that keeps a future extraction
+# from quietly dropping a step. A file counts as reachable when its basename
+# appears in its own SKILL.md or in any sibling file within the same skill
+# (record-rejection.mjs, for instance, is invoked by its .sh wrapper).
+unreachable=""
+reachable_total=0
+for skill_dir in skills/*/; do
+  skill_md="${skill_dir}SKILL.md"
+  [ -f "$skill_md" ] || continue
+  for aux in "$skill_dir"references/* "$skill_dir"scripts/*; do
+    [ -f "$aux" ] || continue
+    reachable_total=$((reachable_total + 1))
+    base="$(basename "$aux")"
+    if grep -qF "$base" "$skill_md" 2>/dev/null; then
+      continue
+    fi
+    # not named directly -- look for an indirect mention from a sibling
+    found=""
+    for sib in "$skill_dir"references/* "$skill_dir"scripts/*; do
+      [ -f "$sib" ] || continue
+      [ "$sib" = "$aux" ] && continue
+      grep -qF "$base" "$sib" 2>/dev/null && { found=1; break; }
+    done
+    [ -n "$found" ] || unreachable="$unreachable [$aux]"
+  done
+done
+if [ "$reachable_total" -eq 0 ]; then
+  bad "no references/ or scripts/ files found under skills/ -- did they move?"
+elif [ -n "$unreachable" ]; then
+  bad "file(s) never named by their own SKILL.md or any sibling, so nothing ever reads them:$unreachable"
+else
+  ok "all $reachable_total references/ and scripts/ files are reachable from their SKILL.md"
+fi
+
+# Every path a SKILL.md tells the model to read has to exist. A pointer to a
+# renamed or deleted reference fails silently at run time: the model reads
+# nothing and continues without the step.
+dangling=""
+link_total=0
+for skill_md in skills/*/SKILL.md; do
+  skill_dir="$(dirname "$skill_md")"
+  for p in $(grep -o '`\(references\|scripts\)/[A-Za-z0-9._/-]*`' "$skill_md" 2>/dev/null | tr -d '`' | sort -u); do
+    link_total=$((link_total + 1))
+    [ -e "$skill_dir/$p" ] || dangling="$dangling [$skill_md -> $p]"
+  done
+done
+if [ -n "$dangling" ]; then
+  bad "SKILL.md points at path(s) that do not exist:$dangling"
+else
+  ok "all $link_total references/ and scripts/ paths named in a SKILL.md resolve"
+fi
+
+# Section citations (§4 step 2, §5.3, ...) are a second kind of pointer, and
+# splitting a skill breaks them in a way no path check sees: move a numbered
+# step into a reference and every "§5.3" elsewhere silently points at nothing.
+# That happened during the 0.4.1 split -- six citations across four files went
+# dangling when §5's numbered steps moved out, one of them inside the block
+# written into the user's own CLAUDE.md. Only opsx-apply-git numbers its
+# sections this way, so that is what these resolve against.
+SECREF_TARGET="skills/opsx-apply-git/SKILL.md"
+section_body() {
+  awk -v n="$1" '$0 ~ "^## "n"[.]" {f=1; next} f && /^## / {exit} f' "$SECREF_TARGET"
+}
+if [ -f "$SECREF_TARGET" ]; then
+  secref_bad=""; secref_total=0
+  secrefs="$(grep -rhno '§[0-9]\{1,\}\(\.[0-9]\{1,\}\)\{0,1\}\( step [0-9]\{1,\}\)\{0,1\}' skills/ 2>/dev/null \
+    | sed 's/^[0-9]*://' | sort -u)"
+  while IFS= read -r ref; do
+    [ -z "$ref" ] && continue
+    secref_total=$((secref_total + 1))
+    sec="$(printf '%s' "$ref" | sed -E 's/^§([0-9]+).*/\1/')"
+    body="$(section_body "$sec")"
+    if [ -z "$body" ]; then
+      secref_bad="$secref_bad [$ref -> no \"## $sec.\" section]"
+      continue
+    fi
+    # `sed -E` for the alternation: `\(a\|b\)` is a GNU extension that BSD sed
+    # silently fails to match, which would make this whole check pass vacuously.
+    step="$(printf '%s' "$ref" | sed -E -n 's/^§[0-9]+(\.| step )([0-9]+)$/\2/p')"
+    [ -z "$step" ] && continue
+    printf '%s\n' "$body" | grep -qE "^${step}\. " \
+      || secref_bad="$secref_bad [$ref -> §$sec has no step $step]"
+  done <<SECREFEOF
+$secrefs
+SECREFEOF
+  if [ "$secref_total" -eq 0 ]; then
+    note "no §-section citations found under skills/ — did the notation change?"
+  elif [ -n "$secref_bad" ]; then
+    bad "section citation(s) that no longer resolve in $SECREF_TARGET:$secref_bad"
+  else
+    ok "all $secref_total §-section citations resolve to a real section and step"
+  fi
 fi
 echo
 

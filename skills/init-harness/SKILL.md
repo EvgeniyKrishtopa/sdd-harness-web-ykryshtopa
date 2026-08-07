@@ -10,8 +10,9 @@ before using any other skill in this plugin.
 ## Step 0 — first-time install, or upgrade of a repo an earlier version set up?
 
 This skill used to be a one-shot scaffolder. It isn't anymore: every release
-that adds a file to the target repo (see the inventory below) has to reach
-repositories that were set up by an earlier version, not just new ones.
+that adds a file to the target repo (see the inventory in
+`references/upgrade-mode.md`) has to reach repositories that were set up by
+an earlier version, not just new ones.
 `/plugin update` refreshes the skills, agents, and hooks — everything that
 lives *in the plugin*. Nothing that lives *in the repository* changes until
 this skill runs again. Deciding which mode to run in is therefore the first
@@ -60,70 +61,17 @@ older="$(printf '%s\n%s\n' "$repo_version" "$plugin_version" | sort -V | head -1
 `$repo_version` is behind when it isn't equal to `$plugin_version` and is
 the `$older` of the two.
 
-### The file inventory this skill owns
+### Upgrade mode, and the file inventory this skill owns
 
-Upgrade mode walks this list; so does Gate 6 when it checks for drift. Every
-future release that teaches this skill to write a new file into the target
-repo **must add it here in the same commit** — a file that exists only in
-the first-time path reaches new repositories and no one else, which is the
-whole failure this step exists to prevent.
+On branch 3, **read `references/upgrade-mode.md` now and follow it** — it
+holds the procedure (which steps run, which questions are skipped, when
+`harnessVersion` may be written) and the inventory of every file this skill
+writes into a target repo, with each one's merge rule.
 
-| Path | Written by | Merge rule |
-| --- | --- | --- |
-| `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
-| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys; never touch `schema`, never replace existing content without asking |
-| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
-| `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
-| `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
-| `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
-| `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
-| `.claudeignore` | Step 7 | append missing lines |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
-| `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
-| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
-| `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
-| `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case B, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead |
-
-### Upgrade mode
-
-Run only the steps that create or extend files, and only for what is
-actually missing. Concretely:
-
-- **Skip every question the manifest already answers.** The coverage
-  threshold (Step 4), the detected framework, package manager, test runner,
-  build dir, lockfile, and script names (Step 1) are all in
-  `.claude/harness.json` already — read them from there. Only detect, or
-  ask, what the manifest doesn't have (a key added by a newer version, or
-  one a user removed).
-- **Leave the global OpenSpec config alone.** Step 2c changes a setting that
-  is global to the user's machine and affects their other projects. In
-  upgrade mode, run `npx openspec config list` and check the workflow list
-  (Step 2c's own check): if `new`, `continue`, and `verify` are all present,
-  there is nothing to do — do not re-prompt, and do not re-write the file.
-  Only if one is genuinely missing does Step 2c's normal conversation apply.
-- **Walk the inventory above** and apply each row's merge rule: create what
-  is absent, append what is missing from what exists, and never overwrite a
-  file the user may have edited without showing them the diff first. This is
-  the rule this skill already follows everywhere; upgrade mode adds no new
-  license to overwrite.
-- **Verify the toolchain** — Step 8b runs in upgrade mode too. A script the
-  project renamed since the repo was set up is exactly the kind of drift an
-  upgrade should surface.
-- **Then write `harnessVersion`** (Step 8b writes it, not Step 8), and only
-  then, gated on exactly what Step 8b itself gates on: the three toolchain
-  checks passing, plus Step 2c's workflow check earlier in the run. If either
-  of those stopped the whole run, leave `harnessVersion` at its old value —
-  a version number claiming an upgrade that didn't finish is worse than no
-  version number, since the next run would skip via branch 2 above instead
-  of re-attempting it. A user **declining a single file's template diff**
-  (Step 5) is a different, narrower kind of outcome: only that one file is
-  left as-is, the run continues, and it does not by itself withhold
-  `harnessVersion` — the repo choosing to keep a customized doc over the
-  newest template text is still fully configured for this plugin version.
-- **Report what changed** (Step 10): the version transition
-  (`<old or "unversioned"> → <new>`), each file created, each file appended
-  to, and each file left alone. "Already up to date" is a real and common
-  outcome — say it plainly rather than implying work happened.
+That inventory is the contract: every future release that teaches this skill
+to write a new file **must add it there in the same commit**, or the file
+reaches new repositories and no existing one. Gate 6 reads the same table
+when it checks for drift.
 
 Upgrade mode is the *only* way a repo picks up a new release's files. Do not
 add automatic migration to `SessionStart` or any other hook: writing into the
@@ -179,75 +127,16 @@ continuing — don't attempt the install against an unsupported runtime.
 
 ### 2c — check and, if needed, upgrade the workflow profile
 
-`openspec init` sets up the **Core** profile (`propose`, `explore`, `apply`,
-`update`, `sync`, `archive`). This harness's gates need the **Expanded**
-workflow set (adds `new`, `continue`, `ff`, `bulk-archive`, `verify`,
-`onboard`) — Gate 1 (`architecture-review`) is designed to fire once
-`design.md` is done but before specs/tasks are drafted, and Gate 2
-(`spec-review`) waits for every artifact's step-by-step completion. Neither
-point of insertion exists in Core's single-shot `propose` flow.
-
-There is no literal `"expanded"` profile value — in OpenSpec's config schema
-`profile` is the enum `core | custom`. Expanded is expressed as
-`profile: "custom"` plus the full `workflows` list. The CLI derives
-`profile` automatically from which workflows are selected.
-
-**This setting is global, not per-project.** It lives in
-`~/.config/openspec/config.json` (or `$XDG_CONFIG_HOME/openspec/config.json`),
-not anywhere inside this repo. That means: it isn't committed, a teammate
-cloning this repo won't have it just because the repo does, CI never has it
-unless configured separately, and changing it on this machine affects
-**every other OpenSpec project** the user has, not just this one. Because of
-that blast radius, never change it silently.
-
-**Check the workflow list, not the `profile` string.** `profile: custom`
-only means the user picked their own selection — it says nothing about
-*which* workflows are in it. A machine can sit at `profile: custom` with,
-say, `propose, explore, continue, apply, update, sync, archive` — a
-perfectly valid custom profile that is still missing `new` and `verify`,
-and so still can't run Gates 1-2 at their designed insertion points. That
-state is common (it's what a partial pass through the interactive picker
-leaves behind) and it must be treated exactly like `core`.
-
-The workflows this harness requires are **`new`, `continue`, `verify`**.
-The rest of the Expanded set (`ff`, `bulk-archive`, `onboard`) is nice to
-have and not worth blocking on.
-
-1. Run `npx openspec config list` and read the `workflows` list (not just
-   `profile`).
-2. If `new`, `continue` and `verify` are all present, skip to 2d
-   (verification) — nothing to change, whatever `profile` says.
-3. If any of the three is missing, explain to the user, plainly, before
-   doing anything — naming which ones are missing:
-   - this harness requires the Expanded workflow set to work as designed;
-   - the setting is global to their machine, not scoped to this repo;
-   - it will change OpenSpec's behavior in their other OpenSpec projects too.
-   Then offer two ways to proceed, and let the user pick. There is no third
-   way: `openspec config profile` accepts exactly one preset shortcut,
-   `core` (verified against @fission-ai/openspec 1.7.0 — any other preset
-   name exits with "Unknown profile preset"), and outside a TTY it refuses
-   to run at all with "Interactive mode required". So the Expanded set can
-   only be reached by a human at a prompt, or by writing the file.
-   - **Default**: ask the user to run `npx openspec config profile`
-     themselves in their own terminal (it's an interactive multi-select —
-     not something to drive non-interactively through the agent's Bash
-     tool) and select the full workflow set, then confirm back when done.
-   - **Direct write**: only with the user's explicit go-ahead, write
-     `~/.config/openspec/config.json` directly with:
-     ```json
-     {
-       "profile": "custom",
-       "delivery": "both",
-       "workflows": ["propose", "explore", "new", "continue", "apply",
-                     "update", "ff", "sync", "archive", "bulk-archive",
-                     "verify", "onboard"],
-       "featureFlags": {}
-     }
-     ```
-   Do not pick a path or write this file without the user's explicit
-   confirmation — this is someone's global environment, not project state.
-4. Once the profile is set, run `npx openspec update` in the repo root to
-   apply the new workflow selection to this project's `openspec/` instructions.
+1. Run `npx openspec config list` and read the **`workflows` list, not the
+   `profile` string** — `profile: custom` says only that the user picked
+   their own selection, not which workflows are in it, and an incomplete
+   `custom` selection is the most likely failure here.
+2. If `new`, `continue` and `verify` are all present, skip to 2d — nothing
+   to change, whatever `profile` says.
+3. If any of the three is missing, **read `references/openspec-profile.md`
+   now and follow it**. Do not improvise this one: the setting is global to
+   the user's machine and affects their other OpenSpec projects, so it is
+   never changed silently or without their explicit confirmation.
 
 ### 2d — verify, and stop loudly if it didn't take
 
@@ -282,151 +171,29 @@ look like a match.
 
 ### 2f — seed `openspec/config.yaml` with this project's context and rules
 
-`openspec init` (2b) creates `openspec/config.yaml` with nothing but default
-schema settings. It is OpenSpec's own extension point: whatever `context:`
-and `rules:` it holds get mixed into every artifact OpenSpec generates —
-`proposal.md`, `design.md`, `tasks.md`, the delta specs. Left at its
-defaults, every change in this repo is drafted by an agent that knows
-nothing about the project, and Gates 1 and 2 spend their budget reviewing
-artifacts that were generated blind. Shaping the artifact before generation
-is cheaper than catching its shape at review — the same argument the review
-gates themselves rest on, except this hook is OpenSpec's, not ours.
+`openspec init` left this file at its defaults, which means every change in
+this repo would be drafted by an agent that knows nothing about the project.
+Seeding it is what makes Gates 1 and 2 review artifacts that were generated
+with context rather than blind.
 
-Read the file first. `openspec init` wrote it, so it exists; treat every key
-already in it as the user's. In particular **leave `schema:` alone** — it
-selects the artifact set OpenSpec generates and is not ours to change. Add
-only what is missing, and when a key we want is already present with
-different content, show the difference and ask rather than replacing.
-
-1. **`context:`** — a block scalar. Fill the technical half from what Step 1
-   already detected: framework, package manager, test runner, build output
-   directory, dev server URL, and the top-level source layout. Do not invent
-   anything here; every line is a fact already in hand.
-2. Then ask the user, **once**, for three to five lines on what the project
-   actually is — its domain, who uses it, the nouns that matter. This is the
-   half no detection can produce, and the half that most changes an
-   artifact's usefulness. Ask once, plainly, and accept a short answer. If
-   they decline or skip it, write the technical half alone and move on.
-   Never write a guessed domain: an invented description is worse than none,
-   because every future artifact inherits it and nobody re-reads a file that
-   looks already filled in.
-3. **`rules.proposal`** — one rule, and it is load-bearing: every requirement
-   carries a stable identifier. Use `FR-<n>` for functional and `NFR-<n>` for
-   non-functional requirements, unique within the change, and never renumbered
-   once written. Without identifiers, "is every requirement implemented?" can
-   only ever be answered by a model's impression of a document. With them, it
-   is a `grep`. Later gates depend on this being true of every proposal.
-4. **`rules.tasks`** — two rules: each task names the requirement identifier
-   it implements, and verification is a task in the list rather than
-   something left for a human to remember afterwards. The first makes the
-   proposal-to-task link traceable in the same mechanical way; the second is
-   why a group can be considered done at all.
-
-Keep it to this. It is tempting to specify a full house style for
-`proposal.md` — sections, ordering, headings — and a project that wants one
-should add it. A portable plugin should not: a structure grown around one
-product's design system and information architecture is exactly the kind of
-thing that fits its author and nobody else. The rules above are the minimum
-the gates actually need to function.
-
-The resulting file looks like this — the values are this project's, not
-these:
-
-```yaml
-schema: spec-driven          # written by `openspec init`; left untouched
-
-context: |
-  Vite + React + TypeScript app; yarn; Vitest for tests; builds to dist/;
-  dev server on http://localhost:5173. Source under src/, routes in
-  src/routes/.
-  Reviewed by the sdd-harness-web-ykryshtopa harness — see
-  .claude/docs/review-gates.md for the gates and their order.
-  <the user's three to five lines about the domain, or nothing at all>
-
-rules:
-  proposal:
-    - Give every requirement a stable identifier — FR-1, FR-2 for functional
-      requirements, NFR-1, NFR-2 for non-functional ones. Unique within the
-      change. Never renumber an identifier once it is written.
-  tasks:
-    - Every task states the requirement identifier it implements.
-    - Verification belongs in the task list as its own task, not left as a
-      manual check after the fact.
-```
-
-Record nothing about this file in `.claude/harness.json` — `openspec/
-config.yaml` is OpenSpec's, and a second copy of its contents in our manifest
-would be one more pair of things to drift apart. Gate 6 reads the file
-itself.
+**Read `references/openspec-config-seed.md` now and follow it.** Note that
+it asks the user one question — three to five lines on what the project
+actually is — so this step is not fully unattended.
 
 ## Step 3 — install native git hooks (not just Claude Code hooks): fast checks on commit, full coverage on push
 
-This plugin's Claude Code hooks (`hooks/hooks.json`, active automatically
-while this plugin is enabled — see the note in Step 6) only fire when
-**Claude itself** runs `git commit`/`git push` through the Bash tool — they
-do nothing if the human commits or pushes directly from a terminal with no
-agent involved. That gap needs its own, independent safety net: real git
-hooks, so bad commits and pushes are blocked regardless of who or what is
-committing.
+This plugin's Claude Code hooks only fire when **Claude itself** commits or
+pushes through the Bash tool — they do nothing when the human commits from a
+terminal. Native git hooks close that gap.
 
-Do this now, before Step 6 writes `permissions.deny` — that step denies
-`npm install`/`add` and equivalents, which would block installing these
-tools if done afterward.
+Do this now, **before Step 6** writes `permissions.deny` — that step denies
+`npm install`/`add` and equivalents, which would block installing Husky and
+`lint-staged` if this were done afterward.
 
-Split the checks by cost, matched to how often each hook fires: this
-harness commits once per `tasks.md` group (`opsx-apply-git` §3), so a
-full `test:coverage` run on every `pre-commit` turns into minutes of wait
-on every group — multiplied across a whole change. `pre-commit` stays fast
-(typecheck + lint + lint-staged); the full coverage run moves to
-`pre-push`, where it runs once per push instead of once per commit.
-
-1. If Husky and `lint-staged` aren't already devDependencies, install both
-   (`yarn add -D husky lint-staged` / `npm install -D husky lint-staged` /
-   `pnpm add -D husky lint-staged`) and run Husky's init (`npx husky init`).
-2. Write `.husky/pre-commit` with the detected package manager's commands,
-   chained so any failure blocks the commit:
-   ```
-   <pm> typecheck && <pm> lint && npx lint-staged
-   ```
-   (e.g. `yarn typecheck && yarn lint && npx lint-staged`, or the npm/pnpm
-   equivalents — use whatever script names actually exist in this project's
-   `package.json`; don't invent script names that aren't there, ask the user
-   if the mapping isn't obvious.) No test run here — that's `pre-push`,
-   below. Step 8b runs both of these names for real and stops the whole
-   setup if either doesn't resolve, so a wrong guess here is caught during
-   setup rather than on the user's first commit.
-3. Configure `lint-staged` — in `package.json`'s `"lint-staged"` key, or a
-   `.lintstagedrc.json` if the project already has one of those instead —
-   to run the project's lint/format tooling against staged files only, e.g.
-   for ESLint: `{"*.{ts,tsx}": "eslint --fix"}`. This is what actually keeps
-   `pre-commit` fast: `<pm> lint` above still runs the full project-wide
-   lint as a correctness gate, while `lint-staged` auto-fixes and re-stages
-   only the files this commit actually touches — ask the user for the exact
-   glob/command if the project's lint tooling isn't obvious from
-   `package.json`.
-4. Write `.husky/pre-push` with the full coverage run, then a blocking
-   dependency-vulnerability audit, chained the same way as `pre-commit`
-   above so a high-or-above severity finding blocks the push:
-   ```
-   <pm> test:coverage && <audit command>
-   ```
-   The audit command's spelling depends on the detected package manager —
-   and, for yarn, on its major version, since the command changed between
-   yarn 1 (Classic) and yarn 2+ (Berry):
-   - `npm` → `npm audit --audit-level=high`
-   - `pnpm` → `pnpm audit --audit-level high`
-   - `yarn` → run `yarn --version` to tell which spelling applies: `1.x` →
-     `yarn audit --level high`; `2.x` or higher → `yarn npm audit --severity high`
-   Do not add `<pm> outdated` alongside the audit — it reports version drift,
-   not vulnerabilities, and would leave the hook permanently red on any
-   stale minor version. A check that's always red trains whoever runs it to
-   ignore the whole hook, which defeats the audit it sits next to.
-5. Do not overwrite an existing `.husky/pre-commit` or `.husky/pre-push`
-   that already has content — read each first, and only append/merge the
-   missing checks in, the same "never clobber existing config" rule used
-   for merges later in this skill.
-6. Confirm both hooks are executable (`chmod +x .husky/pre-commit
-   .husky/pre-push` if needed).
+**Read `references/git-hooks.md` now and follow it.** It covers both hook
+files, the `lint-staged` config, the package-manager-specific audit command
+(including the yarn 1 vs yarn 2+ split), and the never-clobber rule for a
+repo that already has hooks.
 
 ## Step 4 — ask the user for the coverage threshold
 
@@ -549,257 +316,63 @@ explanation and the template content.
 This is the single machine-readable source of truth every other skill
 (`opsx-apply-git`, `web-qa`, `code-review`, `harness-review`) and this
 plugin's `Stop` typecheck hook read instead of re-detecting the stack
-themselves. Merge into the file Step 2e already started (it may already
-contain just the `openspec` key) — never overwrite that key, only add the
-rest around it:
+themselves.
 
-```json
-{
-  "version": 1,
-  "harnessVersion": "0.3.0",
-  "toolchainVerifiedAt": "2026-08-01T12:00:00Z",
-  "framework": "vite",
-  "packageManager": "yarn",
-  "runCmd": "yarn",
-  "testRunner": "vitest",
-  "buildDir": "dist",
-  "lockfile": "yarn.lock",
-  "coverageThreshold": 80,
-  "scripts": {
-    "dev": "dev",
-    "typecheck": "typecheck",
-    "lint": "lint",
-    "testCoverage": "test:coverage"
-  },
-  "devServerUrl": "http://localhost:5173",
-  "trivialDiffThreshold": 10,
-  "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
-  "maxFixAttempts": 2,
-  "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
-  "models": {
-    "architecture": "claude-opus-5",
-    "spec": "claude-sonnet-5",
-    "webQa": "claude-haiku-4-5",
-    "code": "claude-sonnet-5",
-    "harness": "claude-haiku-4-5",
-    "default": "claude-sonnet-5"
-  }
-}
-```
+**Read `references/manifest-schema.md` now and follow it** — it holds the
+full key list and what each key means. Merge into the file Step 2e already
+started; never overwrite its `openspec` key, only add the rest around it.
 
-Field notes:
-- `version` — the schema version of *this manifest*. It changes only when the
-  shape of this file changes in a way readers have to know about. It is not
-  the plugin's version and never stands in for it.
-- `harnessVersion` — the version of *the plugin* that last configured this
-  repository, read at run time from
-  `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (Step 0). Write the value
-  that command returns; the `"0.3.0"` above is the shape, not a constant to
-  copy. Step 8b writes it, not this step, and only once every step of this
-  run has succeeded — it is the claim "this repo is fully configured for
-  that plugin version",
-  and Step 0's branch 2 and Gate 6's checklist item 6 both trust it. A run
-  that stopped early leaves the old value (or none) in place.
-- `toolchainVerifiedAt` — written by Step 8b, alongside `harnessVersion` and
-  under the same rule: only once the three scripts were actually run and
-  actually passed. Its absence means they weren't, which is what lets a
-  later run tell a proven toolchain from an assumed one.
-- `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
-  values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
-  Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
-  `pnpm-lock.yaml` was found).
-- `runCmd` — the command prefix used to invoke a `package.json` script
-  (`yarn`, `npm run`, or `pnpm`).
-- `scripts.*` — the actual script **keys** that exist in this project's
-  `package.json` for `dev`, `typecheck`, `lint`, and the coverage-mode test
-  run — never invented names. Ask the user if a mapping isn't obvious, the
-  same rule Step 3's Husky hook already follows.
-- `coverageThreshold` — the number chosen in Step 4.
-- `devServerUrl` — the dev server's root URL: `http://localhost:3000`
-  (Next.js default) or `http://localhost:5173` (Vite default), unless an
-  existing `dev` script already pins a different port with `-p`/`--port`.
-- `trivialDiffThreshold` / `trivialDiffPaths` — seed with the values shown
-  above; don't ask the user for these unless they raise it. `code-review`
-  (Gate 4+5) skips itself, at zero model cost, for a run whose cumulative
-  diff changes fewer than `trivialDiffThreshold` lines (`git diff
-  --shortstat`) **and** every changed path matches one of
-  `trivialDiffPaths` (cost-optimization #36) — a 3-line CSS tweak or a typo
-  fix in a `.md` file doesn't need a full review pass. A user who wants a
-  stricter or looser bar edits this manifest directly; there's no separate
-  prompt for it.
-- `maxFixAttempts` — seed with `2`, the same don't-ask-unless-raised
-  treatment as `trivialDiffThreshold`. The `debug-loop` skill reads it to
-  bound a `web-qa` fix loop or a `code-review` CONFIRMED fix attempt before
-  escalating to a human. A user who wants a stricter or looser bar edits
-  this manifest directly.
-- `openspec` — already written by Step 2e; carry it over unchanged.
-- `models` — one entry per review-gate agent plus a `default` fallback. Seed
-  it with the values shown above, not with whatever each `agents/*.md`
-  currently declares in its own frontmatter — every gate skill
-  (`architecture-review`, `spec-review`, `code-review`, `harness-review`,
-  `web-qa`) reads its own key from this manifest and passes it as the
-  `Agent` tool's `model` override, so this is the actual place a user
-  changes which model a gate runs on, not the agent files themselves. There
-  is no separate `testCoverage` key: Gate 5 (test-coverage) is folded into
-  the same `code-review` delegation as Gate 4 (cost-optimization #33), so it
-  runs on `models.code`. Only depart from the seeded defaults if the user
-  asks for a
-  different tier or doesn't have access to one of these models.
-
-Every field must be a real detected or user-confirmed value. Never leave a
-literal placeholder token in the written file — if a value can't be
-determined, ask the user rather than guessing.
-
-Two keys are deliberately not written here: `harnessVersion` and
-`toolchainVerifiedAt`. Both are claims about a run that has finished
-successfully, and this run hasn't — Step 8b writes them once it passes.
-Write every other key now, because Step 8b verifies exactly the values this
-step recorded, not a fresh guess at them.
+Two rules from that file are worth stating here too, because they are the
+ones a run gets wrong: every field must be a real detected or user-confirmed
+value (never a literal placeholder — ask rather than guess), and
+`harnessVersion`/`toolchainVerifiedAt` are **not** written here. They are
+claims about a finished run, and Step 8b writes them once it passes.
 
 ## Step 8b — prove the toolchain actually runs
 
-Everything up to here has *detected* a toolchain. Nothing has *run* it. Those
-script names are not decoration: Step 3 already wrote them into
-`.husky/pre-commit`, and this plugin's `Stop` hook builds
-`<runCmd> <scripts.typecheck>` straight out of the manifest. If a project
-calls its script `type-check`, `tsc`, or `types` — all more common than
-`typecheck` — then `pre-commit` fails on every single commit with "script not
-found", and the `Stop` hook reports the package manager's complaint as if it
-were a type error. Neither failure surfaces during setup. Both surface on the
-first real task group, by which point the cause is three steps back.
+Everything up to here has *detected* a toolchain. Nothing has *run* it. A
+project whose script is called `type-check` rather than `typecheck` gets a
+`.husky/pre-commit` that fails on every commit and a `Stop` hook that reports
+"script not found" as if it were a type error — neither of which surfaces
+during setup. An instruction to be careful is not a check; this step is the
+check.
 
-Step 3 and Step 8 both already say "don't invent script names, ask the user."
-That instruction was in 0.1.0 too, and the bug shipped anyway. An instruction
-to be careful is not a check. This step is the check: four commands, once in
-a repository's lifetime.
+Runs in **both** first-install and upgrade mode, on a clean tree (if the tree
+is dirty, ask the user to commit or stash first — a lint failure from their
+own uncommitted work would be blamed on the harness).
 
-Run it in both first-install and upgrade mode, on a clean tree (if the tree
-is dirty, say so and ask the user to commit or stash first — a lint failure
-from the user's own uncommitted work would be blamed on the harness).
+**Read `references/toolchain-proof.md` now and follow it.** The four checks
+it walks, in order:
 
-1. **The keys exist.** For each of `scripts.typecheck`, `scripts.lint`, and
-   `scripts.testCoverage`, confirm the name in the manifest is a real key in
-   `package.json`:
+1. **The keys exist** — `scripts.typecheck`, `scripts.lint`,
+   `scripts.testCoverage` each name a real key in `package.json`. A mismatch
+   is corrected in *both* the manifest and the `.husky/` hook that embeds it.
+2. **Typecheck and lint pass** — both exit 0, or the harness would block
+   every commit from the moment it is installed.
+3. **The tests run and at least one passes** — read the count, not just the
+   exit code; `--passWithNoTests` makes an empty run look green.
+4. **Any of the three not satisfied → stop the whole `init-harness` run**,
+   and leave `harnessVersion` and `toolchainVerifiedAt` unwritten so the next
+   run re-attempts instead of skipping as already-current.
 
-   ```bash
-   for key in typecheck lint testCoverage; do
-     name="$(jq -r --arg k "$key" '.scripts[$k]' .claude/harness.json)"
-     jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
-       || echo "MISSING: harness.json scripts.$key = \"$name\" is not in package.json"
-   done
-   ```
-
-   Anything missing: stop and ask the user which script actually does that
-   job (offer the closest matches from `jq -r '.scripts | keys[]'
-   package.json`). If they name one, correct **both** `.claude/harness.json`
-   and the `.husky/` hook that embeds it — the two hold the same name in two
-   places, and fixing one leaves the other broken. If the project genuinely
-   has no such script, that is a real gap in the project, not something to
-   paper over with a guess: say so and stop.
-
-2. **Typecheck and lint pass.** Run `<runCmd> <scripts.typecheck>` and
-   `<runCmd> <scripts.lint>`. Both must exit 0. A non-zero exit on a clean
-   tree means this harness would block the user's every commit from the
-   moment it is installed — via `.husky/pre-commit`, which chains exactly
-   these two. Report which one failed and its output, and stop. Don't offer
-   to relax the hook: the hook is correct, the repository isn't green.
-
-3. **The tests run *and* at least one passes.** Run
-   `<runCmd> <scripts.testCoverage>`. Read the count, don't just read the
-   exit code: Vitest and Jest both exit 1 on zero matched tests by default,
-   but `--passWithNoTests` flips that to 0, and it is common enough in
-   starter templates and CI scripts to be worth not trusting. A green exit
-   from a runner that matched nothing is an empty `pre-push`, not a passing
-   one. Confirm from the output that at least one test actually passed; the
-   format follows the detected `testRunner` (Vitest: `Tests  N passed`;
-   Jest: `Tests:  N passed`), and "No test files found" / "0 total" is a
-   failure of this step. Report it as such and stop —
-   a project with no tests can still use the rest of the harness, but the
-   user should decide that knowingly rather than discover it when Gate 5
-   reviews coverage that was never collected.
-
-4. **Any of the three not satisfied → stop the whole `init-harness` run.**
-   Name what didn't match, and leave `harnessVersion` and
-   `toolchainVerifiedAt` unwritten. The repository isn't configured, so
-   nothing should claim it is: an unwritten version means the next run comes
-   back through Step 0's upgrade branch rather than skipping as
-   already-current.
-
-   Say one more thing before stopping, if the run stopped at item 1 with no
-   correct script name to substitute: `.claude/harness.json` still holds the
-   name that doesn't resolve, and this plugin's `Stop` hook reads
-   `scripts.typecheck` from it on every turn regardless of whether the repo
-   was ever verified. Until the user adds the script or corrects the
-   manifest by hand, that hook will keep reporting a "script not found" as
-   though it were a type error. The user needs to know that, because
-   stopping here doesn't undo it.
-
-5. **All three satisfied** → write both remaining manifest keys:
-
-   ```json
-   { "harnessVersion": "<plugin version from Step 0>", "toolchainVerifiedAt": "2026-08-01T12:00:00Z" }
-   ```
-
-   `toolchainVerifiedAt` is an ISO-8601 UTC timestamp (`date -u
-   +%Y-%m-%dT%H:%M:%SZ`) — the shape above is not a value to copy. It is what
-   lets a later upgrade run, and Gate 6, tell "these commands were proven to
-   work" from "these names were assumed to be right", which is the whole
-   difference this step exists to record.
+Only once all three pass does this step write `harnessVersion` and
+`toolchainVerifiedAt`. That pair is the difference between "the harness found
+these names" and "the harness ran these commands" — do not write either one
+on any other path.
 
 ## Step 9 — create or append CLAUDE.md's harness pointer block
 
-`.claude/docs/*.md` (Step 5) is **not** loaded into context automatically the
-way `CLAUDE.md`/`AGENTS.md` is. Without a pointer from the root instruction
-file, no session ever reads `git-conventions.md` or `review-gates.md` unless
-`opsx-apply-git` happens to read them itself — and more importantly, this
-user's global instructions only recognize an auto-commit override
-("commit without being asked") when it is *referenced from the project's
-CLAUDE.md*. `opsx-apply-git` §3 and §5.3 rely on `git-conventions.md`
-being exactly that override, at group and archive boundaries. Without this
-step, that override is undiscoverable, and a fresh session should fall back
-to asking before every commit instead of trusting it.
+`.claude/docs/*.md` (Step 5) is **not** auto-loaded the way
+`CLAUDE.md`/`AGENTS.md` is. Without a pointer from the root instruction file,
+nothing in Step 5 is discoverable — and the auto-commit override
+`opsx-apply-git` §3/§5.3 relies on is only recognized when it is referenced
+from the project's CLAUDE.md. Skipping this step doesn't just lose
+documentation; it silently withdraws that authorization.
 
-1. Check for `CLAUDE.md`, or `AGENTS.md` if that's what this project already
-   uses instead. If **neither exists**, create a minimal `CLAUDE.md`
-   containing just the block below.
-2. If **one already exists**, append the block below to the end of it —
-   never overwrite or reorder existing content, the same merge rule used for
-   every other file this skill touches.
-3. Block content (prefer `@`-imports if the target Claude Code version
-   supports them; otherwise plain links, one line of explanation each — do
-   not leave literal placeholder text):
-
-   ```markdown
-   ## Harness (sdd-harness-web-ykryshtopa)
-
-   - @.claude/docs/git-conventions.md — branch/commit conventions. This is
-     also the documented authorization for `opsx-apply-git` to commit
-     automatically at task-group and archive boundaries (its §3/§5.3) —
-     without this reference, that override isn't discoverable and shouldn't
-     be assumed.
-   - @.claude/docs/review-gates.md — the six automated review gates and
-     their order.
-   - @.claude/docs/laziness-ladder.md — priority order to check before
-     writing new code; does not apply to trust-boundary validation,
-     data loss, security, or accessibility.
-   - @.claude/harness.json — detected stack (framework, package manager,
-     test runner, coverage threshold). Every skill and hook in this harness
-     reads from here; do not re-detect any of it.
-   - PROGRESS.md — current change, status, and next steps as of the last
-     stop. `SessionStart` already prints its in-progress/blocked line and
-     Next steps section at the start of every session; read the file itself
-     for anything beyond that digest (the Done list, clock-in/out history). Not
-     `@`-imported — the hook already surfaces it, so importing it too would
-     load the same content twice.
-   - docs/decisions/ — one ADR-format file per architectural decision that
-     outlives a single change; see `docs/decisions/NNNN-*.md` if the
-     directory exists yet. Not auto-loaded — read the relevant file when a
-     past decision might be in play.
-   ```
-
-4. Keep the block short. Gate 6 (`harness-review`) already checks that the
-   root instruction file stays under roughly 200 lines — this step should
-   never be the reason that budget gets exceeded.
+**Read `references/claude-md-pointer-template.md` now and follow it** — it
+holds the block to write and the create-vs-append rule. Never overwrite or
+reorder existing content in a file that already exists, and keep the block
+short: Gate 6 checks the root instruction file stays near 200 lines.
 
 ## Step 10 — report
 

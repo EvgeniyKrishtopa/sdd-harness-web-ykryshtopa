@@ -54,7 +54,7 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 10 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+list 11 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
@@ -109,7 +109,8 @@ stylistic:
 1. bump `version` in `.claude-plugin/plugin.json` — every release, however
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
-3. `bash tests/smoke-json-schema.sh` — it fails if the version isn't semver,
+3. `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh` and
+   `tests/dead-code-scripts.sh`) — the first fails if the version isn't semver,
    if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push` — creates the `sdd-harness-web-ykryshtopa--v<version>`
@@ -144,6 +145,16 @@ keys, `.gitattributes`, and `.claude/harness.json`'s `harnessVersion`,
 dependency-vulnerability audit appended to `.husky/pre-push`. Running
 `/init-harness` again on a repo already at the current version says so
 plainly and changes nothing.
+
+## Upgrading from 0.3.0
+
+The same `/init-harness` upgrade-mode mechanism described above applies —
+0.4.0 makes no breaking change, so this is routine, not a special step.
+Keys new in 0.4.0 that a 0.3.0 repo doesn't have yet: `.claude/harness.json`'s
+`webQaScenariosDir`, where `web-qa` records and replays saved Playwright
+scenarios. The other addition, the `dead-code-report` skill, needs nothing
+written into your project besides itself — its own state lives in a
+`knip.json` it creates on first run, not in `harness.json`.
 
 ## First run
 
@@ -249,6 +260,7 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 | `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 | `debug-loop` | — (not a gate) | Bounded, four-phase fix loop for a `web-qa` FAIL or a `code-review` CONFIRMED finding you chose to fix; caps at `maxFixAttempts` and escalates to you instead of retrying forever |
+| `dead-code-report` | — (not a gate) | Finds unused files/exports/deps via knip plus the project's own lint rules, sorts findings into three confidence groups, ends with a change-proposal draft; never deletes anything. Run manually, roughly monthly |
 
 Five matching subagents live in `agents/` and are invoked by the skills
 above, not usually directly — `debug-loop` has no subagent of its own; it
@@ -338,6 +350,31 @@ dependency, nothing outside what the diff showed), not in what it found.
 It's a narrower signal than a verdict: a note that this particular pass had
 less to go on than usual, worth weighing if you're deciding how much to
 trust a clean result rather than a reason to distrust the harness broadly.
+
+## How the skills themselves are structured
+
+A `SKILL.md` body loads into context in full every time its skill fires. A
+file under that skill's `references/` loads only when an instruction tells
+the model to read it. That difference is the plugin's own cost control, and
+it is applied deliberately:
+
+- **`SKILL.md` keeps the control flow** — every step's existence, what
+  triggers it, and what makes it stop the run.
+- **`references/` holds the rest** — branch-specific procedures a given run
+  may never take (upgrade mode, the OpenSpec profile conversation,
+  archiving), and lookup material consulted while performing a step (the
+  `harness.json` schema and field notes, the git-hook procedure, templates).
+
+The rule that keeps the split honest: a run that never opens a single
+reference still knows what it has to do and when to halt. Extracting a
+*decision* would break that; extracting the detail behind one doesn't.
+
+`tests/smoke-json-schema.sh` enforces two invariants here — every reference
+is reachable from its `SKILL.md`, and every path a `SKILL.md` names exists —
+because an unreferenced or renamed reference is an instruction that silently
+stopped running rather than a visible error. It also caps each `SKILL.md`'s
+line count, with today's two largest grandfathered at their current size, so
+the budget ratchets down and never back up.
 
 ## Harness diet
 

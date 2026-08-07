@@ -49,7 +49,10 @@ change as a whole — not any one of them in isolation:
    whole diff, run once on the last task group before Gate 4 *if the change
    touched user-facing UI*; not applicable to a change that didn't (e.g.
    backend/API-only), in which case Static and Runtime are the whole
-   contract for that change.
+   contract for that change. Like the first two layers, it now leaves files
+   behind: a passed flow the human agreed to keep is saved as a
+   `@playwright/test` scenario under `webQaScenariosDir`, and every later
+   Gate 3 run replays the accumulated set before its own click pass.
 
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a
@@ -76,9 +79,17 @@ then compare the `harness-review` skill's stats summary (the
 procedure, reading this repo's own
 `.claude/harness-log.jsonl`) from before and after. If nothing measurable
 changed — verdict distribution, escalation count, `reviewConfidence: low`
-share — that gate or model was probably doing less than its cost implied;
+share, `tokensTotal` sum/median (a cheaper-per-step model can still cost
+more if it needs several times the steps; `durationMs` alone won't show
+that) — that gate or model was probably doing less than its cost implied;
 consider trimming
 it for good. If something did change, put it back and record what you
 tried and what you found as a new file in `docs/decisions/`. This is the
 same ratchet principle this harness applies to what gets *added* — it's
 also supposed to apply to what's already here.
+
+Same cadence, separate ritual: run the `dead-code-report` skill about once a
+month too. None of the six gates above ever looks at code a task stopped
+referencing without touching it, so that only accumulates unless something
+goes looking on a schedule. It only reports and drafts a change proposal —
+it never deletes anything itself.

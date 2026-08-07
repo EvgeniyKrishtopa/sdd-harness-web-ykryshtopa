@@ -62,6 +62,23 @@ uses for JSON parsing.
    completed and didn't fail, not the first log line of any kind). This is
    the "how long from resuming a session to green again" number the
    continuity work (#U3) exists to shrink.
+8. **`tokensTotal` sum and median per gate** — the token-cost counterpart to
+   `durationMs`, next to it in the same per-gate line (#U17 point 5). A
+   cheap-per-second model that needs three times the steps can still be the
+   more expensive one; `durationMs` alone can't show that, this can.
+9. **`skipReason` breakdown per gate** — for every skipped run, which of the
+   four closed-list reasons it was (#U17 point 6). The point of this over
+   the plain `skippedPct` in item 2 above: a headline skip percentage reads
+   as "the trivial-diff filter is working" even when it's entirely one
+   rarely-relevant gate skipping itself for an unrelated reason and the
+   filter it was meant to measure never fires at all.
+10. **Findings outcomes** — for every `kind:"finding"` line
+    (`skills/opsx-apply-git/references/log-findings.md`, #U17 point 7), a
+    per-gate count of `fixed`/`rejected`/`deferred`. This is the one number
+    that says whether a gate's CONFIRMED findings are trustworthy or noise —
+    without it, "gate said confirmed" and "gate was right" are
+    indistinguishable. These lines carry no `verdict`/`durationMs`, so they
+    are excluded from every metric above (1-9) and counted here instead.
 
 ## Empty or missing log
 
@@ -113,34 +130,51 @@ if [ -f PROGRESS.md ]; then
     | sed -n 's/.*Clock-in: *\([0-9T:.Z-]*\).*/\1/p')
 fi
 
-echo "=== Gates, fix loop, review confidence, Rebuild Cost ==="
+echo "=== Gates, tokens, fix loop, review confidence, findings, Rebuild Cost ==="
 if command -v jq >/dev/null 2>&1; then
   # Two-stage: `fromjson?` drops any line that isn't valid JSON (a partial
   # write from a killed process, say) instead of one bad line aborting the
   # whole slurp with a parse error — the python3/node branches below already
   # skip bad lines the same way, via their own try/except and try/catch.
   jq -R 'fromjson?' "$LOG" | jq -s -r --arg since "$clockin" '
-    (group_by(.gate)[] | {
+    (map(select(.kind != "finding"))) as $runs |
+    (map(select(.kind == "finding"))) as $findings |
+    ($runs | group_by(.gate)[] | {
       gate: .[0].gate, runs: length,
       verdicts: (group_by(.verdict) | map("\(.[0].verdict)=\(length)") | join(", ")),
       skippedPct: ((([.[] | select(.verdict=="skipped")] | length) / length * 100 * 10 | round) / 10),
+      skipReasons: ([.[] | select(.verdict=="skipped") | (.skipReason // "")] | map(select(length > 0)) |
+        group_by(.) | map("\(.[0])=\(length)") | join(", ")),
       durSumMs: ([.[] | (.durationMs // 0)] | add),
       durMedianMs: ([.[] | (.durationMs // 0)] | sort |
+        (if (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end)),
+      tokSumTotal: ([.[] | (.tokensTotal // 0)] | add),
+      tokMedianTotal: ([.[] | (.tokensTotal // 0)] | sort |
         (if (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end))
-    } | "  \(.gate): \(.runs) runs (\(.verdicts)) — \(.skippedPct)% skipped, durationMs sum=\(.durSumMs) median=\(.durMedianMs)"),
+    } | "  \(.gate): \(.runs) runs (\(.verdicts)) — \(.skippedPct)% skipped" +
+        (if (.skipReasons | length) > 0 then " [\(.skipReasons)]" else "" end) +
+        ", durationMs sum=\(.durSumMs) median=\(.durMedianMs), tokensTotal sum=\(.tokSumTotal) median=\(.tokMedianTotal)"),
     "",
-    ((group_by(.fixIterations // 0) | map("\(.[0].fixIterations // 0) attempt(s): \(length) run(s)") | join("; ")) as $dist |
-      ([.[] | select(.escalatedToHuman == true)] | length) as $esc |
+    (($runs | group_by(.fixIterations // 0) | map("\(.[0].fixIterations // 0) attempt(s): \(length) run(s)") | join("; ")) as $dist |
+      (($runs | [.[] | select(.escalatedToHuman == true)]) | length) as $esc |
       "  fixIterations distribution: \($dist)\n  escalatedToHuman=true: \($esc) run(s)"),
     "",
-    (([.[] | select(.reviewConfidence == "low" or .reviewConfidence == "high")]) as $rated |
+    (($runs | [.[] | select(.reviewConfidence == "low" or .reviewConfidence == "high")]) as $rated |
       if ($rated | length) == 0 then "  reviewConfidence: no rated reviews yet"
       else "  reviewConfidence: \((([$rated[] | select(.reviewConfidence == "low")] | length) / ($rated | length) * 100 * 10 | round) / 10)% low (\($rated | length) rated)"
       end),
     "",
+    (if ($findings | length) == 0 then "  findings: none logged yet"
+     else ($findings | group_by(.gate) | map(
+         "  findings \(.[0].gate): " +
+         (group_by(.outcome) | map("\(.[0].outcome)=\(length)") | join(", ")) +
+         " (\(length) total)"
+       ) | join("\n"))
+     end),
+    "",
     (if ($since // "") == "" then "  Rebuild Cost: no Clock-in found in PROGRESS.md — skipping"
      else
-       ([.[] | select(.ts > $since and .verdict != "confirmed" and .verdict != "skipped")] | sort_by(.ts) | .[0].ts // "") as $firstPass |
+       ([$runs[] | select(.ts > $since and .verdict != "confirmed" and .verdict != "skipped")] | sort_by(.ts) | .[0].ts // "") as $firstPass |
        if $firstPass == "" then "  Rebuild Cost: clock-in \($since), no passed gate logged after it yet"
        else "  Rebuild Cost: clock-in \($since) -> first passed gate \($firstPass)"
        end
@@ -152,19 +186,22 @@ import json, sys, statistics
 from collections import defaultdict
 
 log_path, since = sys.argv[1], sys.argv[2]
-rows = []
+all_rows = []
 with open(log_path) as f:
     for line in f:
         line = line.strip()
         if not line:
             continue
         try:
-            rows.append(json.loads(line))
+            all_rows.append(json.loads(line))
         except json.JSONDecodeError:
             continue
 
+runs = [r for r in all_rows if r.get("kind") != "finding"]
+findings = [r for r in all_rows if r.get("kind") == "finding"]
+
 by_gate = defaultdict(list)
-for r in rows:
+for r in runs:
     by_gate[r.get("gate", "?")].append(r)
 for gate in sorted(by_gate):
     entries = by_gate[gate]
@@ -173,14 +210,21 @@ for gate in sorted(by_gate):
         verdicts[e.get("verdict", "?")] += 1
     verdict_str = ", ".join(f"{k}={v}" for k, v in sorted(verdicts.items()))
     skipped_pct = round(100 * verdicts.get("skipped", 0) / len(entries), 1)
+    skip_reasons = defaultdict(int)
+    for e in entries:
+        if e.get("verdict") == "skipped" and e.get("skipReason"):
+            skip_reasons[e["skipReason"]] += 1
+    skip_str = f" [{', '.join(f'{k}={v}' for k, v in sorted(skip_reasons.items()))}]" if skip_reasons else ""
     durations = [e.get("durationMs", 0) or 0 for e in entries]
-    print(f"  {gate}: {len(entries)} runs ({verdict_str}) — {skipped_pct}% skipped, "
-          f"durationMs sum={sum(durations)} median={statistics.median(durations) if durations else 0}")
+    tokens = [e.get("tokensTotal", 0) or 0 for e in entries]
+    print(f"  {gate}: {len(entries)} runs ({verdict_str}) — {skipped_pct}% skipped{skip_str}, "
+          f"durationMs sum={sum(durations)} median={statistics.median(durations) if durations else 0}, "
+          f"tokensTotal sum={sum(tokens)} median={statistics.median(tokens) if tokens else 0}")
 
 print()
 fix_dist = defaultdict(int)
 escalations = 0
-for r in rows:
+for r in runs:
     fix_dist[r.get("fixIterations", 0) or 0] += 1
     if r.get("escalatedToHuman") is True:
         escalations += 1
@@ -189,7 +233,7 @@ print(f"  fixIterations distribution: {dist_str}")
 print(f"  escalatedToHuman=true: {escalations} run(s)")
 
 print()
-rated = [r for r in rows if r.get("reviewConfidence") in ("low", "high")]
+rated = [r for r in runs if r.get("reviewConfidence") in ("low", "high")]
 if not rated:
     print("  reviewConfidence: no rated reviews yet")
 else:
@@ -197,11 +241,26 @@ else:
     print(f"  reviewConfidence: {low_pct}% low ({len(rated)} rated)")
 
 print()
+if not findings:
+    print("  findings: none logged yet")
+else:
+    findings_by_gate = defaultdict(list)
+    for r in findings:
+        findings_by_gate[r.get("gate", "?")].append(r)
+    for gate in sorted(findings_by_gate):
+        entries = findings_by_gate[gate]
+        outcomes = defaultdict(int)
+        for e in entries:
+            outcomes[e.get("outcome", "?")] += 1
+        outcome_str = ", ".join(f"{k}={v}" for k, v in sorted(outcomes.items()))
+        print(f"  findings {gate}: {outcome_str} ({len(entries)} total)")
+
+print()
 if not since:
     print("  Rebuild Cost: no Clock-in found in PROGRESS.md — skipping")
 else:
     passed_after = sorted(
-        (r["ts"] for r in rows if r.get("ts", "") > since and r.get("verdict") not in ("confirmed", "skipped"))
+        (r["ts"] for r in runs if r.get("ts", "") > since and r.get("verdict") not in ("confirmed", "skipped"))
     )
     if not passed_after:
         print(f"  Rebuild Cost: clock-in {since}, no passed gate logged after it yet")
@@ -212,29 +271,41 @@ elif command -v node >/dev/null 2>&1; then
   node - "$LOG" "$clockin" <<'JS'
 const fs = require('fs');
 const [logPath, since] = process.argv.slice(2);
-const rows = fs.readFileSync(logPath, 'utf8').split('\n').filter(Boolean).map(l => {
+const allRows = fs.readFileSync(logPath, 'utf8').split('\n').filter(Boolean).map(l => {
   try { return JSON.parse(l); } catch { return null; }
 }).filter(Boolean);
 
+const runs = allRows.filter(r => r.kind !== 'finding');
+const findings = allRows.filter(r => r.kind === 'finding');
+
 const byGate = {};
-for (const r of rows) (byGate[r.gate] ||= []).push(r);
+for (const r of runs) (byGate[r.gate] ||= []).push(r);
 for (const gate of Object.keys(byGate).sort()) {
   const entries = byGate[gate];
   const verdicts = {};
   for (const e of entries) verdicts[e.verdict] = (verdicts[e.verdict] || 0) + 1;
   const verdictStr = Object.keys(verdicts).sort().map(k => `${k}=${verdicts[k]}`).join(', ');
   const skippedPct = Math.round((100 * (verdicts.skipped || 0) / entries.length) * 10) / 10;
-  const durations = entries.map(e => e.durationMs || 0).sort((a, b) => a - b);
-  const sum = durations.reduce((a, b) => a + b, 0);
-  const mid = Math.floor(durations.length / 2);
-  const median = durations.length === 0 ? 0 : (durations.length % 2 ? durations[mid] : (durations[mid - 1] + durations[mid]) / 2);
-  console.log(`  ${gate}: ${entries.length} runs (${verdictStr}) — ${skippedPct}% skipped, durationMs sum=${sum} median=${median}`);
+  const skipReasons = {};
+  for (const e of entries) if (e.verdict === 'skipped' && e.skipReason) skipReasons[e.skipReason] = (skipReasons[e.skipReason] || 0) + 1;
+  const skipStr = Object.keys(skipReasons).length
+    ? ` [${Object.keys(skipReasons).sort().map(k => `${k}=${skipReasons[k]}`).join(', ')}]` : '';
+  const median = arr => {
+    const s = [...arr].sort((a, b) => a - b);
+    const mid = Math.floor(s.length / 2);
+    return s.length === 0 ? 0 : (s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2);
+  };
+  const durations = entries.map(e => e.durationMs || 0);
+  const tokens = entries.map(e => e.tokensTotal || 0);
+  console.log(`  ${gate}: ${entries.length} runs (${verdictStr}) — ${skippedPct}% skipped${skipStr}, ` +
+    `durationMs sum=${durations.reduce((a, b) => a + b, 0)} median=${median(durations)}, ` +
+    `tokensTotal sum=${tokens.reduce((a, b) => a + b, 0)} median=${median(tokens)}`);
 }
 
 console.log();
 const fixDist = {};
 let escalations = 0;
-for (const r of rows) {
+for (const r of runs) {
   const fi = r.fixIterations || 0;
   fixDist[fi] = (fixDist[fi] || 0) + 1;
   if (r.escalatedToHuman === true) escalations++;
@@ -244,7 +315,7 @@ console.log(`  fixIterations distribution: ${distStr}`);
 console.log(`  escalatedToHuman=true: ${escalations} run(s)`);
 
 console.log();
-const rated = rows.filter(r => r.reviewConfidence === 'low' || r.reviewConfidence === 'high');
+const rated = runs.filter(r => r.reviewConfidence === 'low' || r.reviewConfidence === 'high');
 if (rated.length === 0) {
   console.log('  reviewConfidence: no rated reviews yet');
 } else {
@@ -253,10 +324,25 @@ if (rated.length === 0) {
 }
 
 console.log();
+if (findings.length === 0) {
+  console.log('  findings: none logged yet');
+} else {
+  const findingsByGate = {};
+  for (const r of findings) (findingsByGate[r.gate] ||= []).push(r);
+  for (const gate of Object.keys(findingsByGate).sort()) {
+    const entries = findingsByGate[gate];
+    const outcomes = {};
+    for (const e of entries) outcomes[e.outcome] = (outcomes[e.outcome] || 0) + 1;
+    const outcomeStr = Object.keys(outcomes).sort().map(k => `${k}=${outcomes[k]}`).join(', ');
+    console.log(`  findings ${gate}: ${outcomeStr} (${entries.length} total)`);
+  }
+}
+
+console.log();
 if (!since) {
   console.log('  Rebuild Cost: no Clock-in found in PROGRESS.md — skipping');
 } else {
-  const passedAfter = rows.filter(r => (r.ts || '') > since && r.verdict !== 'confirmed' && r.verdict !== 'skipped')
+  const passedAfter = runs.filter(r => (r.ts || '') > since && r.verdict !== 'confirmed' && r.verdict !== 'skipped')
     .map(r => r.ts).sort();
   if (passedAfter.length === 0) {
     console.log(`  Rebuild Cost: clock-in ${since}, no passed gate logged after it yet`);
