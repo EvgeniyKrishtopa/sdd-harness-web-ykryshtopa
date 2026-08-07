@@ -354,7 +354,7 @@ echo "-- Instruction length --"
 # up two large instructions" into this change uninvited. Grandfathering
 # today's size as a per-file ceiling avoids that: no file may grow, but
 # nothing has to be split right now either. See
-# harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 8.
+# harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 8.
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in

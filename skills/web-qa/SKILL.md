@@ -85,7 +85,7 @@ didn't touch: cart changing what it hands off to checkout doesn't necessarily
 show up in checkout's own diff, and the manual pass below stays scoped to
 this change's diff, not the whole app, so nothing else in this gate would
 ever re-open checkout on its own. See
-`harness-audit/v0.4.0-planned/01-review-blind-spots.txt` point 3 for the
+`harness-audit/v0.4.0-implemented/01-review-blind-spots.txt` point 3 for the
 incident this closes.
 
 - **Any failure here** feeds into the same fix loop as a manual-tester FAIL,
@@ -156,7 +156,7 @@ flow into a single yes/no: the human decides per scenario, because a report
 that records everything that happened to pass turns into a pile of
 overlapping, half-duplicate tests within a few months, and that pile is a
 maintenance debt, not a safety net — see
-`harness-audit/v0.4.0-planned/05-design-rationale.txt` decision 6.
+`harness-audit/v0.4.0-implemented/05-design-rationale.txt` decision 6.
 
 1. Ask (`AskUserQuestion` fits well here — one scenario, a clear yes/no) for
    each individually-passed flow, after the whole gate's fix loop has
@@ -234,7 +234,7 @@ is the closed-list reason matching this gate's own applicability check —
 otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
 `tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
 environment appends after the `web-qa-manual-tester` delegation returns
-(point 5, `harness-audit/v0.4.0-planned/03-log-fields.txt`), `0` when
+(point 5, `harness-audit/v0.4.0-implemented/03-log-fields.txt`), `0` when
 skipped or when that block is absent — never estimate it from a proxy.
 `fixIterations` is the attempt count `debug-loop` itself reports back (phase
 4's "report success and the number of attempts it took"), summed if more

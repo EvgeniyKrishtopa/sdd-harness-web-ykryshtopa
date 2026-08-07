@@ -193,7 +193,7 @@ section was docs/config-only" — filled in exactly when that line's own
 `skipReason` is always empty, since that line never logs `skipped` itself.
 `tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
 environment appends after the `code-reviewer` delegation returns (see
-`harness-audit/v0.4.0-planned/03-log-fields.txt` point 5) — attributed
+`harness-audit/v0.4.0-implemented/03-log-fields.txt` point 5) — attributed
 entirely to the `code-review` line, the same way `durationMs` is, since one
 delegation produces one `<usage>` block covering both sections; the
 `test-coverage` line always logs `0` here too. Never estimate either figure

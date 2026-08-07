@@ -9,6 +9,60 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.4.0
+
+The six review gates only ever look at what changed in the current task, so
+anything that just sits in the project unreferenced was invisible to all of
+them. This release gives the harness a way to see the whole project, not
+just the diff, and adds the token/skip/outcome fields the journal needed to
+answer any question about cost. No breaking change — `init-harness` in
+upgrade mode picks up the one new manifest key on its own.
+
+### Added — whole-project blind spots
+
+- `code-reviewer`'s coverage criterion no longer treats a rising coverage
+  percentage as reassurance when a diff is deletion-dominated — deleted code
+  is by definition uncovered, so coverage always rises on that class of
+  change regardless of whether the deletion was safe. The check now asks
+  whether the removed code is actually unreferenced instead.
+- `dead-code-report` skill: finds unused files, exports, and dependencies
+  with `knip` plus the project's own lint rules, sorts findings into three
+  confidence groups, and ends with a change-proposal draft — it never
+  deletes anything itself. A string-reference safety net downgrades any
+  "confident" finding still mentioned as a string anywhere in the project.
+  Rejected findings are recorded in `knip.json` with a reason, so repeat
+  runs get quieter instead of staying noisy forever. Not a gate; run
+  manually, roughly monthly, alongside the existing review-ladder ritual.
+- `web-qa` now offers to save each passed browser scenario as a real
+  `@playwright/test` file, one at a time, under `.claude/harness.json`'s new
+  `webQaScenariosDir`. Later Gate 3 runs replay the accumulated set first,
+  at zero model cost, before the manual click pass covers what's actually
+  new — closing the gap where a regression in an untouched surface went
+  unnoticed until a user hit it.
+
+### Added — plugin size discipline
+
+- A per-`skills/*/SKILL.md` line-count ceiling, checked by
+  `tests/smoke-json-schema.sh`. Today's two largest instructions
+  (`init-harness`, `opsx-apply-git`) are grandfathered at their current
+  length — nothing has to shrink today, but neither may grow further
+  unnoticed.
+
+### Added — measurability
+
+- `tokensTotal` — combined token count per gate run, sourced from the
+  environment's usage block, added to `.claude/harness-log.jsonl`.
+- `skipReason` — closed four-value reason recorded on every skipped gate
+  run, instead of a bare "skipped" that couldn't distinguish a healthy
+  trivial-diff filter from a gate nobody uses.
+- A new `kind: "finding"` log line, written once per CONFIRMED finding when
+  `opsx-apply-git` forms a run's summary, recording which gate raised it and
+  whether it was fixed, rejected, or deferred — closing the gap where a
+  gate's verdict was never checked against what actually happened to it.
+- `harness-stats` updated to read all three new fields; `kind: "finding"`
+  lines are excluded from the existing per-gate run statistics so they don't
+  deflate Gate 6's skipped-percentage denominator.
+
 ## 0.3.0
 
 **Repositories `init-harness` already configured under 0.2.0 must run

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Records one rejected dead-code finding into the project's knip config,
 // with an explanation -- knip's own settings, not this plugin's, per
-// harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 3: knip
+// harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 3: knip
 // already reads this file, so writing the exception there is free, and it
 // keeps a second, competing "what to ignore" list from ever existing.
 //

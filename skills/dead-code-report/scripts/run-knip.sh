@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs knip via npx -- this plugin's rules forbid installing packages into a
 # target project, so knip is always fetched on demand rather than added as a
-# devDependency (harness-audit/v0.4.0-planned/01-review-blind-spots.txt,
+# devDependency (harness-audit/v0.4.0-implemented/01-review-blind-spots.txt,
 # point 2, step 1).
 #
 # Prints the JSON report (--reporter json, per knip's own docs) to stdout on

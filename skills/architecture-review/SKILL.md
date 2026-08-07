@@ -79,7 +79,7 @@ at change scope, not per task group), and its stated `reviewConfidence`.
 `skipReason` is always empty here — this gate never logs `verdict:
 "skipped"` itself. `tokensTotal` is the `subagent_tokens` figure from the
 `<usage>` block the environment appends after the `architecture-reviewer`
-delegation returns (see `harness-audit/v0.4.0-planned/03-log-fields.txt`
+delegation returns (see `harness-audit/v0.4.0-implemented/03-log-fields.txt`
 point 5) — never estimate this from `durationMs` or any other proxy; if
 that block is absent, write `0` and say so in the report rather than
 guessing.
