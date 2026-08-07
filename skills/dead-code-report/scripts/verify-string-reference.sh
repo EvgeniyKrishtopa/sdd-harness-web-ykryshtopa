@@ -42,9 +42,21 @@ if ! printf '%s' "$basename_stem" | grep -qiE "$GENERIC_STEMS"; then
   search_terms+=(-e "$basename_stem")
 fi
 
+# Drop the candidate's OWN lines by comparing grep's path field, never by
+# filtering the whole output line. A line in a DIFFERENT file that mentions
+# the candidate's path as text -- `"dynamicEntry": "src/formatPrice.ts"` in a
+# build config -- is precisely the string reference this check exists to
+# find, and it contains that path too. A whole-line filter therefore
+# discarded the evidence along with the self-match and reported "nothing
+# found", promoting a genuinely-referenced file into Group 1 as safe to
+# delete: the exact failure this safety net was built to prevent.
+self_path="${CANDIDATE#./}"
+self_path="${self_path#"$PWD/"}"
+
 matches="$(grep -rn --binary-files=without-match \
   --exclude-dir=node_modules --exclude-dir=.git \
-  "${search_terms[@]}" . 2>/dev/null | grep -vF "$CANDIDATE")"
+  "${search_terms[@]}" . 2>/dev/null \
+  | awk -F: -v self="$self_path" '{ p = $1; sub(/^\.\//, "", p); if (p != self) print }')"
 
 if [ -n "$matches" ]; then
   printf '%s\n' "$matches"

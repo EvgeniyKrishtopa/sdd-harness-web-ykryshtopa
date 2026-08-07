@@ -109,7 +109,8 @@ stylistic:
 1. bump `version` in `.claude-plugin/plugin.json` — every release, however
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
-3. `bash tests/smoke-json-schema.sh` — it fails if the version isn't semver,
+3. `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh` and
+   `tests/dead-code-scripts.sh`) — the first fails if the version isn't semver,
    if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push` — creates the `sdd-harness-web-ykryshtopa--v<version>`
@@ -349,6 +350,31 @@ dependency, nothing outside what the diff showed), not in what it found.
 It's a narrower signal than a verdict: a note that this particular pass had
 less to go on than usual, worth weighing if you're deciding how much to
 trust a clean result rather than a reason to distrust the harness broadly.
+
+## How the skills themselves are structured
+
+A `SKILL.md` body loads into context in full every time its skill fires. A
+file under that skill's `references/` loads only when an instruction tells
+the model to read it. That difference is the plugin's own cost control, and
+it is applied deliberately:
+
+- **`SKILL.md` keeps the control flow** — every step's existence, what
+  triggers it, and what makes it stop the run.
+- **`references/` holds the rest** — branch-specific procedures a given run
+  may never take (upgrade mode, the OpenSpec profile conversation,
+  archiving), and lookup material consulted while performing a step (the
+  `harness.json` schema and field notes, the git-hook procedure, templates).
+
+The rule that keeps the split honest: a run that never opens a single
+reference still knows what it has to do and when to halt. Extracting a
+*decision* would break that; extracting the detail behind one doesn't.
+
+`tests/smoke-json-schema.sh` enforces two invariants here — every reference
+is reachable from its `SKILL.md`, and every path a `SKILL.md` names exists —
+because an unreferenced or renamed reference is an instruction that silently
+stopped running rather than a visible error. It also caps each `SKILL.md`'s
+line count, with today's two largest grandfathered at their current size, so
+the budget ratchets down and never back up.
 
 ## Harness diet
 

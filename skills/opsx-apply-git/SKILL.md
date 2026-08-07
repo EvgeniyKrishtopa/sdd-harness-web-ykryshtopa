@@ -77,43 +77,25 @@ identifier reports as uncovered even though the work happened.
 
 ### Blocked tasks
 
-A task can also carry a third, independent marker: `<!-- blocked: <reason>
--->`, written on the task's own `- [ ]` line — never on the group's `##`
-heading, which only ever carries the isolated/judgement-heavy classification.
-This skill is the one that writes it, at the exact moment a run stops
-without resolving the task: Case A step 5's pause, or Case B step 2's pause
-that outlives the run. `spec-review` never writes it — that classification
-happens before implementation starts, with no task yet to block.
+A task can carry a third, independent marker: `<!-- blocked: <reason> -->`,
+written on the task's own `- [ ]` line — never on the group's `##` heading.
+This skill writes it at the moment a run stops without resolving the task
+(Case A step 5's pause, or Case B step 2's pause that outlives the run);
+`spec-review` never does.
 
-That edit is committed on its own — a small standalone commit
-(`docs: mark <group>.<task> blocked — <reason>`), the same way every group's
-own checkbox flips are committed, never left as a bare uncommitted
-working-tree diff. Leaving it uncommitted would undercut the entire point of
-this marker: a reason for stopping that survives only in an uncommitted diff
-is exactly as fragile as one that survives only in chat, the failure #U3
-already fixed for `PROGRESS.md`. Like any other commit made mid-batch before
-this run reaches §4, it isn't pushed to `origin` until the run reaches (or,
-on resume, re-reaches) §4's push step — that's an existing property of this
-whole flow, not something new the marker introduces: an already-completed
-group sitting earlier in the same paused batch is in exactly the same
-committed-but-unpushed state until then. A session that resumes on this same
-branch (§1 step 1's leftover-branch check) finds the marker either way.
+Two rules bind every run's scan, so they stay here rather than in the
+reference:
 
-A group containing any blocked task is never eligible for Case A's
-autonomous batch, regardless of its own isolated/judgement-heavy mark — skip
-past it when scanning for the next run's starting point, and if every
-remaining group is blocked, stop and report rather than inventing work. This
-holds back the *whole* group, including its own non-blocked tasks, not just
-the one task carrying the marker — deliberately: an isolated group is
-trusted to run unattended precisely because nothing in it needs a human
-mid-way, and a block is evidence that trust didn't hold for this group, so
-none of it runs unattended until a human clears it. Case B can still pick
-up a blocked task deliberately, with a human already in the loop, but
-should say so explicitly rather than silently working past the marker.
+- **A group containing any blocked task is never eligible for Case A's
+  autonomous batch**, whatever its own classification says. Skip past it when
+  scanning for the next run's starting point, and if every remaining group is
+  blocked, stop and report rather than inventing work.
+- **Clearing a block is never automatic** — no timeout, no retry-and-forget.
 
-Clearing a block is never automatic — no timeout, no retry-and-forget. Only
-a human removing the marker from `tasks.md`, or explicitly telling this
-skill to continue past it, clears it.
+When about to write a marker, or when a scan finds one, **read
+`references/blocked-tasks.md` and follow it** — it covers the standalone
+commit the marker gets, why a block holds back the whole group, and what Case
+B may still do deliberately.
 
 ### Syncing the parent (used by both cases below)
 
@@ -425,43 +407,27 @@ implement unattended is reviewed as one unit too, not group-by-group.
 
 ## 5. Auto-archive once the run's own PR has merged
 
-Archiving mutates the parent branch's `openspec/changes/` tree. Doing that
-before the run's own PR (opened in §4 step 6) has merged opens a second PR
-into the same parent whose content depends on the first — if the run's PR
-is later rejected or reworked, an already-opened archive PR would have
-archived a change that was never actually accepted (#19).
+Only on a run that leaves no pending tasks in the change. Archiving mutates
+the parent's `openspec/changes/` tree, so it waits on this run's own PR being
+**merged** — archiving a change whose PR was later rejected would record an
+acceptance that never happened (#19).
 
-1. Check the run's PR state: `gh pr view <branch-or-number> --json state
-   --jq .state`. Three outcomes, not two:
-   - **`MERGED`** → sync the parent (see the syncing procedure in §3 — the
-     same squash/rebase-merge case can apply here too) and cut the archive
-     branch off the now-current parent tip, which contains this run's work:
-     `git checkout -b chore/archive-<change-name>`.
-   - **`OPEN`** → stop here and report — the change is fully implemented and
-     its PR is open, but archiving waits on that merge. To resume once a
-     human has merged it, re-invoke `opsx-apply-git` on **this run's own
-     branch** (not the parent, and not a fresh checkout) so it lands back on
-     this same archiving step rather than tripping step 1's "leftover group
-     branch" guard in §1, which fires when the checked-out branch isn't the
-     current run's own branch.
-   - **`CLOSED`** (and not merged) → the run's PR was rejected or reworked.
-     Do **not** wait for a merge that isn't coming — stop and ask the human
-     what to do with the change instead (re-open, rework, or abandon the
-     archive entirely).
-2. Run `openspec archive <change-name>` (or the vendored
-   `openspec-archive-change` skill if present).
-3. Commit the archive move (`chore: archive <change-name>`) — this is a
-   second, narrower override of "never commit without being asked," same
+**Read `references/archive-run.md` now and follow it.** Its steps are
+numbered as below; other skills cite these numbers, so they stay listed here:
+
+1. **Check the run's PR state** (`gh pr view <branch-or-number> --json state
+   --jq .state`) — three outcomes, not two. `MERGED` → sync the parent and
+   cut the archive branch off its now-current tip. `OPEN` → stop and report;
+   archiving waits on the human's merge. `CLOSED` and not merged → stop and
+   ask, the merge isn't coming.
+2. Run `openspec archive <change-name>`.
+3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
+   narrower override of "never commit without being asked", same
    justification as §3's per-group commit override.
-4. Push the archive branch, open a PR into the parent. Leave it open.
-5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
-   current change and no next steps remain for it, noting the archive
-   location and archive PR URL — the same self-checking regeneration as §4
-   step 7, just for a change that's now fully done rather than paused,
-   including the same `## Paused changes` prune-this-change-only-if-present
-   rule from §4 step 7. Then report the full session: every group completed
-   with PR URLs, final `N/N tasks complete`, archive location, archive PR
-   URL.
+4. Push the archive branch and open a PR into the parent. Leave it open.
+5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
+   no current change and no next steps remain for it, noting the archive
+   location and archive PR URL. Then report the full session.
 
 ## Exceptions
 

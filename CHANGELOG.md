@@ -9,6 +9,69 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.4.1
+
+A correctness fix in `dead-code-report`'s safety net, first automated
+coverage for the scripts 0.4.0 added, and a progressive-disclosure pass over
+the two largest instructions. Nothing in this release adds a manifest key or
+changes a configured repository.
+
+**That does not mean you can skip `/init-harness`.** 0.4.0 and 0.4.1 reach
+users as one update, so a repository last configured under 0.3.0 still needs
+the upgrade-mode run 0.4.0 describes below, to pick up `webQaScenariosDir`.
+Only a repository already at 0.4.0 has nothing to do here.
+
+### Fixed
+
+- **`dead-code-report` could call a referenced file safe to delete.**
+  `verify-string-reference.sh` excluded the candidate's own lines by
+  filtering whole `grep` output lines on the candidate's path. A line in a
+  *different* file that mentions that path — `"dynamicEntry":
+  "src/formatPrice.ts"` in a build config, the exact reference the check
+  exists to catch — contains the path too, so it was discarded along with
+  the self-match and the script reported "nothing found". A file reachable
+  only through a config string was therefore promoted into Group 1,
+  "reliable / safe to delete". The exclusion now compares `grep`'s path
+  field instead of the whole line, and handles a candidate passed as an
+  absolute path (which previously failed to match itself at all).
+
+### Added — tests
+
+- `tests/dead-code-scripts.sh`: 10 checks over the five scripts 0.4.0
+  added, which shipped with no automated coverage at all. Covers the
+  string-reference safety net in both directions, generic-stem
+  over-matching, `record-rejection`'s comment preservation / duplicate
+  handling / JSONC validity, and `run-knip`'s unavailable-tool path.
+- Three structural checks in `tests/smoke-json-schema.sh`: every
+  `references/` and `scripts/` file must be reachable from its `SKILL.md`,
+  every such path a `SKILL.md` names must exist, and every §-section
+  citation (`§4 step 2`, `§5.3`) must resolve to a real section and step.
+  An extracted file nobody points at is not documentation kept nearby — it
+  is an instruction that silently stopped running, which is the one failure
+  mode progressive disclosure introduces.
+  The third check exists because the split itself caused that failure:
+  moving §5's numbered steps out of `opsx-apply-git` left six citations
+  across four files pointing at nothing, one of them inside the block
+  written into the user's own `CLAUDE.md`. Those steps are back inline as a
+  one-line-each outline — a numbered step other skills cite is a public
+  anchor, not detail.
+
+### Changed — instruction size
+
+- `init-harness/SKILL.md` 838 → 408 lines and `opsx-apply-git/SKILL.md`
+  475 → 433, by moving conditional and reference-shaped material into
+  `references/`. A `SKILL.md` body loads in full every time its skill
+  fires; a `references/` file loads only when an instruction says to read
+  it. What moved is branch-specific (upgrade mode, the OpenSpec profile
+  conversation, archiving, blocked-task handling) or lookup material (the
+  manifest schema and field notes, the git-hook procedure, the CLAUDE.md
+  block). What stayed inline is every step's existence, its trigger, and
+  its stop condition — a run that never opens a reference still knows what
+  it must do and when to halt.
+- The grandfathered line ceilings in `tests/smoke-json-schema.sh` tightened
+  to the new sizes in the same commit, so neither file can grow back into
+  the space the split just freed.
+
 ## 0.4.0
 
 The six review gates only ever look at what changed in the current task, so
