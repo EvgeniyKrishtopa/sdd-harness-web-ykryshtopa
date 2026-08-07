@@ -78,7 +78,7 @@ whole failure this step exists to prevent.
 | `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys; never drop keys already there |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0 — see Step 8); never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
@@ -572,6 +572,7 @@ rest around it:
     "testCoverage": "test:coverage"
   },
   "devServerUrl": "http://localhost:5173",
+  "webQaScenariosDir": "tests/web-qa-scenarios",
   "trivialDiffThreshold": 10,
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "maxFixAttempts": 2,
@@ -618,6 +619,8 @@ Field notes:
 - `devServerUrl` — the dev server's root URL: `http://localhost:3000`
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
+- `webQaScenariosDir` — where `web-qa` records/replays Playwright scenarios;
+  same don't-ask-unless-raised treatment as `trivialDiffThreshold` below.
 - `trivialDiffThreshold` / `trivialDiffPaths` — seed with the values shown
   above; don't ask the user for these unless they raise it. `code-review`
   (Gate 4+5) skips itself, at zero model cost, for a run whose cumulative

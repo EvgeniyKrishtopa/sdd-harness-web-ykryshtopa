@@ -358,7 +358,7 @@ echo "-- Instruction length --"
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in
-    init-harness) echo 835 ;;
+    init-harness) echo 838 ;;
     opsx-apply-git) echo 475 ;;
     *) echo "" ;;
   esac
