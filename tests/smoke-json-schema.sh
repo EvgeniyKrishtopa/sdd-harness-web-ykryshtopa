@@ -355,11 +355,16 @@ echo "-- Instruction length --"
 # today's size as a per-file ceiling avoids that: no file may grow, but
 # nothing has to be split right now either. See
 # harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 8.
+# Ratchet: whenever one of these files is split, its cap tightens to the new
+# size in the same commit. 0.4.1 moved the conditional and reference-shaped
+# parts of both into references/ (init-harness 838 -> 408, opsx-apply-git
+# 475 -> 433), so the old ceilings would have left room to grow straight back
+# into the size the split just removed.
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in
-    init-harness) echo 838 ;;
-    opsx-apply-git) echo 475 ;;
+    init-harness) echo 408 ;;
+    opsx-apply-git) echo 433 ;;
     *) echo "" ;;
   esac
 }
@@ -394,21 +399,28 @@ echo "-- 0.3.0 surfaces --"
 # ("0.3.0") is "the shape, not a constant to copy" -- so this checks form,
 # not equality with plugin.json.
 INIT_SKILL="skills/init-harness/SKILL.md"
-if [ -f "$INIT_SKILL" ]; then
-  example_version="$(grep -m1 '"harnessVersion":' "$INIT_SKILL" | sed -E 's/.*"harnessVersion":[[:space:]]*"([^"]*)".*/\1/')"
+# The manifest example moved out of SKILL.md into this reference when Step 8
+# was split for progressive disclosure. The checks below follow the content,
+# not the filename: what matters is that the example a run copies from is
+# semver-shaped and still names the keys later releases added.
+MANIFEST_REF="skills/init-harness/references/manifest-schema.md"
+if [ ! -f "$INIT_SKILL" ]; then
+  bad "$INIT_SKILL does not exist"
+elif [ ! -f "$MANIFEST_REF" ]; then
+  bad "$MANIFEST_REF does not exist — Step 8's manifest example has no home"
+else
+  example_version="$(grep -m1 '"harnessVersion":' "$MANIFEST_REF" | sed -E 's/.*"harnessVersion":[[:space:]]*"([^"]*)".*/\1/')"
   if printf '%s' "$example_version" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
-    ok "$INIT_SKILL's Step 8 harnessVersion example (\"$example_version\") is shaped like a semver version"
+    ok "$MANIFEST_REF's harnessVersion example (\"$example_version\") is shaped like a semver version"
   else
-    bad "$INIT_SKILL's Step 8 harnessVersion example is missing or not semver-shaped"
+    bad "$MANIFEST_REF's harnessVersion example is missing or not semver-shaped"
   fi
 
-  if grep -q '"maxFixAttempts"' "$INIT_SKILL" && grep -q '"toolchainVerifiedAt"' "$INIT_SKILL"; then
-    ok "$INIT_SKILL documents maxFixAttempts and toolchainVerifiedAt in the Step 8 manifest example"
+  if grep -q '"maxFixAttempts"' "$MANIFEST_REF" && grep -q '"toolchainVerifiedAt"' "$MANIFEST_REF"; then
+    ok "$MANIFEST_REF documents maxFixAttempts and toolchainVerifiedAt in the manifest example"
   else
-    bad "$INIT_SKILL's Step 8 manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
+    bad "$MANIFEST_REF's manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
   fi
-else
-  bad "$INIT_SKILL does not exist"
 fi
 
 # Every harness-log.jsonl line literal -- one per gate skill, plus
@@ -490,6 +502,67 @@ elif [ -n "$tmpl_missing" ]; then
   bad "placeholder(s) in a template but never named in $INIT_SKILL:$tmpl_missing"
 else
   ok "all $tmpl_total template placeholders are named in $INIT_SKILL's substitution instructions"
+fi
+echo
+
+# --- Check: progressive disclosure is wired up ------------------------------
+
+echo "-- Progressive disclosure --"
+
+# A SKILL.md loads in full every time its skill fires; a references/ file
+# loads only when the instruction says to read it. That split is only safe
+# while every extracted file is actually pointed at -- an unreferenced
+# reference is not "documentation kept nearby", it is an instruction that
+# silently stopped running. This is the check that keeps a future extraction
+# from quietly dropping a step. A file counts as reachable when its basename
+# appears in its own SKILL.md or in any sibling file within the same skill
+# (record-rejection.mjs, for instance, is invoked by its .sh wrapper).
+unreachable=""
+reachable_total=0
+for skill_dir in skills/*/; do
+  skill_md="${skill_dir}SKILL.md"
+  [ -f "$skill_md" ] || continue
+  for aux in "$skill_dir"references/* "$skill_dir"scripts/*; do
+    [ -f "$aux" ] || continue
+    reachable_total=$((reachable_total + 1))
+    base="$(basename "$aux")"
+    if grep -qF "$base" "$skill_md" 2>/dev/null; then
+      continue
+    fi
+    # not named directly -- look for an indirect mention from a sibling
+    found=""
+    for sib in "$skill_dir"references/* "$skill_dir"scripts/*; do
+      [ -f "$sib" ] || continue
+      [ "$sib" = "$aux" ] && continue
+      grep -qF "$base" "$sib" 2>/dev/null && { found=1; break; }
+    done
+    [ -n "$found" ] || unreachable="$unreachable [$aux]"
+  done
+done
+if [ "$reachable_total" -eq 0 ]; then
+  bad "no references/ or scripts/ files found under skills/ -- did they move?"
+elif [ -n "$unreachable" ]; then
+  bad "file(s) never named by their own SKILL.md or any sibling, so nothing ever reads them:$unreachable"
+else
+  ok "all $reachable_total references/ and scripts/ files are reachable from their SKILL.md"
+fi
+
+# Every path a SKILL.md tells the model to read has to exist. A pointer to a
+# renamed or deleted reference fails silently at run time: the model reads
+# nothing and continues without the step.
+dangling=""
+link_total=0
+for skill_md in skills/*/SKILL.md; do
+  skill_dir="$(dirname "$skill_md")"
+  for p in $(grep -o '`\(references\|scripts\)/[A-Za-z0-9._/-]*`' "$skill_md" 2>/dev/null | tr -d '`' | sort -u); do
+    link_total=$((link_total + 1))
+    [ -e "$skill_dir/$p" ] || dangling="$dangling [$skill_md -> $p]"
+  done
+done
+if [ -n "$dangling" ]; then
+  bad "SKILL.md points at path(s) that do not exist:$dangling"
+else
+  ok "all $link_total references/ and scripts/ paths named in a SKILL.md resolve"
 fi
 echo
 
