@@ -37,12 +37,19 @@ changes — no new manifest keys, no re-run of `/init-harness` required.
   string-reference safety net in both directions, generic-stem
   over-matching, `record-rejection`'s comment preservation / duplicate
   handling / JSONC validity, and `run-knip`'s unavailable-tool path.
-- Two structural checks in `tests/smoke-json-schema.sh`: every
+- Three structural checks in `tests/smoke-json-schema.sh`: every
   `references/` and `scripts/` file must be reachable from its `SKILL.md`,
-  and every such path a `SKILL.md` names must exist. An extracted file
-  nobody points at is not documentation kept nearby — it is an instruction
-  that silently stopped running, which is the one failure mode
-  progressive disclosure introduces.
+  every such path a `SKILL.md` names must exist, and every §-section
+  citation (`§4 step 2`, `§5.3`) must resolve to a real section and step.
+  An extracted file nobody points at is not documentation kept nearby — it
+  is an instruction that silently stopped running, which is the one failure
+  mode progressive disclosure introduces.
+  The third check exists because the split itself caused that failure:
+  moving §5's numbered steps out of `opsx-apply-git` left six citations
+  across four files pointing at nothing, one of them inside the block
+  written into the user's own `CLAUDE.md`. Those steps are back inline as a
+  one-line-each outline — a numbered step other skills cite is a public
+  anchor, not detail.
 
 ### Changed — instruction size
 

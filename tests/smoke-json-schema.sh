@@ -358,13 +358,20 @@ echo "-- Instruction length --"
 # Ratchet: whenever one of these files is split, its cap tightens to the new
 # size in the same commit. 0.4.1 moved the conditional and reference-shaped
 # parts of both into references/ (init-harness 838 -> 408, opsx-apply-git
-# 475 -> 433), so the old ceilings would have left room to grow straight back
+# 475 -> 441), so the old ceilings would have left room to grow straight back
 # into the size the split just removed.
+#
+# opsx-apply-git lands at 441 rather than the 433 the first pass reached: §5's
+# numbered steps had to come back inline as a one-line-each outline, because
+# four other files cite them ("§5.3", "§5 step 5") and one of those citations
+# ships inside the block written into the user's own CLAUDE.md. A numbered step
+# other skills cite is a public anchor, not detail — the §-citation check below
+# is what now keeps that true.
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in
     init-harness) echo 408 ;;
-    opsx-apply-git) echo 433 ;;
+    opsx-apply-git) echo 441 ;;
     *) echo "" ;;
   esac
 }
@@ -563,6 +570,48 @@ if [ -n "$dangling" ]; then
   bad "SKILL.md points at path(s) that do not exist:$dangling"
 else
   ok "all $link_total references/ and scripts/ paths named in a SKILL.md resolve"
+fi
+
+# Section citations (§4 step 2, §5.3, ...) are a second kind of pointer, and
+# splitting a skill breaks them in a way no path check sees: move a numbered
+# step into a reference and every "§5.3" elsewhere silently points at nothing.
+# That happened during the 0.4.1 split -- six citations across four files went
+# dangling when §5's numbered steps moved out, one of them inside the block
+# written into the user's own CLAUDE.md. Only opsx-apply-git numbers its
+# sections this way, so that is what these resolve against.
+SECREF_TARGET="skills/opsx-apply-git/SKILL.md"
+section_body() {
+  awk -v n="$1" '$0 ~ "^## "n"[.]" {f=1; next} f && /^## / {exit} f' "$SECREF_TARGET"
+}
+if [ -f "$SECREF_TARGET" ]; then
+  secref_bad=""; secref_total=0
+  secrefs="$(grep -rhno '§[0-9]\{1,\}\(\.[0-9]\{1,\}\)\{0,1\}\( step [0-9]\{1,\}\)\{0,1\}' skills/ 2>/dev/null \
+    | sed 's/^[0-9]*://' | sort -u)"
+  while IFS= read -r ref; do
+    [ -z "$ref" ] && continue
+    secref_total=$((secref_total + 1))
+    sec="$(printf '%s' "$ref" | sed -E 's/^§([0-9]+).*/\1/')"
+    body="$(section_body "$sec")"
+    if [ -z "$body" ]; then
+      secref_bad="$secref_bad [$ref -> no \"## $sec.\" section]"
+      continue
+    fi
+    # `sed -E` for the alternation: `\(a\|b\)` is a GNU extension that BSD sed
+    # silently fails to match, which would make this whole check pass vacuously.
+    step="$(printf '%s' "$ref" | sed -E -n 's/^§[0-9]+(\.| step )([0-9]+)$/\2/p')"
+    [ -z "$step" ] && continue
+    printf '%s\n' "$body" | grep -qE "^${step}\. " \
+      || secref_bad="$secref_bad [$ref -> §$sec has no step $step]"
+  done <<SECREFEOF
+$secrefs
+SECREFEOF
+  if [ "$secref_total" -eq 0 ]; then
+    note "no §-section citations found under skills/ — did the notation change?"
+  elif [ -n "$secref_bad" ]; then
+    bad "section citation(s) that no longer resolve in $SECREF_TARGET:$secref_bad"
+  else
+    ok "all $secref_total §-section citations resolve to a real section and step"
+  fi
 fi
 echo
 

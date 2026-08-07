@@ -412,14 +412,22 @@ the parent's `openspec/changes/` tree, so it waits on this run's own PR being
 **merged** — archiving a change whose PR was later rejected would record an
 acceptance that never happened (#19).
 
-Check the PR state first (`gh pr view <branch-or-number> --json state --jq
-.state`), and treat it as three outcomes, not two: `MERGED` → proceed;
-`OPEN` → stop and report, archiving waits on the human's merge; `CLOSED` →
-stop and ask, the merge isn't coming.
+**Read `references/archive-run.md` now and follow it.** Its steps are
+numbered as below; other skills cite these numbers, so they stay listed here:
 
-On `MERGED`, **read `references/archive-run.md` now and follow it** — sync,
-archive branch, `openspec archive`, the archive commit and PR, and the final
-`PROGRESS.md` clock-out.
+1. **Check the run's PR state** (`gh pr view <branch-or-number> --json state
+   --jq .state`) — three outcomes, not two. `MERGED` → sync the parent and
+   cut the archive branch off its now-current tip. `OPEN` → stop and report;
+   archiving waits on the human's merge. `CLOSED` and not merged → stop and
+   ask, the merge isn't coming.
+2. Run `openspec archive <change-name>`.
+3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
+   narrower override of "never commit without being asked", same
+   justification as §3's per-group commit override.
+4. Push the archive branch and open a PR into the parent. Leave it open.
+5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
+   no current change and no next steps remain for it, noting the archive
+   location and archive PR URL. Then report the full session.
 
 ## Exceptions
 
