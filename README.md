@@ -145,6 +145,16 @@ dependency-vulnerability audit appended to `.husky/pre-push`. Running
 `/init-harness` again on a repo already at the current version says so
 plainly and changes nothing.
 
+## Upgrading from 0.3.0
+
+The same `/init-harness` upgrade-mode mechanism described above applies —
+0.4.0 makes no breaking change, so this is routine, not a special step.
+Keys new in 0.4.0 that a 0.3.0 repo doesn't have yet: `.claude/harness.json`'s
+`webQaScenariosDir`, where `web-qa` records and replays saved Playwright
+scenarios. The other addition, the `dead-code-report` skill, needs nothing
+written into your project besides itself — its own state lives in a
+`knip.json` it creates on first run, not in `harness.json`.
+
 ## First run
 
 ```

@@ -1,7 +1,7 @@
 # Logging CONFIRMED findings — point 7
 
 Referenced from `SKILL.md` §4 step 6. Background:
-`harness-audit/v0.4.0-planned/03-log-fields.txt` point 7.
+`harness-audit/v0.4.0-implemented/03-log-fields.txt` point 7.
 
 The eight `verdict`-bearing lines this pipeline already writes to
 `.claude/harness-log.jsonl` (one per gate, plus `opsx-apply-git`'s own two

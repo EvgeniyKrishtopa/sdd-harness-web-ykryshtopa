@@ -96,7 +96,7 @@ is `-`: this gate runs at change scope), and its stated `reviewConfidence`.
 logs `verdict: "skipped"` (see the fourth-value note below for the line
 that does). `tokensTotal` is the `subagent_tokens` figure from the
 `<usage>` block the environment appends after the `harness-reviewer`
-delegation returns (see `harness-audit/v0.4.0-planned/03-log-fields.txt`
+delegation returns (see `harness-audit/v0.4.0-implemented/03-log-fields.txt`
 point 5) — never estimate this from `durationMs` or any other proxy; if
 that block is absent, write `0` and say so in the report rather than
 guessing.

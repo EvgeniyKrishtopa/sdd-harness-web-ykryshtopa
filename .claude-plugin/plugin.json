@@ -1,6 +1,6 @@
 {
   "name": "sdd-harness-web-ykryshtopa",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Spec-driven OpenSpec harness for web projects (Vite or Next.js): 6 automated review gates (architecture, spec, web-qa, code+coverage merged, harness), branch-per-group git workflow, and a scaffolder that detects your framework and package manager.",
   "author": {
     "name": "Evgen Spinto"

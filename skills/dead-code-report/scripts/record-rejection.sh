@@ -2,7 +2,7 @@
 # Thin wrapper: the actual JSON/JSONC editing lives in record-rejection.mjs
 # (bracket/string-aware text surgery, not a full re-serialize, so any
 # comments already in the file are never dropped). See that file's header
-# and harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 3.
+# and harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 3.
 #
 # Usage:
 #   record-rejection.sh <category> <name> "<reason>" [project-dir]

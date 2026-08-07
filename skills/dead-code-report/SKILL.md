@@ -13,7 +13,7 @@ it runs on demand, not on every task, and it does not write to
 The six automated gates only ever look at what a task *changed*. A function
 that a task stopped calling — without touching the function itself — never
 appears in any diff, so no gate ever sees it. It just accumulates. See
-`harness-audit/v0.4.0-planned/01-review-blind-spots.txt`, point 2, for the
+`harness-audit/v0.4.0-implemented/01-review-blind-spots.txt`, point 2, for the
 full argument, and `05-design-rationale.txt`, decisions 1-4, for why this is
 a command that reports rather than a seventh gate that deletes.
 

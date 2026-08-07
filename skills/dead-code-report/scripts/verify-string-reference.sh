@@ -4,7 +4,7 @@
 # including inside a string literal, a config value, a comment. If it turns
 # up anywhere, static analysis already missed the reference that explains it,
 # and the finding must be downgraded to Group 3, not deleted.
-# See harness-audit/v0.4.0-planned/05-design-rationale.txt, decision 4.
+# See harness-audit/v0.4.0-implemented/05-design-rationale.txt, decision 4.
 #
 # Only node_modules and .git are excluded: node_modules per the plan
 # ("кроме node_modules"), and .git alongside it because it holds history, not
