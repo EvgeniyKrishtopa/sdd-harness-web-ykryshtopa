@@ -29,7 +29,8 @@ printf '%s\n' "$(jq -nc \
   --arg gate "<web-qa|code-review|test-coverage|harness-review>" \
   --arg finding "<short description of what the finding was>" \
   --arg outcome "<fixed|rejected|deferred>" \
-  '{ts:$ts,change:$change,kind:"finding",gate:$gate,finding:$finding,outcome:$outcome}')" \
+  --arg ruleNumber "<CR-nn/SR-nn, or empty>" \
+  '{ts:$ts,change:$change,kind:"finding",gate:$gate,finding:$finding,outcome:$outcome,ruleNumber:$ruleNumber}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -48,6 +49,13 @@ instead. A failed log write never blocks the run — note it and move on.
     not worth fixing).
   - `deferred` — `debug-loop` exhausted `maxFixAttempts` and the run
     stopped to report it instead of resolving it.
+- `ruleNumber` — optional; the permanent rule code (`agents/code-reviewer.md`
+  or `agents/spec-reviewer.md`) the finding was raised under, when the
+  raising gate has numbered rules and the finding names one. Empty string
+  when it doesn't — `web-qa` and `harness-review` findings have no numbered
+  rule to cite yet, and neither does a line written before this field
+  existed. A finding without it is still a legal line; nothing downstream
+  requires it.
 
 ## Why this is a different shape than the other eight lines
 

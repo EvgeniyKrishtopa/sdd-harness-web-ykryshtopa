@@ -17,7 +17,9 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    the `spec-reviewer` subagent (`Agent` tool) for the whole change —
    overriding the agent's own frontmatter default for this run. If the
    manifest or the key is missing, fall back to the agent's own default;
-   never block the gate on a missing override.
+   never block the gate on a missing override. Also read the manifest's
+   `disabledRules` array and pass it along as context — an empty array or
+   missing key means nothing is disabled; never invent a value.
 2. Beyond surfacing gaps, this is also where **task-group classification**
    happens: the reviewer marks each `## N.` heading in `tasks.md` as
    `isolated` or `judgement-heavy`, written back as a trailing

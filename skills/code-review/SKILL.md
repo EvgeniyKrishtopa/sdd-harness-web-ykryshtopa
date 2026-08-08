@@ -113,7 +113,9 @@ would otherwise grep zero, subtract zero, and report full coverage.
    `coverageThreshold`, and any acceptance criteria as context — overriding
    the agent's own frontmatter default for this run. If the manifest or the
    key is missing, fall back to the agent's own default; never block the
-   gate on a missing override.
+   gate on a missing override. Also read the manifest's `disabledRules`
+   array and pass it along as context — an empty array or missing key means
+   nothing is disabled; never invent a value.
 5. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 

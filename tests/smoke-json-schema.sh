@@ -466,6 +466,31 @@ LOGEOF
   fi
 fi
 
+# The kind:"finding" line (skills/opsx-apply-git/references/log-findings.md)
+# is deliberately a different, shorter shape than the eight verdict lines
+# above -- see that file's own note -- so it is checked against its own
+# expected field set instead of being folded into the loop above. ruleNumber
+# (0.5.0) is the one field added to this line since it was introduced;
+# checking its presence here is what "update the field-set comparison" means
+# for this session's only sanctioned journal-line change.
+FINDING_LINE_REF="skills/opsx-apply-git/references/log-findings.md"
+FINDING_LINE_EXPECTED="ts,change,kind,gate,finding,outcome,ruleNumber,"
+if [ -f "$FINDING_LINE_REF" ]; then
+  finding_line="$(grep 'ts:\$ts' "$FINDING_LINE_REF" 2>/dev/null | head -1)"
+  if [ -z "$finding_line" ]; then
+    bad "$FINDING_LINE_REF has no kind:\"finding\" line literal -- did it move?"
+  else
+    finding_fields="$(log_line_fields "$finding_line")"
+    if [ "$finding_fields" = "$FINDING_LINE_EXPECTED" ]; then
+      ok "$FINDING_LINE_REF's finding line has the expected field set (incl. ruleNumber)"
+    else
+      bad "$FINDING_LINE_REF's finding line field set is \"$finding_fields\", expected \"$FINDING_LINE_EXPECTED\""
+    fi
+  fi
+else
+  bad "$FINDING_LINE_REF does not exist"
+fi
+
 # debug-loop's description needs to name concrete trigger phrases, not just
 # describe what the skill generically does -- that's what lets Claude's own
 # skill-matcher and a human reader tell when to reach for it.
