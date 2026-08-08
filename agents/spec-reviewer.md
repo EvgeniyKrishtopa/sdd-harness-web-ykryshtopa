@@ -43,8 +43,13 @@ finding is **PLAUSIBLE**.
    the reverse check as passed: a change with zero identifiers has nothing
    for this check to find wrong, and that is a different, worse fact than
    "everything traces," not the same one.
-2. Acceptance criteria are testable as written (concrete, observable), not
-   vague ("should work well").
+2. **Acceptance-criterion format.** Every acceptance criterion states its
+   Given (the state it assumes), When (the action taken), and Then (the
+   observable result) — per `openspec/config.yaml`'s `rules.proposal`,
+   seeded by `init-harness`. A criterion missing its When or Then part is a
+   **CONFIRMED** finding — name which part is missing, not just "not
+   testable." This is a form check, not a judgement call about the
+   criterion's content.
 3. The design doesn't silently contradict the proposal's stated scope.
 4. `tasks.md` groups are appropriately sized — a group that's really two
    unrelated pieces of work should be split before implementation starts.

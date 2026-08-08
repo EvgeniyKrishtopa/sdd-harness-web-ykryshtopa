@@ -94,11 +94,16 @@ files changed anywhere in it. Otherwise check:
    covered", or "traceability unavailable" (this change's `proposal.md`
    defines none). Every identifier on an uncovered list is a **CONFIRMED**
    finding — name the identifier and what's missing, rather than
-   re-deriving coverage from the spec yourself. On "traceability
-   unavailable," say so explicitly in your own output, then fall back to
-   reading the relevant spec's acceptance criteria and judging coverage the
-   way this criterion worked before identifiers existed — never report
-   "covered" for a change with nothing to check against.
+   re-deriving coverage from the spec yourself. An identifier marked covered
+   is not the end of the check: a requirement can carry more than one
+   Given/When/Then acceptance criterion, so match each test to the specific
+   Then (observable result) it verifies, not to the requirement's identifier
+   as a whole — a requirement with three criteria and one covering test is
+   still missing two, even though its identifier shows up as "covered." On
+   "traceability unavailable," say so explicitly in your own output, then
+   fall back to reading the relevant spec's acceptance criteria and judging
+   coverage the way this criterion worked before identifiers existed — never
+   report "covered" for a change with nothing to check against.
 2. New branches/conditionals introduced by the diff have a test for each
    meaningfully different path, not just the happy path.
 3. Assertions actually verify behavior (output values, state changes,
