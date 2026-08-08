@@ -45,7 +45,10 @@ again rather than trusted from its first pass.
    b. Ask, via `AskUserQuestion`, a single question offering three options —
       Reading A's wording, Reading B's wording, and **Defer** (the user's own
       free-text "Other" answer is always available too, and counts as its
-      own resolution the same way A or B does).
+      own resolution the same way A or B does, as long as it actually states
+      a concrete reading — "not sure" or "whatever's easiest" isn't one; ask
+      once more what they mean, and treat a second non-answer as Defer
+      rather than writing a non-decision into the spec).
    c. **A or B or a custom answer chosen** — edit the file at the cited
       line so it states the chosen reading explicitly, closing the fork, and
       show the user the diff. This is the **clarify** outcome.
