@@ -34,12 +34,20 @@ different content, show the difference and ask rather than replacing.
    Never write a guessed domain: an invented description is worse than none,
    because every future artifact inherits it and nobody re-reads a file that
    looks already filled in.
-3. **`rules.proposal`** — one rule, and it is load-bearing: every requirement
-   carries a stable identifier. Use `FR-<n>` for functional and `NFR-<n>` for
-   non-functional requirements, unique within the change, and never renumbered
-   once written. Without identifiers, "is every requirement implemented?" can
-   only ever be answered by a model's impression of a document. With them, it
-   is a `grep`. Later gates depend on this being true of every proposal.
+3. **`rules.proposal`** — two rules, and both are load-bearing:
+   - Every requirement carries a stable identifier. Use `FR-<n>` for
+     functional and `NFR-<n>` for non-functional requirements, unique within
+     the change, and never renumbered once written. Without identifiers, "is
+     every requirement implemented?" can only ever be answered by a model's
+     impression of a document. With them, it is a `grep`. Later gates depend
+     on this being true of every proposal.
+   - Every acceptance criterion states, in three parts, the state it assumes,
+     the action taken, and the observable result: Given/When/Then. Without a
+     format, "is this criterion testable as written?" is a model's judgement
+     call that can go either way on the same text; with it, `spec-reviewer`
+     checks the presence of the three parts directly instead of judging the
+     content, and `code-reviewer`'s coverage check gets a concrete Then line
+     to match a test against instead of a whole paragraph to interpret.
 4. **`rules.tasks`** — two rules: each task names the requirement identifier
    it implements, and verification is a task in the list rather than
    something left for a human to remember afterwards. The first makes the
@@ -75,6 +83,8 @@ rules:
     - Give every requirement a stable identifier — FR-1, FR-2 for functional
       requirements, NFR-1, NFR-2 for non-functional ones. Unique within the
       change. Never renumber an identifier once it is written.
+    - State every acceptance criterion as Given/When/Then — the state it
+      assumes, the action taken, the observable result.
   tasks:
     - Every task states the requirement identifier it implements.
     - Verification belongs in the task list as its own task, not left as a

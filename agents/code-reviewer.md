@@ -55,23 +55,40 @@ assertion is so loose it would pass even if the implementation were wrong
 **PLAUSIBLE** means a test could be more thorough but the core behavior is
 covered.
 
+## Disabled rules
+
+The calling skill may hand you a list of disabled rule codes, read from this
+project's `.claude/harness.json` (`disabledRules`, see
+`skills/init-harness/references/manifest-schema.md`). Skip every rule on
+that list — no finding,
+CONFIRMED or PLAUSIBLE, under its code — while every other rule keeps
+running normally. An empty or absent list disables nothing.
+
 ## What to check
+
+Each rule below carries a short permanent code (`CR-01`, `CR-02`, ...). The
+code never changes even when a rule's wording is later rewritten — it is
+what a finding cites, what a human disputes point-by-point, and what a user
+can switch off individually (see "Disabled rules" below). Numbering runs
+sequentially through Gate 4 then Gate 5, in the order the rules appear here.
 
 ### Gate 4 — correctness and simplification
 
-1. **Correctness** — logic errors, unhandled edge cases (empty arrays,
-   network failures, race conditions in effects), incorrect type
+1. **CR-01 — Correctness** — logic errors, unhandled edge cases (empty
+   arrays, network failures, race conditions in effects), incorrect type
    assumptions, missing error handling on async calls.
-2. **Reuse** — duplicated logic that already exists elsewhere in the diff's
-   neighborhood; a new helper that reinvents an existing utility.
-3. **Simplification** — unnecessary abstraction, premature generalization,
-   dead code introduced by the change itself. A new dependency or custom
-   helper added where `.claude/docs/laziness-ladder.md`'s earlier rungs
-   (stdlib, a platform feature, an already-installed dependency, one line)
-   would have done — name the rung it skipped in the finding.
-4. **Efficiency** — obviously wasteful patterns (re-computing in a render
-   loop, an O(n²) where O(n) is trivial) — not micro-optimization hunting.
-5. **Observability** (PLAUSIBLE-only — this is judgement about the
+2. **CR-02 — Reuse** — duplicated logic that already exists elsewhere in the
+   diff's neighborhood; a new helper that reinvents an existing utility.
+3. **CR-03 — Simplification** — unnecessary abstraction, premature
+   generalization, dead code introduced by the change itself. A new
+   dependency or custom helper added where
+   `.claude/docs/laziness-ladder.md`'s earlier rungs (stdlib, a platform
+   feature, an already-installed dependency, one line) would have done —
+   name the rung it skipped in the finding.
+4. **CR-04 — Efficiency** — obviously wasteful patterns (re-computing in a
+   render loop, an O(n²) where O(n) is trivial) — not micro-optimization
+   hunting.
+5. **CR-05 — Observability** (PLAUSIBLE-only — this is judgement about the
    application being built, never a CONFIRMED correctness bug):
    - error handling that logs only the caught message, with no stack trace
      and no surrounding state (which request, which record, which input) —
@@ -87,24 +104,29 @@ calling skill tells you the diff (or the run's cumulative diff, for a
 batched isolated run) is docs/config-only — no application source or test
 files changed anywhere in it. Otherwise check:
 
-1. **Traceability** — the calling skill hands you a ready-made
+1. **CR-06 — Traceability** — the calling skill hands you a ready-made
    requirement-ID coverage result (its own grep check against `proposal.md`'s
    `FR-`/`NFR-` identifiers, see `skills/code-review/SKILL.md`), not a spec
    to read cold: either a list of uncovered identifiers, "all requirement IDs
    covered", or "traceability unavailable" (this change's `proposal.md`
    defines none). Every identifier on an uncovered list is a **CONFIRMED**
    finding — name the identifier and what's missing, rather than
-   re-deriving coverage from the spec yourself. On "traceability
-   unavailable," say so explicitly in your own output, then fall back to
-   reading the relevant spec's acceptance criteria and judging coverage the
-   way this criterion worked before identifiers existed — never report
-   "covered" for a change with nothing to check against.
-2. New branches/conditionals introduced by the diff have a test for each
-   meaningfully different path, not just the happy path.
-3. Assertions actually verify behavior (output values, state changes,
-   calls-with-arguments) rather than just "didn't throw."
-4. The diff doesn't reduce the project's coverage number below its
-   configured threshold (read `coverageThreshold` from
+   re-deriving coverage from the spec yourself. An identifier marked covered
+   is not the end of the check: a requirement can carry more than one
+   Given/When/Then acceptance criterion, so match each test to the specific
+   Then (observable result) it verifies, not to the requirement's identifier
+   as a whole — a requirement with three criteria and one covering test is
+   still missing two, even though its identifier shows up as "covered." On
+   "traceability unavailable," say so explicitly in your own output, then
+   fall back to reading the relevant spec's acceptance criteria and judging
+   coverage the way this criterion worked before identifiers existed — never
+   report "covered" for a change with nothing to check against.
+2. **CR-07** — New branches/conditionals introduced by the diff have a test
+   for each meaningfully different path, not just the happy path.
+3. **CR-08** — Assertions actually verify behavior (output values, state
+   changes, calls-with-arguments) rather than just "didn't throw."
+4. **CR-09** — The diff doesn't reduce the project's coverage number below
+   its configured threshold (read `coverageThreshold` from
    `.claude/harness.json` — never assume a fixed percentage or re-read
    `vite.config.ts`/`jest.config.*` directly). If the diff is
    deletion-dominated, a rising coverage number proves nothing and is not
@@ -118,10 +140,11 @@ files changed anywhere in it. Otherwise check:
 
 Two labeled sections, **"Gate 4 — code review"** and **"Gate 5 — test
 coverage"** (or "Gate 5 — not applicable: docs/config-only diff" when
-skipped per above). Each section lists its findings (CONFIRMED/PLAUSIBLE)
-with file/line, the issue, and a concrete suggested fix; note explicitly if
-a section is clean. For Gate 5, also state the measured coverage delta if
-you can determine it.
+skipped per above). Each section lists its findings (CONFIRMED/PLAUSIBLE),
+**each one naming the rule code it was raised under** (e.g. "CR-03:
+..."), with file/line, the issue, and a concrete suggested fix; note
+explicitly if a section is clean. For Gate 5, also state the measured
+coverage delta if you can determine it.
 
 Also state `reviewConfidence: high` or `reviewConfidence: low` for the
 review as a whole (both gates together), plus one line naming why when

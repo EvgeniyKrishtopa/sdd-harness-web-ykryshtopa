@@ -27,6 +27,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "maxFixAttempts": 2,
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
+  "disabledRules": [],
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
@@ -87,6 +88,15 @@ Merge into the file Step 2e already started (it may already contain just the
   escalating to a human. A user who wants a stricter or looser bar edits
   this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
+- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, ...) this
+  project has switched off, keyed against the permanent codes listed in
+  `agents/code-reviewer.md` and `agents/spec-reviewer.md`. Seed it as an
+  empty array; a user edits this list directly when one rule proves
+  consistently unhelpful for their project — no separate prompt for it, the
+  same don't-ask-unless-raised treatment as `trivialDiffThreshold` above.
+  `code-review` and `spec-review` read this list and pass it to their
+  respective agent, which skips findings under any code on it while every
+  other rule in the same review keeps running.
 - `models` — one entry per review-gate agent plus a `default` fallback. Seed
   it with the values shown above, not with whatever each `agents/*.md`
   currently declares in its own frontmatter — every gate skill
