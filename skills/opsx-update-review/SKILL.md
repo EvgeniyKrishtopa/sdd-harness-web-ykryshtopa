@@ -13,9 +13,11 @@ Revise an existing OpenSpec change and re-validate it.
    (`proposal.md`/`design.md`/specs/`tasks.md`).
 3. Re-run whichever gates the revision touches:
    - Changed `design.md` → re-run **`architecture-review`** (Gate 1).
-   - Changed any artifact, or it's been a while since the last full pass →
-     re-run **`spec-review`** (Gate 2), which will also re-classify any
-     `tasks.md` groups that changed shape.
+   - Changed any artifact → re-run **`spec-clarify`** first — the revision
+     itself may have introduced a new fork, and a change that already
+     resolved ambiguities once is not exempt from raising new ones on a
+     later edit — then re-run **`spec-review`** (Gate 2), which will also
+     re-classify any `tasks.md` groups that changed shape.
 4. Do not silently skip re-classification just because the change already
    had marks from a previous pass — a revised group may have shifted from
    isolated to judgement-heavy or vice versa.
