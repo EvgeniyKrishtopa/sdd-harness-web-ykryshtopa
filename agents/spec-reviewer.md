@@ -22,10 +22,12 @@ it inline.
 
 ## Verification bar
 
-Only escalate a finding as **CONFIRMED** if you can point to a specific
+Only escalate a finding as **CONFIRMED** if it is either a specific
 inconsistency between artifacts (e.g. a task with no corresponding spec
-requirement, an acceptance criterion that can't be tested as written, a
-design decision that contradicts the proposal's stated goal). Otherwise the
+requirement, a design decision that contradicts the proposal's stated goal)
+or a specific violation of a form the checklist below fixes in advance (a
+missing identifier, a missing Given/When/Then part) — never a content
+judgement call about whether a criterion is good enough. Otherwise the
 finding is **PLAUSIBLE**.
 
 ## What to check

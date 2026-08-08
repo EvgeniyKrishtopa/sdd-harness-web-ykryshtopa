@@ -44,9 +44,10 @@ different content, show the difference and ask rather than replacing.
    - Every acceptance criterion states, in three parts, the state it assumes,
      the action taken, and the observable result: Given/When/Then. Without a
      format, "is this criterion testable as written?" is a model's judgement
-     call that can go either way on the same text; `spec-reviewer` and
-     `code-reviewer`'s coverage check both depend on there being a specific
-     outcome to point at.
+     call that can go either way on the same text; with it, `spec-reviewer`
+     checks the presence of the three parts directly instead of judging the
+     content, and `code-reviewer`'s coverage check gets a concrete Then line
+     to match a test against instead of a whole paragraph to interpret.
 4. **`rules.tasks`** — two rules: each task names the requirement identifier
    it implements, and verification is a task in the list rather than
    something left for a human to remember afterwards. The first makes the
