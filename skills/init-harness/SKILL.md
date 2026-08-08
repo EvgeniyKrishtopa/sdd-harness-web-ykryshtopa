@@ -240,7 +240,7 @@ rather than merge targets. If a file already exists, read it first:
 Also seed this repo's continuity files — new in both first-install and
 upgrade mode, since a repo set up by an earlier version never got them:
 
-- Write `CONTEXT.md` from `references/context-template.md` if absent — same never-overwrite rule as below; starts empty, fills in as terms come up.
+- Write `CONTEXT.md` from `references/context-template.md` if absent — create-if-missing only, never diffed or touched on a re-run; starts empty, fills in as terms come up.
 - Write an initial `PROGRESS.md` at the repo root from
   `references/progress-template.md` if one doesn't already exist — same
   never-overwrite rule as above. A fresh file starts with no current change,

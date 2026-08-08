@@ -25,7 +25,7 @@ exists to prevent.
 | `.claudeignore` | Step 7 | append missing lines |
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0 — see Step 8); never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
-| `CONTEXT.md` | Step 5 | create if absent, starting empty (heading plus one example line); never overwritten afterwards |
+| `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
 | `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case B, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead |

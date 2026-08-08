@@ -36,12 +36,13 @@ stop.
 
 ## Creation rule
 
-Created empty, with the heading and one example line, at `init-harness` Step
-5 — same never-overwrite rule as the other files that step writes
-(`references/git-conventions-template.md`,
-`references/laziness-ladder-template.md`, `PROGRESS.md`): write it only when
-it doesn't already exist, never touch it on a re-run. It fills in gradually
-as terms actually come up in specs, not all at once at setup time.
+Created empty, with just the heading and no entries, at `init-harness` Step
+5 — write it only when it doesn't already exist, never touch it on a re-run
+(the file is not regenerated or diffed the way `references/git-conventions-
+template.md` and `references/laziness-ladder-template.md` are; it is a
+create-if-missing file, the same rule `PROGRESS.md` follows before
+`opsx-apply-git` takes over regenerating it). It fills in gradually as terms
+actually come up in specs, not all at once at setup time.
 
 ## Template
 
@@ -50,6 +51,7 @@ as terms actually come up in specs, not all at once at setup time.
 
 ## Glossary
 
-- <term> — <one-sentence definition>. Not to be confused with <similar
-  term>, because <what actually differs>.
+<!-- one entry per term, e.g.: -->
+<!-- - <term> — <one-sentence definition>. Not to be confused with <similar
+     term>, because <what actually differs>. -->
 ```
