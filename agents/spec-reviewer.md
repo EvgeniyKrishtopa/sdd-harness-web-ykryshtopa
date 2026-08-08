@@ -48,6 +48,14 @@ finding is **PLAUSIBLE**.
 3. The design doesn't silently contradict the proposal's stated scope.
 4. `tasks.md` groups are appropriately sized — a group that's really two
    unrelated pieces of work should be split before implementation starts.
+5. **Glossary consistency.** If the repo root has a `CONTEXT.md`, check that
+   domain terms used in `proposal.md`/`design.md`/the spec deltas match its
+   `## Glossary` definitions — a term used with a meaning that contradicts
+   its glossary entry is a **CONFIRMED** finding, naming the term and the
+   contradiction. If `CONTEXT.md` doesn't exist in this repo, say so and mark
+   this check **not applicable** — do not report it as passed; there is
+   nothing here to check against, which is a different, worse fact than
+   "consistent with the glossary."
 
 ## Task-group classification (your one write action)
 

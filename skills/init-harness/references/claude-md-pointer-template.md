@@ -43,6 +43,9 @@ every commit instead of trusting it.
 - @.claude/docs/laziness-ladder.md — priority order to check before
   writing new code; does not apply to trust-boundary validation,
   data loss, security, or accessibility.
+- @CONTEXT.md — this project's glossary of domain terms. `spec-reviewer`
+  checks every spec against it; without this reference it never loads into
+  a session and the check has nothing to read.
 - @.claude/harness.json — detected stack (framework, package manager,
   test runner, coverage threshold). Every skill and hook in this harness
   reads from here; do not re-detect any of it.
