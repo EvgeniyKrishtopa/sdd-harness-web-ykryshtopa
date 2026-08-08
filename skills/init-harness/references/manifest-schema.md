@@ -34,6 +34,7 @@ Merge into the file Step 2e already started (it may already contain just the
     "webQa": "claude-haiku-4-5",
     "code": "claude-sonnet-5",
     "harness": "claude-haiku-4-5",
+    "clarify": "claude-sonnet-5",
     "default": "claude-sonnet-5"
   }
 }
@@ -108,6 +109,9 @@ Merge into the file Step 2e already started (it may already contain just the
   the same `code-review` delegation as Gate 4 (cost-optimization #33), so it
   runs on `models.code`. Only depart from the seeded defaults if the user
   asks for a different tier or doesn't have access to one of these models.
+  `clarify` (0.5.0) is the same kind of entry for the `devils-advocate`
+  agent, read by the `spec-clarify` skill — not a review gate itself, but
+  the same override mechanism.
 
 ## Two rules that hold for the whole file
 
