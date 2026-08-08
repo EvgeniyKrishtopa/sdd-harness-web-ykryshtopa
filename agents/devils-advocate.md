@@ -52,8 +52,8 @@ requirement.
 3. **Acceptance criteria with no described negative path** — the Given/When
    is clear but nothing says what happens when the action fails, is
    rejected, or times out.
-4. **Two places in the document that can only both be true if read one
-   specific way** — a requirement and a design decision (or two
+4. **Two places in the document that leave more than one way to satisfy
+   both at once** — a requirement and a design decision (or two
    requirements) that are individually fine but jointly under-determine the
    behavior, the way "the list loads paginated" under-determines page-number
    vs. cursor vs. infinite-scroll pagination.

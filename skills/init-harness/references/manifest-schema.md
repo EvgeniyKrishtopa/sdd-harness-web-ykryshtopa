@@ -98,20 +98,20 @@ Merge into the file Step 2e already started (it may already contain just the
   `code-review` and `spec-review` read this list and pass it to their
   respective agent, which skips findings under any code on it while every
   other rule in the same review keeps running.
-- `models` — one entry per review-gate agent plus a `default` fallback. Seed
-  it with the values shown above, not with whatever each `agents/*.md`
-  currently declares in its own frontmatter — every gate skill
-  (`architecture-review`, `spec-review`, `code-review`, `harness-review`,
-  `web-qa`) reads its own key from this manifest and passes it as the
-  `Agent` tool's `model` override, so this is the actual place a user
-  changes which model a gate runs on, not the agent files themselves. There
-  is no separate `testCoverage` key: Gate 5 (test-coverage) is folded into
-  the same `code-review` delegation as Gate 4 (cost-optimization #33), so it
-  runs on `models.code`. Only depart from the seeded defaults if the user
-  asks for a different tier or doesn't have access to one of these models.
-  `clarify` (0.5.0) is the same kind of entry for the `devils-advocate`
-  agent, read by the `spec-clarify` skill — not a review gate itself, but
-  the same override mechanism.
+- `models` — one entry per model-backed subagent this plugin delegates to,
+  plus a `default` fallback. Seed it with the values shown above, not with
+  whatever each `agents/*.md` currently declares in its own frontmatter —
+  every skill that delegates to one of these agents (`architecture-review`,
+  `spec-review`, `code-review`, `harness-review`, `web-qa`, `spec-clarify`)
+  reads its own key from this manifest and passes it as the `Agent` tool's
+  `model` override, so this is the actual place a user changes which model a
+  delegation runs on, not the agent files themselves. There is no separate
+  `testCoverage` key: Gate 5 (test-coverage) is folded into the same
+  `code-review` delegation as Gate 4 (cost-optimization #33), so it runs on
+  `models.code`. `clarify` is the same kind of entry for the
+  `devils-advocate` agent — not a review gate itself, but read and overridden
+  the same way. Only depart from the seeded defaults if the user asks for a
+  different tier or doesn't have access to one of these models.
 
 ## Two rules that hold for the whole file
 
