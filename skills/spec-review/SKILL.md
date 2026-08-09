@@ -47,6 +47,46 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    named by a task, every task naming an identifier. A change whose
    `proposal.md` carries no identifiers is reported as **"traceability
    unavailable"**, never as passing; see `agents/spec-reviewer.md`.
+5. **Readiness checklist — assemble and print always, clean run or not.**
+   Five conditions, each named individually when unmet — never a generic
+   "not ready":
+   1. **Every required artifact is `status: "done"`** — re-confirm directly
+      against `proposal.md`/`design.md`/the spec deltas/`tasks.md`, the
+      same signal this skill's own Trigger already relies on; name
+      whichever one isn't.
+   2. **Every `FR-`/`NFR-` identifier is traced** — reuse step 4's own
+      result: pass, name the orphan identifier or task, or
+      **"traceability unavailable"** under the same rule as step 4.
+   3. **Every `tasks.md` group is classified** — reuse step 2's own
+      classification; name any `## N.` heading still missing its
+      `<!-- isolated -->`/`<!-- judgement-heavy -->` marker.
+   4. **No open question is missing an owner or a due date** — read
+      `proposal.md`'s `## Open Questions` section, if it has one, and check
+      every entry `spec-clarify` writes (`- <file>:<line> — <finding> —
+      owner: <owner>, due: <date>`) actually carries both fields; name any
+      that doesn't. **Not applicable** if the repo has no `CONTEXT.md` at
+      its root — this project hasn't been upgraded to the version that adds
+      `spec-clarify`, so it can't have produced entries in this shape.
+   5. **No domain term the change uses contradicts the glossary** — reuse
+      `spec-reviewer`'s SR-05 result: pass, name the contradicting term, or
+      **not applicable** under the same `CONTEXT.md`-absence rule as
+      condition 4. This is narrower than "every term is defined" — SR-05
+      only flags a term used against a meaning `CONTEXT.md` already states,
+      not one missing from the glossary entirely; that's outside its scope
+      today.
+
+   An unmet condition (never one marked N/A) is handled exactly like a
+   CONFIRMED finding below — name it, and don't declare the change ready
+   until the user has seen it. Log each one as its own `kind: "finding"`
+   line per `skills/opsx-apply-git/references/log-findings.md`'s shape —
+   `gate: "spec-review"`, `finding`: which condition and what's missing,
+   `outcome`: `"fixed"` (artifact revised on the spot), `"deferred"`
+   (condition 4 only — logged under Open Questions with an owner and due
+   date), or `"rejected"` (the user chose to proceed anyway), `ruleNumber`:
+   empty — these conditions aren't numbered rules. This is what actually
+   makes "how often did work start against incomplete readiness"
+   answerable later; the gate-run `verdict` below only says *that*
+   something was unresolved, never *which* condition.
 
 `tasks.md` carries a third, unrelated marker this skill never writes:
 `<!-- blocked: <reason> -->`, on an individual task's own checkbox line
@@ -58,10 +98,17 @@ before implementation ever starts. Don't conflate the two when reading
 
 ## Handling the result
 
-- **CONFIRMED finding** — show it to the user and ask whether to revise the
-  relevant artifact(s) before declaring the change ready for implementation.
-- **Clean, or PLAUSIBLE-only** — declare the change ready for implementation.
-  The classification is still recorded either way.
+- **CONFIRMED finding, or an unmet readiness condition (the checklist
+  above)** — show it to the user and ask whether to revise the relevant
+  artifact(s) before
+  declaring the change ready for implementation. Log this run's `verdict`
+  as `"confirmed"` even when `spec-reviewer` itself came back clean — an
+  unmet readiness condition must not slip through silently just because
+  nothing else was wrong — and log each unmet condition itself per the
+  `kind: "finding"` instructions in the checklist above.
+- **Clean, or PLAUSIBLE-only, and every readiness condition met or N/A** —
+  declare the change ready for implementation. The classification is still
+  recorded either way.
 
 ## Log this gate's run
 
@@ -88,11 +135,15 @@ printf '%s\n' "$(jq -nc \
   >> .claude/harness-log.jsonl
 ```
 
-Fill in the change slug, the verdict this run resolved to, the wall-clock
-time spent from delegating to `spec-reviewer` to receiving its response, the
-model it actually ran on (`group` carries this run's route, `short` or
-`full`, in place of the task-group id this gate has none of — it always
-runs at change scope), and its stated `reviewConfidence`. `skipReason` is always empty
+Fill in the change slug, the verdict this run resolved to (per "Handling
+the result" above, `confirmed` also covers an unmet readiness condition,
+not only a `spec-reviewer` finding — this line alone only says *that* the
+run wasn't clean; the per-condition `kind: "finding"` lines are what say
+*which* condition it was), the wall-clock time spent from delegating to
+`spec-reviewer` to receiving its
+response, the model it actually ran on (`group` carries this run's route,
+`short` or `full`, in place of the task-group id this gate has none of — it
+always runs at change scope), and its stated `reviewConfidence`. `skipReason` is always empty
 here — this gate never logs `verdict: "skipped"` itself. `tokensTotal` is
 the `subagent_tokens` figure from the `<usage>` block the environment
 appends after the `spec-reviewer` delegation returns (see

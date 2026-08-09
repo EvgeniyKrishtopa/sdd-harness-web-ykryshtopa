@@ -28,6 +28,15 @@ implementation starts, once per finding, right after the user resolves it
 follows the field shape below, not the "when to write this" timing, which
 stays specific to `opsx-apply-git`'s own run.
 
+`spec-review` (0.5.0) writes this shape too, but only for its own readiness
+checklist (`skills/spec-review/SKILL.md` step 5) — never for `spec-reviewer`'s
+own general findings, which stay folded into that gate's single `verdict`
+line as before. One line per unmet condition, at the same before-
+implementation timing as `spec-clarify` above (`gate: "spec-review"`,
+`outcome`: `"fixed"`/`"deferred"`/`"rejected"`, the full three-value set —
+unlike `spec-clarify`, an unmet readiness condition can legitimately be
+waved off by the user).
+
 ## The line
 
 ```bash
@@ -47,8 +56,8 @@ instead. A failed log write never blocks the run — note it and move on.
 
 ## Fields
 
-- `gate` — which of the four gates (or `spec-clarify`, see above) raised the
-  finding.
+- `gate` — which of the four gates (or `spec-clarify` / `spec-review`'s
+  readiness checklist, see above) raised the finding.
 - `finding` — a short, human-readable description (not a full diff or
   report excerpt).
 - `outcome` — exactly one of:
@@ -59,11 +68,17 @@ instead. A failed log write never blocks the run — note it and move on.
     finding overridden, or a PLAUSIBLE one raised alongside it and judged
     not worth fixing). `spec-clarify` never logs this value — every
     ambiguity it raises is either resolved or deferred, never waved off with
-    no trace.
+    no trace. `spec-review`'s readiness checklist does use it — a user can
+    proceed past an unmet condition on purpose (e.g. a glossary
+    contradiction judged acceptable), unlike an ambiguity, which cannot be
+    left unresolved.
   - `deferred` — `debug-loop` exhausted `maxFixAttempts` and the run
     stopped to report it instead of resolving it; for `spec-clarify`, the
     user chose to log it under `proposal.md`'s Open Questions with an owner
-    and due date instead of resolving it now.
+    and due date instead of resolving it now. `spec-review`'s readiness
+    checklist only logs this for its own open-questions condition (an entry
+    missing its owner or due date gets one added) — its other four
+    conditions have nothing equivalent to defer into.
 - `ruleNumber` — optional; the permanent rule code (`agents/code-reviewer.md`
   or `agents/spec-reviewer.md`) the finding was raised under, when the
   raising gate has numbered rules and the finding names one. Empty string
