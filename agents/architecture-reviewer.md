@@ -31,12 +31,13 @@ most — note it, but do not treat it as blocking.
 
 If the calling skill passed a decisions-folder path, read it before
 anything below — a separate, prior pass, not one of the six numbered
-checks. Read only each file's header (`# NNNN. <title>`) and its
-`## Status` / `## Decision` sections, never the full file at this stage —
-on a project with fifty records, reading every one in full would burn the
-whole review's budget on this step alone. Skip any record whose `## Status`
-is `Proposed` or `Superseded by NNNN`: a proposal nobody has confirmed yet,
-or one already replaced, settles nothing to compare against.
+checks. Bound the read: `Grep` each file for `^## ` with line numbers first,
+then `Read` only the title line plus the `## Status`/`## Decision` ranges
+those line numbers bracket — never a plain full-file `Read` at this stage,
+because on a project with fifty records that burns the whole review's
+budget on this one step. Skip any record whose `## Status` is `Proposed`
+or `Superseded by NNNN`: a proposal nobody has confirmed yet, or one
+already replaced, settles nothing to compare against.
 
 A design or diff that contradicts an **Accepted** decision is a
 **CONFIRMED** finding citing the decision's number by name — "Decision

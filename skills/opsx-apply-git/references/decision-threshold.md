@@ -22,8 +22,10 @@ group was misclassified — stop, per §3 Case A step 2, unchanged. A
 decision it CAN make confidently but that crosses the bar above is
 different: write it up and keep the group moving, no pause, no question.
 `## Status`: **Proposed** (`decision-template.md`) — nobody has confirmed
-it yet; that happens later, at review time (a human reading this run's PR,
-or `architecture-review`'s own new decisions step).
+it yet; that happens later, when a human reads this run's PR (or
+`record-decision`, if the promotion happens in a separate conversation).
+`architecture-review`'s own decisions step never confirms a Proposed
+record either — it skips them, comparing only against Accepted ones.
 
 ## Case B (judgement-heavy, human in the loop) — record what crosses the bar, straight to Accepted
 
