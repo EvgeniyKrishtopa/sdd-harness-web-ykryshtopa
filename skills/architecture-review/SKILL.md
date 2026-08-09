@@ -13,6 +13,16 @@ Before delegating, read `.claude/harness.json`'s `models.architecture` key
 default for this run. If the manifest or the key is missing, fall back to
 the agent's own default — a missing override never blocks the gate.
 
+## Decisions
+
+Before delegating, check for a decisions folder: `docs/adr/` first (an
+existing project convention takes precedence, per `decision-template.md`'s
+routing rule), then `docs/decisions/`. This is a 0-token directory check —
+`test -d`, not a delegation. Pass whichever path exists to
+`architecture-reviewer` as context, to read before its analysis; if neither
+exists, say so plainly so it skips that step, rather than making it
+discover the absence via a failed `Read`.
+
 ## Route
 
 Also read the target change's route: the first line of

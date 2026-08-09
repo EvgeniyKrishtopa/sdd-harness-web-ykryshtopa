@@ -27,6 +27,28 @@ specific way it will bite (a bug class, a maintenance cost, a scaling
 limit). If you cannot trace that chain, the finding is **PLAUSIBLE** at
 most — note it, but do not treat it as blocking.
 
+## Accepted decisions — read first, before the checklist
+
+If the calling skill passed a decisions-folder path, read it before
+anything below — a separate, prior pass, not one of the six numbered
+checks. Read only each file's header (`# NNNN. <title>`) and its
+`## Status` / `## Decision` sections, never the full file at this stage —
+on a project with fifty records, reading every one in full would burn the
+whole review's budget on this step alone. Skip any record whose `## Status`
+is `Proposed` or `Superseded by NNNN`: a proposal nobody has confirmed yet,
+or one already replaced, settles nothing to compare against.
+
+A design or diff that contradicts an **Accepted** decision is a
+**CONFIRMED** finding citing the decision's number by name — "Decision
+0007 says X; this proposal does Y — either revise the proposal or
+supersede decision 0007 with a new one," never a vague "this seems
+inconsistent." Only once a contradiction is suspected, open that one
+record's full file (never any other) to confirm the wording and quote it
+precisely.
+
+No path was passed → skip this step silently. A new project without a
+decisions folder is expected, not a finding.
+
 ## What to check, in priority order
 
 1. **Boundary violations** — UI components importing server-only code or
