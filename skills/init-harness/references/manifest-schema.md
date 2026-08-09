@@ -28,6 +28,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "maxFixAttempts": 2,
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "disabledRules": [],
+  "sizeRouting": { "enabled": true },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
@@ -98,6 +99,19 @@ Merge into the file Step 2e already started (it may already contain just the
   `code-review` and `spec-review` read this list and pass it to their
   respective agent, which skips findings under any code on it while every
   other rule in the same review keeps running.
+- `sizeRouting` — a single `enabled` toggle for the size-based routing
+  `opsx-propose-review` runs before a change's artifacts exist: touching
+  more than one module, changing the data schema, or changing a contract
+  (an API endpoint, an exported signature, a shared type) sends the change
+  down the **full** route (every step this version added runs); none of the
+  three sends it down the **short** route (`spec-clarify`'s ambiguity sweep
+  is skipped, and `spec-review`/`architecture-review` skip their extra
+  deliberation pass — never the checklist itself, and never `code-review` or
+  test-coverage). Seed as `{"enabled": true}`; a user sets it `false` to
+  always take the full route, the same don't-ask-unless-raised treatment as
+  `trivialDiffThreshold`. The route itself is recorded per change, in
+  `openspec/changes/<change>/.route` — not here; this key only turns the
+  assessment on or off.
 - `models` — one entry per model-backed subagent this plugin delegates to,
   plus a `default` fallback. Seed it with the values shown above, not with
   whatever each `agents/*.md` currently declares in its own frontmatter —

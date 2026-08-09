@@ -19,7 +19,12 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    manifest or the key is missing, fall back to the agent's own default;
    never block the gate on a missing override. Also read the manifest's
    `disabledRules` array and pass it along as context — an empty array or
-   missing key means nothing is disabled; never invent a value.
+   missing key means nothing is disabled; never invent a value. Also read
+   the change's route — the first line of
+   `openspec/changes/<change>/.route` (written by `opsx-propose-review`'s
+   size assessment), `short` or `full`; if the file is missing, treat it as
+   `full` — never assume a change opted into the cheaper route it never
+   asked for.
 2. Beyond surfacing gaps, this is also where **task-group classification**
    happens: the reviewer marks each `## N.` heading in `tasks.md` as
    `isolated` or `judgement-heavy`, written back as a trailing
@@ -29,11 +34,13 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    decide how far it can proceed autonomously. An unmarked group is treated
    as `judgement-heavy` downstream — never let a group run unattended if
    nobody classified it.
-3. If the change is non-trivial (many groups, cross-cutting groups), think
-   through the isolated vs judgement-heavy call per group explicitly, rather
-   than eyeballing it — native extended thinking covers this in one pass; the
-   `sequential-thinking` MCP server this project used to require for it is
-   redundant with that and has been removed (cost-optimization #39).
+3. On a **full** route, think through the isolated vs judgement-heavy call
+   per group explicitly, rather than eyeballing it — native extended
+   thinking covers this in one pass; the `sequential-thinking` MCP server
+   this project used to require for it is redundant with that and has been
+   removed (cost-optimization #39). On a **short** route, skip straight to
+   the classification — the checklist below still runs in full; only this
+   extra deliberation pass is size-gated.
 4. Traceability is ID-based, not a general impression: `spec-reviewer`'s
    checklist item 1 collects every `FR-`/`NFR-` identifier `proposal.md`
    defines and checks `tasks.md` for both directions — every identifier
@@ -67,7 +74,7 @@ mkdir -p .claude
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
-  --arg group "-" \
+  --arg group "<route: short|full>" \
   --arg gate "spec-review" \
   --arg verdict "<clean|plausible|confirmed>" \
   --arg skipReason "" \
@@ -83,8 +90,9 @@ printf '%s\n' "$(jq -nc \
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock
 time spent from delegating to `spec-reviewer` to receiving its response, the
-model it actually ran on (`group` is `-`: this gate runs at change
-scope), and its stated `reviewConfidence`. `skipReason` is always empty
+model it actually ran on (`group` carries this run's route, `short` or
+`full`, in place of the task-group id this gate has none of — it always
+runs at change scope), and its stated `reviewConfidence`. `skipReason` is always empty
 here — this gate never logs `verdict: "skipped"` itself. `tokensTotal` is
 the `subagent_tokens` figure from the `<usage>` block the environment
 appends after the `spec-reviewer` delegation returns (see

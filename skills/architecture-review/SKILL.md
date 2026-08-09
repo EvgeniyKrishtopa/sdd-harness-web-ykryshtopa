@@ -13,6 +13,15 @@ Before delegating, read `.claude/harness.json`'s `models.architecture` key
 default for this run. If the manifest or the key is missing, fall back to
 the agent's own default — a missing override never blocks the gate.
 
+## Route
+
+Also read the target change's route: the first line of
+`openspec/changes/<change>/.route` (written by `opsx-propose-review`'s size
+assessment), `short` or `full`. If the file is missing — an older change, a
+diff not tied to any OpenSpec change, or a repo that hasn't upgraded to this
+version — treat it as `full`; never assume a change opted into the cheaper
+route it never asked for.
+
 ## When invoked against a design artifact (no diff yet)
 
 1. Read the OpenSpec change's `design.md` (or equivalent proposal doc).
@@ -20,13 +29,14 @@ the agent's own default — a missing override never blocks the gate.
    the note above), pointing it at the design artifact's path — it reviews
    the *proposed* architecture, not a diff, because none exists yet at this
    point in the workflow.
-3. If the design is non-trivial (multiple layers, a new cross-cutting
-   concern, a data-flow change), think through the boundary/coupling
-   implications step by step before handing a verdict to the user, rather
-   than pattern-matching a snap judgment — native extended thinking covers
-   this in one pass; the `sequential-thinking` MCP server this project used
-   to require for it is redundant with that and has been removed
-   (cost-optimization #39).
+3. On a **full** route, think through the boundary/coupling implications
+   step by step before handing a verdict to the user, rather than
+   pattern-matching a snap judgment — native extended thinking covers this
+   in one pass; the `sequential-thinking` MCP server this project used to
+   require for it is redundant with that and has been removed
+   (cost-optimization #39). On a **short** route, skip straight to the
+   agent's own verdict — the checklist itself still runs in full; only this
+   extra deliberation pass is size-gated.
 
 ## When invoked against a diff
 
@@ -58,7 +68,7 @@ mkdir -p .claude
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
-  --arg group "-" \
+  --arg group "<route: short|full>" \
   --arg gate "architecture-review" \
   --arg verdict "<clean|plausible|confirmed>" \
   --arg skipReason "" \
@@ -74,8 +84,9 @@ printf '%s\n' "$(jq -nc \
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock
 time spent from delegating to `architecture-reviewer` to receiving its
-response, the model it actually ran on (`group` is `-`: this gate runs
-at change scope, not per task group), and its stated `reviewConfidence`.
+response, the model it actually ran on (`group` carries this run's route,
+`short` or `full`, in place of the task-group id this gate has none of —
+it always runs at change scope), and its stated `reviewConfidence`.
 `skipReason` is always empty here — this gate never logs `verdict:
 "skipped"` itself. `tokensTotal` is the `subagent_tokens` figure from the
 `<usage>` block the environment appends after the `architecture-reviewer`
