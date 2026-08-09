@@ -25,19 +25,26 @@ the pipeline was present when the decision was actually made.
    suggest a lighter trace — a code comment, a line in the relevant
    `design.md` — rather than creating a permanent record for something
    trivial.
-2. Gather, in plain conversation, what
+2. Grep `docs/decisions/` (or `docs/adr/`) for an existing record of this
+   same decision, `## Status` line `Proposed` — Case A may have already
+   written it up while the human wasn't watching. Found one → this is a
+   **promotion**, not a new record: flip its `## Status` line to `Accepted
+   (YYYY-MM-DD)` and stop here; do not create a second file. None found →
+   continue below.
+3. Gather, in plain conversation, what
    `skills/init-harness/references/decision-template.md`'s template needs:
    the context that led to it, the decision stated concretely enough to
    act on, its consequences (positive and negative), and — required, never
    skip — the alternatives that were on the table and why each was passed
    over.
-3. Check for an existing `docs/adr/` first; if the project already has
+4. Check for an existing `docs/adr/` first; if the project already has
    one, write there instead of starting a second, competing location.
-4. Write `docs/decisions/NNNN-<slug>.md` (or the `docs/adr/` equivalent)
+5. Write `docs/decisions/NNNN-<slug>.md` (or the `docs/adr/` equivalent)
    with the next sequential number, `## Status` set to **Accepted** — the
    user is confirming this decision in the act of asking for it to be
    recorded, so it never starts as Proposed.
-5. Report the file path and number.
+6. Report the file path and number (or, on a promotion, which file was
+   promoted).
 
 ## What this skill never does
 

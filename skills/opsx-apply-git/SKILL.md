@@ -158,9 +158,11 @@ case it is:
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
    left → end the batch, go to §4.
 5. Any pause during implementation (an error, an ambiguity, a design
-   decision surfacing) stops the batch where it is — report and wait, never
-   commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
-   specific task line that caused the stop and commit that one-line edit on
+   decision the agent can't confidently make — step 2's other kind, the one
+   it CAN make, never pauses here) stops the batch where it is — report and
+   wait, never commit a half-finished group. Write `<!-- blocked: <reason>
+   -->` on the specific task line that caused the stop and commit that
+   one-line edit on
    its own (see §3's Blocked tasks section) — the task itself stays
    uncommitted and unchecked; only the marker is committed. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
