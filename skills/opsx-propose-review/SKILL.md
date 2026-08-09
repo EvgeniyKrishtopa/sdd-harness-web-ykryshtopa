@@ -57,11 +57,16 @@ it ready to implement.
    generate the full artifact set: proposal, `design.md`, specs, `tasks.md`.
 3. Once `design.md` exists, invoke the **`architecture-review`** skill
    (Gate 1) against it.
-4. Once every artifact is `status: "done"`, invoke the **`spec-review`**
-   skill (Gate 2) against the whole change — this also classifies every
-   `tasks.md` group as isolated/judgement-heavy.
-5. If either gate raises a CONFIRMED finding, pause and let the user decide
+4. Once every artifact is `status: "done"`, invoke the **`spec-clarify`**
+   skill against the whole change — it sweeps for ambiguous wording and
+   resolves every finding with the user (edit on the spot, or defer to
+   `proposal.md`'s Open Questions with an owner and due date) before the
+   change reaches the next step. A change with nothing ambiguous passes this
+   silently.
+5. Invoke the **`spec-review`** skill (Gate 2) against the whole change —
+   this also classifies every `tasks.md` group as isolated/judgement-heavy.
+6. If either gate raises a CONFIRMED finding, pause and let the user decide
    whether to revise before declaring the change ready.
-6. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
+7. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
    summary, task-group classification table, and that `opsx-apply-git` is
    the next skill to run.

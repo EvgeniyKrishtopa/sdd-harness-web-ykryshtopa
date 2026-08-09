@@ -20,6 +20,14 @@ finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
 have been CONFIRMED, not for every PLAUSIBLE note.
 
+`spec-clarify` (0.5.0) writes this same line shape too, but on its own
+timing rather than at `opsx-apply-git`'s PR-open point — it runs before
+implementation starts, once per finding, right after the user resolves it
+(`gate: "spec-clarify"`, `outcome: "fixed"` or `"deferred"`, never
+`"rejected"` — that outcome value only applies to the four gates above). It
+follows the field shape below, not the "when to write this" timing, which
+stays specific to `opsx-apply-git`'s own run.
+
 ## The line
 
 ```bash
@@ -39,16 +47,23 @@ instead. A failed log write never blocks the run — note it and move on.
 
 ## Fields
 
-- `gate` — which of the four gates raised the finding.
+- `gate` — which of the four gates (or `spec-clarify`, see above) raised the
+  finding.
 - `finding` — a short, human-readable description (not a full diff or
   report excerpt).
 - `outcome` — exactly one of:
-  - `fixed` — `debug-loop` resolved it and the fix landed as a commit.
+  - `fixed` — `debug-loop` resolved it and the fix landed as a commit; for
+    `spec-clarify`, the user picked a reading and the spec was edited on the
+    spot instead.
   - `rejected` — a human looked at it and chose not to act (a CONFIRMED
     finding overridden, or a PLAUSIBLE one raised alongside it and judged
-    not worth fixing).
+    not worth fixing). `spec-clarify` never logs this value — every
+    ambiguity it raises is either resolved or deferred, never waved off with
+    no trace.
   - `deferred` — `debug-loop` exhausted `maxFixAttempts` and the run
-    stopped to report it instead of resolving it.
+    stopped to report it instead of resolving it; for `spec-clarify`, the
+    user chose to log it under `proposal.md`'s Open Questions with an owner
+    and due date instead of resolving it now.
 - `ruleNumber` — optional; the permanent rule code (`agents/code-reviewer.md`
   or `agents/spec-reviewer.md`) the finding was raised under, when the
   raising gate has numbered rules and the finding names one. Empty string
