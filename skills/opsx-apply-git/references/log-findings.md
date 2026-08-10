@@ -20,6 +20,55 @@ finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
 have been CONFIRMED, not for every PLAUSIBLE note.
 
+This same tracked list also feeds the PR's "Review trail" section below —
+collected once, as the run goes, and read back for both destinations. Never
+re-derive it a second time by re-reading `.claude/harness-log.jsonl`: that
+file can hold `kind:"finding"` lines from earlier runs of the same `change`
+too, with no field distinguishing which run wrote which, so the in-session
+list is the only reliable source for "this run's findings."
+
+## Composing the PR's "Review trail" section (point 3)
+
+Immediately after "What changed and why" in the same PR body. Four parts,
+each short — this is the whole point: a reviewer reads it in under a
+minute, not a dump of the log.
+
+1. **Change** — one line linking to `openspec/changes/<name>/`, so a
+   reviewer reaches the proposal, acceptance criteria, and test plan
+   themselves.
+2. **Checks** — one line per each of the six review checks, six lines
+   maximum: `architecture-review`, `spec-review`, `web-qa`, `code-review`,
+   `test-coverage`, `harness-review`. For Gates 3-6, use this run's own
+   verdict/`skipReason` already determined in §4 steps 1-3 above — don't
+   re-read the log for those. `architecture-review`/`spec-review` ran once
+   at change scope, possibly in an earlier session, so read each one's
+   latest matching line instead:
+   ```bash
+   jq -c --arg change "<change-slug>" --arg gate "<gate-name>" \
+     'select(.change == $change and .gate == $gate and has("verdict"))' \
+     .claude/harness-log.jsonl | tail -n 1
+   ```
+   A `skipped` verdict always carries one of the closed-list reasons already
+   written elsewhere in this pipeline — `интерфейс не затронут`, `только
+   документация`, `мелкое изменение`, or `настройки плагина не менялись` —
+   print it verbatim next to the verdict. No matching line for a gate → say
+   so on that gate's line rather than omitting it.
+3. **Findings** — this run's CONFIRMED findings from the tracked list above:
+   rule number, one-line description, outcome. PLAUSIBLE notes never appear
+   here. More than ten → print the first ten and one closing line, "...and
+   `<N>` more, see `.claude/harness-log.jsonl`." No CONFIRMED findings →
+   one explicit line saying so; never omit this part.
+4. **Deferred** — one line per entry currently under `proposal.md`'s
+   `## Open Questions` heading, verbatim (owner and due date are already
+   part of that line's format — see `spec-clarify`). No such heading, or
+   it's empty → one explicit line saying so.
+
+This section is assembled entirely from data this pipeline already writes
+elsewhere — this run's own gate verdicts, the findings list above, and
+`proposal.md`'s Open Questions. It never introduces a new
+`.claude/harness-log.jsonl` field to answer a question the log doesn't
+already record.
+
 `spec-clarify` (0.5.0) writes this same line shape too, but on its own
 timing rather than at `opsx-apply-git`'s PR-open point — it runs before
 implementation starts, once per finding, right after the user resolves it
