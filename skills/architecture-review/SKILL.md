@@ -23,6 +23,16 @@ routing rule), then `docs/decisions/`. This is a 0-token directory check —
 exists, say so plainly so it skips that step, rather than making it
 discover the absence via a failed `Read`.
 
+## Sequence diagrams
+
+`design.md` is expected to carry a Mermaid `sequenceDiagram`, with a happy
+path and its error branches, for every flow that crosses a system boundary
+— browser↔server, server↔external service. A call between two modules on
+the same side of a boundary doesn't need one; that would be internal detail,
+not the thing this check exists to surface. This is a requirement on the
+artifact, not a step this skill performs itself — `architecture-reviewer`
+checks for it as part of its own checklist below.
+
 ## Route
 
 Also read the target change's route: the first line of

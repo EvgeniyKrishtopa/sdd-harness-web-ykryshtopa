@@ -111,15 +111,17 @@ incident this closes.
    server comes from this plugin's own `.mcp.json` — the bare
    `mcp__playwright__browser_*` form only applies when the project supplies
    Playwright MCP itself; the agent's `tools:` list carries both spellings
-   for that reason. Scope its
-   flows to the *whole change's* diff against the parent branch, not just
-   the last group, so the final pass covers everything the change touched
-   — the replay above already re-verified whatever earlier changes recorded,
-   so this pass is what covers what's actually new — including the UI States
-   Matrix (loading/error/empty/offline)
+   for that reason. Scope its flows to the *whole change's* diff against the
+   parent branch, not just the last group, so the final pass covers
+   everything the change touched — the replay above already re-verified
+   whatever earlier changes recorded, so this pass is what covers what's
+   actually new — including the UI States Matrix
    `agents/web-qa-manual-tester.md` requires for each touched surface. An
-   unaddressed state reads the same as an unexercised flow: incomplete, not
-   a pass by default.
+   unaddressed state reads the same as an unexercised flow: incomplete, not a
+   pass by default. **States, per surface:** check `design.md` for a Mermaid
+   `sequenceDiagram` covering that flow; found → take the states from its
+   error branches plus its happy path, not the generic default. None found →
+   use the subagent's default matrix instead.
 2. The subagent relays a per-flow PASS/FAIL report, plus the per-surface UI
    States Matrix — loading/error/empty/offline each PASS/FAIL or explicitly
    not applicable with a reason, never silently omitted; syncing/conflict
