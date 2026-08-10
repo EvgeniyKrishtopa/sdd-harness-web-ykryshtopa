@@ -18,9 +18,12 @@ either sitting empty or collecting everything:
   architectural stance the *next* change will also need to know about —
   belongs here, in `docs/decisions/`.
 
-`opsx-apply-git` applies this rule at the point decisions actually surface:
-a judgement-heavy group (§3 Case B), where a human is already in the loop for
-exactly this kind of call.
+`opsx-apply-git` applies this rule at both points a decision actually
+surfaces — an autonomous isolated group (§3 Case A) and a judgement-heavy
+group (§3 Case B) alike, filtered first through
+`skills/opsx-apply-git/references/decision-threshold.md`'s bar. Which branch
+the work happened to fall into decides the record's *state* (see States
+below), never whether it gets written at all.
 
 ## If the project already has `docs/adr/`
 

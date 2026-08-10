@@ -69,7 +69,7 @@ running normally. An empty or absent list disables nothing.
 Each rule below carries a short permanent code (`CR-01`, `CR-02`, ...). The
 code never changes even when a rule's wording is later rewritten — it is
 what a finding cites, what a human disputes point-by-point, and what a user
-can switch off individually (see "Disabled rules" below). Numbering runs
+can switch off individually (see "Disabled rules" above). Numbering runs
 sequentially through Gate 4 then Gate 5, in the order the rules appear here.
 
 ### Gate 4 — correctness and simplification

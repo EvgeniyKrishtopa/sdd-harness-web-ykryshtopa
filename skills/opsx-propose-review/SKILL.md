@@ -90,6 +90,17 @@ it ready to implement.
    it too reads `.route` itself for depth.
 7. If either gate raises a CONFIRMED finding, pause and let the user decide
    whether to revise before declaring the change ready.
-8. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
+8. Once the change is ready, invoke the **`test-plan`** skill against it —
+   one row per acceptance criterion, naming the test(s) that will close it
+   and the level. This runs on **both** routes: the route decides only where
+   the table lands (`test-plan.md` on full, a `## Test Plan` section of
+   `proposal.md` on short), never whether a plan exists. It must run here,
+   not on demand: `code-review`'s Gate 5 checks written tests against this
+   table, and a plan written after the tests exist is a transcript, not a
+   plan. Skip it only if the change already carries one — re-running
+   `test-plan` for a revised change is `opsx-update-review`'s job, not this
+   skill's.
+9. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
    summary, the route this change took (`short`/`full`), task-group
-   classification table, and that `opsx-apply-git` is the next skill to run.
+   classification table, where the test plan was written, and that
+   `opsx-apply-git` is the next skill to run.

@@ -16,7 +16,7 @@ exists to prevent.
 | Path | Written by | Merge rule |
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
-| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys; never touch `schema`, never replace existing content without asking |
+| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |

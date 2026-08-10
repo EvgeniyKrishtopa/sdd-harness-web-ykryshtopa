@@ -24,7 +24,7 @@ have been CONFIRMED, not for every PLAUSIBLE note.
 timing rather than at `opsx-apply-git`'s PR-open point — it runs before
 implementation starts, once per finding, right after the user resolves it
 (`gate: "spec-clarify"`, `outcome: "fixed"` or `"deferred"`, never
-`"rejected"` — that outcome value only applies to the four gates above). It
+`"rejected"` — that outcome value only applies to the five gate names above). It
 follows the field shape below, not the "when to write this" timing, which
 stays specific to `opsx-apply-git`'s own run.
 
@@ -56,8 +56,8 @@ instead. A failed log write never blocks the run — note it and move on.
 
 ## Fields
 
-- `gate` — which of the four gates (or `spec-clarify` / `spec-review`'s
-  readiness checklist, see above) raised the finding.
+- `gate` — which of the five gate names above (or `spec-clarify` /
+  `spec-review`'s readiness checklist, see above) raised the finding.
 - `finding` — a short, human-readable description (not a full diff or
   report excerpt).
 - `outcome` — exactly one of:
@@ -79,17 +79,18 @@ instead. A failed log write never blocks the run — note it and move on.
     checklist only logs this for its own open-questions condition (an entry
     missing its owner or due date gets one added) — its other four
     conditions have nothing equivalent to defer into.
-- `ruleNumber` — optional; the permanent rule code (`agents/code-reviewer.md`
-  or `agents/spec-reviewer.md`) the finding was raised under, when the
+- `ruleNumber` — optional; the permanent rule code (`agents/code-reviewer.md`,
+  `agents/spec-reviewer.md`, or `agents/deep-reviewer.md`) the finding was
+  raised under, when the
   raising gate has numbered rules and the finding names one. Empty string
   when it doesn't — `web-qa` and `harness-review` findings have no numbered
   rule to cite yet, and neither does a line written before this field
   existed. A finding without it is still a legal line; nothing downstream
   requires it.
 
-## Why this is a different shape than the other eight lines
+## Why this is a different shape than the other nine lines
 
-This `kind:"finding"` line is deliberately not shaped like the eight
+This `kind:"finding"` line is deliberately not shaped like the nine
 `verdict`-bearing gate-run lines elsewhere in this pipeline. One run can
 produce several of these — one per finding — and none of them is a gate run
 in its own right, so it carries no `verdict`, `durationMs`, `tokensTotal`,

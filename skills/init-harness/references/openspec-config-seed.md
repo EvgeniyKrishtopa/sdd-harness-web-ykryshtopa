@@ -20,6 +20,13 @@ selects the artifact set OpenSpec generates and is not ours to change. Add
 only what is missing, and when a key we want is already present with
 different content, show the difference and ask rather than replacing.
 
+"Missing" is per *rule*, not per key. A repo an earlier version configured
+already has a `rules.proposal` list, so stopping at "that key exists" would
+leave every rule a later version added — the Given/When/Then criterion rule
+below is the first such case — reaching new repositories only. Compare the
+list's entries against the four below and append whichever aren't there,
+leaving any rule the project added itself untouched.
+
 ## What to write
 
 1. **`context:`** — a block scalar. Fill the technical half from what Step 1

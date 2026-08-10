@@ -30,7 +30,7 @@ most — note it, but do not treat it as blocking.
 ## Accepted decisions — read first, before the checklist
 
 If the calling skill passed a decisions-folder path, read it before
-anything below — a separate, prior pass, not one of the six numbered
+anything below — a separate, prior pass, not one of the eight numbered
 checks. Bound the read: `Grep` each file for `^## ` with line numbers first,
 then `Read` only the title line plus the `## Status`/`## Decision` ranges
 those line numbers bracket — never a plain full-file `Read` at this stage,

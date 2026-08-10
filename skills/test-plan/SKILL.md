@@ -8,11 +8,11 @@ written tests against, before any test is written.
 
 ## Trigger
 
-Typically run once a change's artifacts (`proposal.md`, `design.md`, spec
-deltas) are drafted and have passed `spec-review` — right after
-`opsx-propose-review` finishes, before `opsx-apply-git` starts implementing.
-Also fine standalone, by change name, to add or refresh a plan for a change
-that doesn't have one yet.
+Called by `opsx-propose-review` (its step 8), once the change's artifacts
+have passed `spec-review` and before `opsx-apply-git` starts implementing —
+and again by `opsx-update-review` (its step 5) whenever a revision changed
+an acceptance criterion. Also fine standalone, by change name, to add a plan
+to a change that predates this step.
 
 ## Action
 

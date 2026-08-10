@@ -22,8 +22,15 @@ Revise an existing OpenSpec change and re-validate it.
 4. Do not silently skip re-classification just because the change already
    had marks from a previous pass — a revised group may have shifted from
    isolated to judgement-heavy or vice versa.
-5. Report what changed, the gates re-run, and whether the change is still
-   ready for `opsx-apply-git` or needs another round.
+5. If the revision added, removed, or reworded any acceptance criterion,
+   re-run **`test-plan`** for a fresh table. A plan built against the
+   previous wording is worse than none: `code-review`'s Gate 5 trusts it as
+   the coverage floor, so a stale row quietly certifies a criterion nobody
+   tests. Leave the plan alone when the revision touched neither the
+   criteria nor the requirement identifiers.
+6. Report what changed, the gates re-run, whether the test plan was
+   rebuilt, and whether the change is still ready for `opsx-apply-git` or
+   needs another round.
 
 ## Called from `debug-loop`
 
