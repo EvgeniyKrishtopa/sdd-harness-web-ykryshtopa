@@ -137,9 +137,11 @@ case it is:
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: weigh what to build against
    `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). If a
-   design decision surfaces mid-group,
-   the classification was wrong — stop, leave it uncommitted, tell the user.
+   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
+   decision the agent can't confidently make means the classification was
+   wrong — stop, leave it uncommitted, tell the user. One it CAN make
+   confidently: read `references/decision-threshold.md` — it may still
+   need recording (Proposed) without stopping the group.
 3. Once green (its own verification + lint), confirm scope (`git status -s`,
    `git diff --stat` — no unrelated files) and commit the group's own
    implementation immediately (Conventional Commits, per
@@ -156,9 +158,11 @@ case it is:
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
    left → end the batch, go to §4.
 5. Any pause during implementation (an error, an ambiguity, a design
-   decision surfacing) stops the batch where it is — report and wait, never
-   commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
-   specific task line that caused the stop and commit that one-line edit on
+   decision the agent can't confidently make — step 2's other kind, the one
+   it CAN make, never pauses here) stops the batch where it is — report and
+   wait, never commit a half-finished group. Write `<!-- blocked: <reason>
+   -->` on the specific task line that caused the stop and commit that
+   one-line edit on
    its own (see §3's Blocked tasks section) — the task itself stays
    uncommitted and unchecked; only the marker is committed. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
@@ -177,15 +181,10 @@ case it is:
    answered, write `<!-- blocked: <reason> -->` on the specific task line
    waiting on it and commit that one-line edit on its own (see §3's Blocked
    tasks section) — an ordinary pause answered within the same turn never
-   touches `tasks.md`; only one that outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
-   note it in the change's own `design.md` (it archives with the change,
-   which is fine — nothing outside this change needs it again); outlives this
-   change — a convention, a tool choice, a stance the *next* change will also
-   need → write it as a new `docs/decisions/NNNN-<slug>.md` per
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/decision-template.md`,
-   including its required `Alternatives Considered` section. Check for an
-   existing `docs/adr/` first — if the project already has one, use that
-   instead of creating `docs/decisions/` alongside it, and say so.
+   touches `tasks.md`; only one that outlives the run does. A decision
+   reached this way was already discussed live, so if it crosses
+   `references/decision-threshold.md`'s bar, record it straight as
+   Accepted (never Proposed) — that file has the bar and the routing rule.
 3. Once green, confirm scope and — if this is also the *last* group with
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
