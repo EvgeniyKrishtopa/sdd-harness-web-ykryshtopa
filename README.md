@@ -246,7 +246,9 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
    against a required UI States Matrix (loading/error/empty/offline, plus
    syncing/conflict where a project actually has background sync), taking
    the states from `design.md`'s sequence diagram for that flow when one
-   exists; Gate 5 checks written tests against the change's own test plan,
+   exists, plus a required keyboard-only pass (reachability, focus
+   visibility, tab order, modal focus-trap/Escape) that also blocks the run
+   on a FAIL; Gate 5 checks written tests against the change's own test plan,
    falling back to a grep over its `FR-`/`NFR-` identifiers when it has
    none — an uncovered ID surfaces by name before `code-reviewer` even runs.
    Inside the same step, a 0-token prefilter greps the diff for risk signals
