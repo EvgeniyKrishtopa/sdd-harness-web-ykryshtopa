@@ -71,6 +71,19 @@ identifiers at all). Collapsing the third into the second is the exact
 silent failure this check exists to avoid — a change with zero identifiers
 would otherwise grep zero, subtract zero, and report full coverage.
 
+## Test plan (0 tokens, before delegating)
+
+Also locate this change's test plan, if it has one, before spawning
+`code-reviewer` — a plain file read, no delegation. Read
+`openspec/changes/<change>/.route` (missing file → `full`, the same
+fallback as above) to know where to look: `full` route →
+`openspec/changes/<change>/test-plan.md`; `short` route → the `## Test
+Plan` section of `proposal.md`. Pass whatever is found to `code-reviewer`
+as further context for Gate 5, alongside the diff. Nothing found (an older
+change, or one the `test-plan` skill never ran for) → tell `code-reviewer`
+explicitly there is no test plan for this change, so it falls back to its
+own requirement-ID-only path instead of silently assuming full coverage.
+
 ## Action
 
 1. Determine the diff to review, per `opsx-apply-git`'s two cases: an
@@ -109,7 +122,8 @@ would otherwise grep zero, subtract zero, and report full coverage.
    the `code-reviewer` subagent (`Agent` tool) with that diff — text or
    file-handoff, per step 1 — the Gate-5-applicability note, the final-run
    status, the requirement-ID
-   coverage result computed above, the detected `testRunner` and
+   coverage result computed above, the test-plan lookup result, the
+   detected `testRunner` and
    `coverageThreshold`, and any acceptance criteria as context — overriding
    the agent's own frontmatter default for this run. If the manifest or the
    key is missing, fall back to the agent's own default; never block the

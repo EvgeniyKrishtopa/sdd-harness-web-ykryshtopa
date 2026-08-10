@@ -104,23 +104,34 @@ calling skill tells you the diff (or the run's cumulative diff, for a
 batched isolated run) is docs/config-only — no application source or test
 files changed anywhere in it. Otherwise check:
 
-1. **CR-06 — Traceability** — the calling skill hands you a ready-made
-   requirement-ID coverage result (its own grep check against `proposal.md`'s
-   `FR-`/`NFR-` identifiers, see `skills/code-review/SKILL.md`), not a spec
-   to read cold: either a list of uncovered identifiers, "all requirement IDs
+1. **CR-06 — Traceability** — the calling skill hands you this change's
+   test plan, if one exists (`test-plan.md`, or `proposal.md`'s own `## Test
+   Plan` section on the short route — see `skills/code-review/SKILL.md`).
+   **Plan present**: for every row, confirm the test(s) it names actually
+   exist and genuinely exercise what the row claims — a row with no matching
+   test, or one whose test doesn't cover what the row describes, is a
+   **CONFIRMED** finding naming the requirement identifier and what's
+   missing. A written test that goes beyond what the plan lists is never a
+   finding on its own — the plan is a floor, not a ceiling. **No plan for
+   this change** (an older change, or one the `test-plan` skill never ran
+   for) — fall back to the calling skill's requirement-ID coverage result
+   instead (its own grep check against `proposal.md`'s `FR-`/`NFR-`
+   identifiers and `implements <id> of <change>` markers), not a spec to
+   read cold: either a list of uncovered identifiers, "all requirement IDs
    covered", or "traceability unavailable" (this change's `proposal.md`
-   defines none). Every identifier on an uncovered list is a **CONFIRMED**
-   finding — name the identifier and what's missing, rather than
-   re-deriving coverage from the spec yourself. An identifier marked covered
-   is not the end of the check: a requirement can carry more than one
-   Given/When/Then acceptance criterion, so match each test to the specific
-   Then (observable result) it verifies, not to the requirement's identifier
-   as a whole — a requirement with three criteria and one covering test is
-   still missing two, even though its identifier shows up as "covered." On
-   "traceability unavailable," say so explicitly in your own output, then
-   fall back to reading the relevant spec's acceptance criteria and judging
-   coverage the way this criterion worked before identifiers existed — never
-   report "covered" for a change with nothing to check against.
+   defines no identifiers either). Every identifier on an uncovered list is
+   a **CONFIRMED** finding — name the identifier and what's missing, rather
+   than re-deriving coverage from the spec yourself. An identifier marked
+   covered is not the end of the check: a requirement can carry more than
+   one Given/When/Then acceptance criterion, so match each test to the
+   specific Then (observable result) it verifies, not to the requirement's
+   identifier as a whole — a requirement with three criteria and one
+   covering test is still missing two, even though its identifier shows up
+   as "covered." On "traceability unavailable," say so explicitly in your
+   own output, then fall back to reading the relevant spec's acceptance
+   criteria and judging coverage the way this criterion worked before plans
+   or identifiers existed — never report "covered" for a change with
+   nothing to check against.
 2. **CR-07** — New branches/conditionals introduced by the diff have a test
    for each meaningfully different path, not just the happy path.
 3. **CR-08** — Assertions actually verify behavior (output values, state
