@@ -23,7 +23,7 @@ exists to prevent.
 | `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0, and `disabledRules`, `models.clarify`, and `sizeRouting`, all added 0.5.0 — see Step 8); never drop keys already there |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0, and `disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0 — see Step 8); never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |

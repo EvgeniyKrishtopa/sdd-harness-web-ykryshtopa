@@ -34,6 +34,7 @@ Merge into the file Step 2e already started (it may already contain just the
     "spec": "claude-sonnet-5",
     "webQa": "claude-haiku-4-5",
     "code": "claude-sonnet-5",
+    "deep": "claude-opus-5",
     "harness": "claude-haiku-4-5",
     "clarify": "claude-sonnet-5",
     "default": "claude-sonnet-5"
@@ -124,8 +125,13 @@ Merge into the file Step 2e already started (it may already contain just the
   `code-review` delegation as Gate 4 (cost-optimization #33), so it runs on
   `models.code`. `clarify` is the same kind of entry for the
   `devils-advocate` agent — not a review gate itself, but read and overridden
-  the same way. Only depart from the seeded defaults if the user asks for a
-  different tier or doesn't have access to one of these models.
+  the same way. `deep` (added 0.5.0) is the entry for the `deep-reviewer`
+  agent, the security/architecture-as-built pass `code-review` spawns only
+  when its risk prefilter fires; it is seeded on a larger model than
+  `code` precisely because it runs rarely — see
+  `skills/code-review/references/deep-review.md`. Only depart from the seeded
+  defaults if the user asks for a different tier or doesn't have access to
+  one of these models.
 
 ## Two rules that hold for the whole file
 

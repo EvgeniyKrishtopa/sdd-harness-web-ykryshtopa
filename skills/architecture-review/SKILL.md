@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
+description: Reviews an OpenSpec design.md for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Use right after a design.md is drafted, before any change touching 2+ layers is implemented. Architecture in already-written code is reviewed by deep-reviewer from the code-review skill, not here.
 ---
 
 Run **Gate 1** of this project's review pipeline: architecture review.
@@ -37,10 +37,9 @@ checks for it as part of its own checklist below.
 
 Also read the target change's route: the first line of
 `openspec/changes/<change>/.route` (written by `opsx-propose-review`'s size
-assessment), `short` or `full`. If the file is missing — an older change, a
-diff not tied to any OpenSpec change, or a repo that hasn't upgraded to this
-version — treat it as `full`; never assume a change opted into the cheaper
-route it never asked for.
+assessment), `short` or `full`. If the file is missing — an older change, or
+a repo that hasn't upgraded to this version — treat it as `full`; never
+assume a change opted into the cheaper route it never asked for.
 
 ## When invoked against a design artifact (no diff yet)
 
@@ -58,17 +57,22 @@ route it never asked for.
    agent's own verdict — the checklist itself still runs in full; only this
    extra deliberation pass is size-gated.
 
-## When invoked against a diff
+## This gate never reviews a diff
 
-1. Run `git diff` (or `git diff --cached` if the target is staged) against
-   the parent branch.
-2. Delegate to `architecture-reviewer` (model per the note above) with that
-   diff.
+Architecture-as-built — boundary violations, layer leaks, cycles and
+duplicated domain rules in the code that actually got written — is reviewed
+by `deep-reviewer`, from the `code-review` skill, on diffs its risk
+prefilter flags. Gate 1 reviews the *proposed* architecture only.
+
+That is deliberate: the two reads answer different questions at different
+moments, and having one skill that could do either meant the diff mode was
+never actually invoked by anything. If you want the code checked, run
+`code-review` — do not point this gate at a diff.
 
 ## Handling the result
 
 - **CONFIRMED finding** — show it to the user and ask whether to revise the
-  design/diff now or proceed anyway. Do not silently continue past an
+  design now or proceed anyway. Do not silently continue past an
   unresolved CONFIRMED finding.
 - **Clean, or PLAUSIBLE-only** — continue the workflow (artifact-creation
   loop, or straight to the next gate).
@@ -115,7 +119,7 @@ point 5) — never estimate this from `durationMs` or any other proxy; if
 that block is absent, write `0` and say so in the report rather than
 guessing.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
-never computed — because this gate reviews a proposed design or a diff
+never computed — because this gate reviews a proposed design
 directly; there is no `debug-loop` fix cycle attached to Gate 1 for either
 field to describe. If `jq` isn't available, construct the
 equivalent JSON line with `printf` instead. A failed log write never blocks
