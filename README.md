@@ -3,8 +3,11 @@
 Spec-driven OpenSpec harness for web projects — **Vite or Next.js**, either
 package manager (yarn/npm/pnpm), either test runner (Vitest/Jest). Six
 automated review gates (five agent delegations — Gate 4 and Gate 5 share
-one, see Components below), a branch-per-group git workflow, and a
-scaffolder that detects your stack instead of assuming one.
+one, see Components below), plus a security/architecture deep review that
+only spawns on a diff a 0-token prefilter flags as risky; an ambiguity sweep
+and a test plan before implementation starts; architecture decision records
+the architecture gate actually reads back; a branch-per-group git workflow;
+and a scaffolder that detects your stack instead of assuming one.
 
 ## What this is
 
@@ -54,7 +57,7 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 11 skills, 5 agents by name, 3 hook events and 1 MCP server. To install
+list 14 skills, 7 agents by name, 3 hook events and 1 MCP server. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
@@ -90,7 +93,7 @@ your own marketplace entry at a tag or commit:
   "source": {
     "source": "github",
     "repo": "EvgeniyKrishtopa/sdd-harness-web-ykryshtopa",
-    "ref": "sdd-harness-web-ykryshtopa--v0.3.0"
+    "ref": "sdd-harness-web-ykryshtopa--v0.5.0"
   }
 }
 ```
@@ -155,6 +158,37 @@ Keys new in 0.4.0 that a 0.3.0 repo doesn't have yet: `.claude/harness.json`'s
 scenarios. The other addition, the `dead-code-report` skill, needs nothing
 written into your project besides itself — its own state lives in a
 `knip.json` it creates on first run, not in `harness.json`.
+
+## Upgrading from 0.4.1
+
+**Every repository already configured by this harness must run
+`/init-harness` again after updating to 0.5.0.** Same upgrade-mode mechanism
+as above, but unlike 0.4.0 this one is breaking, on the same grounds 0.3.0
+was: several of 0.5.0's checks read files and keys that only upgrade mode
+writes, and until it runs they mark themselves *not applicable* rather than
+failing loudly. Breaking changes land in the minor position before 1.0.0,
+which is why this is 0.5.0 and not 0.4.2.
+
+What a 0.4.1 repo doesn't have yet:
+
+- **`CONTEXT.md`** at the repo root — the project glossary, created empty
+  (heading only) and filled in as terms actually come up. Without it,
+  `spec-reviewer`'s glossary check (`SR-05`) and two of `spec-review`'s five
+  readiness conditions report *not applicable* on every run.
+- **`openspec/config.yaml`'s Given/When/Then rule** for acceptance criteria,
+  appended to the `rules.proposal` list your repo already has. Without it,
+  OpenSpec keeps drafting free-form criteria and the form check has nothing
+  to check.
+- **Four `.claude/harness.json` keys** — `disabledRules` (rule codes you've
+  switched off), `sizeRouting` (the short/full route assessment),
+  `models.clarify` and `models.deep` (the two new agents' model overrides).
+- **A pointer to `CONTEXT.md`** appended to your `CLAUDE.md`/`AGENTS.md`
+  block, without which the glossary never reaches a session's context.
+
+Nothing else needs writing. The per-change files 0.5.0 adds —
+`openspec/changes/<change>/.route`, `test-plan.md`, and the `_debug/`
+records — are created on demand by the skills that own them, on the next
+change you propose.
 
 ## First run
 
@@ -225,23 +259,44 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 
 ## Everyday workflow
 
-1. `/opsx-propose-review` — propose a change (runs Gates 1-2).
+1. `/opsx-propose-review` — propose a change. Before any artifact exists it
+   sizes the change from three observable questions (more than one module? a
+   data-schema change? a contract change?) and records `short` or `full` in
+   `openspec/changes/<change>/.route`. Then Gate 1, then — on the full route
+   — `spec-clarify`, which sweeps the drafted artifacts for wording two
+   engineers would read two ways and closes each finding with you one
+   question at a time, then Gate 2, then `test-plan`. You end up with a
+   change whose ambiguities are resolved, whose readiness is a printed
+   five-condition checklist rather than a phrase, and whose every acceptance
+   criterion already has a planned test.
 2. `/opsx-apply-git` — implement the next run: an autonomous batch of
    `isolated` groups to one PR, or one `judgement-heavy` group with you in
-   the loop.
+   the loop. A decision that crosses the recording threshold (irreversible,
+   multi-module, or had live alternatives) gets written to `docs/decisions/`
+   from *either* branch — `Proposed` from an autonomous group, `Accepted`
+   when you were in the loop — and Gate 1 reads the accepted ones back on
+   every later change.
 3. Each group implements and commits as it goes; Gates 3-6 (`web-qa` →
    `code-review` [Gate 4 + Gate 5 in one delegation] → `harness-review`) run
    automatically once per run, after every group in it is already
    committed and before push — not once per group — per
    `.claude/docs/review-gates.md`. Gate 3 checks every user-facing surface
    against a required UI States Matrix (loading/error/empty/offline, plus
-   syncing/conflict where a project actually has background sync); Gate 5's
-   coverage check is grep-based against the change's own `FR-`/`NFR-`
-   requirement IDs when the proposal defines them, not judgement alone — an
-   uncovered ID surfaces by name before `code-reviewer` even runs. A
-   `web-qa` FAIL or a `code-review` CONFIRMED finding you choose to fix runs
-   through `debug-loop` — a bounded, four-phase fix loop that escalates to
-   you instead of retrying forever.
+   syncing/conflict where a project actually has background sync), taking
+   the states from `design.md`'s sequence diagram for that flow when one
+   exists; Gate 5 checks written tests against the change's own test plan,
+   falling back to a grep over its `FR-`/`NFR-` identifiers when it has
+   none — an uncovered ID surfaces by name before `code-reviewer` even runs.
+   Inside the same step, a 0-token prefilter greps the diff for risk signals
+   (auth, permissions, payments, migrations, config, secrets, uploads) and
+   spawns `deep-reviewer` for a security and architecture-as-built pass only
+   when one fires; most runs skip it, and the skip is logged. A `web-qa`
+   FAIL or a `code-review`/deep-review CONFIRMED finding you choose to fix
+   runs through `debug-loop` — a bounded, four-phase fix loop that escalates
+   to you instead of retrying forever, leaves a written record of every
+   hypothesis under `_debug/`, and classifies the fixed defect against the
+   specification so a missing acceptance criterion gets added rather than
+   silently staying missing.
 4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
    from that merge.
 5. On the last group, `opsx-apply-git` archives the change via its own PR.
@@ -251,29 +306,44 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
 | Skill | Gate | Purpose |
 |---|---|---|
 | `init-harness` | — | Scaffolder: detects stack, installs OpenSpec, writes docs/hooks; re-run after a plugin update to upgrade the repo |
-| `opsx-propose-review` | 1-2 | Propose a change, run architecture + spec review |
+| `opsx-propose-review` | 1-2 | Size the change, propose it, run architecture + clarify + spec review, then build its test plan |
 | `opsx-apply-git` | 3-6 | Implement a run inside the branch-per-group workflow |
-| `opsx-update-review` | 1-2 | Revise an existing change's plan |
-| `architecture-review` | 1 | Boundary/coupling risk on `design.md` or a diff |
-| `spec-review` | 2 | Artifact consistency + isolated/judgement-heavy classification |
+| `opsx-update-review` | 1-2 | Revise an existing change's plan and re-run what the revision touched |
+| `architecture-review` | 1 | Boundary/coupling risk on `design.md`, against the project's accepted decisions, plus sequence diagrams for boundary-crossing flows |
+| `spec-clarify` | — (before 2) | Ambiguity sweep via `devils-advocate`, resolved with you one finding at a time — edit in place, or defer with an owner and a due date |
+| `spec-review` | 2 | Artifact consistency + isolated/judgement-heavy classification + the printed five-condition readiness checklist |
+| `test-plan` | — (before 3) | One row per acceptance criterion: which tests close it, at which level. Gate 5's floor |
 | `web-qa` | 3 | Real-browser QA via Playwright MCP, must-pass with a fix loop |
-| `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your configured threshold — one delegation, two labeled sections |
+| `code-review` | 4-5 | Correctness bugs + simplification, AND coverage gaps against your test plan and configured threshold — one delegation, two labeled sections; spawns the deep review when its risk prefilter fires |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
+| `record-decision` | — (not a gate) | Writes down a decision made outside the pipeline — in chat, on a whiteboard, straight in the code — or promotes an existing `Proposed` record to `Accepted` |
 | `debug-loop` | — (not a gate) | Bounded, four-phase fix loop for a `web-qa` FAIL or a `code-review` CONFIRMED finding you chose to fix; caps at `maxFixAttempts` and escalates to you instead of retrying forever |
 | `dead-code-report` | — (not a gate) | Finds unused files/exports/deps via knip plus the project's own lint rules, sorts findings into three confidence groups, ends with a change-proposal draft; never deletes anything. Run manually, roughly monthly |
 
-Five matching subagents live in `agents/` and are invoked by the skills
-above, not usually directly — `debug-loop` has no subagent of its own; it
-runs inline in the calling session. None of them can write to your source.
-Three (`architecture-reviewer`, `code-reviewer`, `harness-reviewer`) are
-`Read`/`Grep`/`Glob` plus `Bash`, scoped by their own prompts to inspection
-commands; `web-qa-manual-tester` carries no `Bash` at all — it gets
-`Read`/`Grep`/`Glob` plus a fixed list of Playwright MCP browser tools, so
-it is read-only on code while driving a real browser;
-`spec-reviewer` additionally carries `Edit`, limited by its prompt to one
-job — writing the `<!-- isolated -->` / `<!-- judgement-heavy -->` marker
-onto a `tasks.md` heading, which is what `opsx-apply-git` reads to decide
-what it may run unattended.
+Seven matching subagents live in `agents/` and are invoked by the skills
+above, not usually directly — `debug-loop`, `test-plan` and
+`record-decision` have no subagent of their own; they run inline in the
+calling session. None of the seven can write to your source. Four
+(`architecture-reviewer`, `code-reviewer`, `deep-reviewer`,
+`harness-reviewer`) are `Read`/`Grep`/`Glob` plus `Bash`, scoped by their
+own prompts to inspection commands; `devils-advocate` is `Read`/`Grep`/
+`Glob` only, with no `Bash` and no way to write — finding an ambiguity and
+resolving it are deliberately two different jobs, and the finder is not
+allowed to become an advocate for one answer; `web-qa-manual-tester`
+carries no `Bash` at all either — it gets `Read`/`Grep`/`Glob` plus a fixed
+list of Playwright MCP browser tools, so it is read-only on code while
+driving a real browser; `spec-reviewer` additionally carries `Edit`,
+limited by its prompt to one job — writing the `<!-- isolated -->` /
+`<!-- judgement-heavy -->` marker onto a `tasks.md` heading, which is what
+`opsx-apply-git` reads to decide what it may run unattended.
+
+Every rule inside `code-reviewer`, `spec-reviewer` and `deep-reviewer`
+carries a permanent code (`CR-01`, `SR-02`, `DR-03`) that never changes even
+when the rule's wording does. A finding names its code, so you can dispute
+one rule rather than a whole gate, and `.claude/harness.json`'s
+`disabledRules` array switches a single rule off while every other rule in
+the same review keeps running — previously the only choice was to tolerate a
+gate or disable it entirely.
 
 ## Command names
 
@@ -337,7 +407,8 @@ of an external sequential-thinking tool call per "thought"
 ## Design principle
 
 AI review is a sensor, not a final verdict — the human owns the merge.
-Gates 1, 2, 4, 5 pause only on a CONFIRMED finding; PLAUSIBLE-only or clean
+Gates 1, 2, 4, 5 pause only on a CONFIRMED finding, and the deep review
+inside Gate 4/5 pauses on exactly the same terms; PLAUSIBLE-only or clean
 reviews never block. Gates 3 and 6 are must-pass/always-shown by design —
 see `.claude/docs/review-gates.md` (written by `init-harness`) for the full
 policy once installed in your repo.

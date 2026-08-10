@@ -7,7 +7,7 @@ Close every ambiguity a change's drafted artifacts still carry before the
 change moves on to `spec-review` (Gate 2). `spec-review` checks the document
 is internally correct; this checks that it actually decided things — see
 `agents/devils-advocate.md` for what counts as an undecided spot, and
-`harness-audit/v0.5.0-planned/06-design-rationale.txt` decisions 2-4 for why
+`harness-audit/v0.5.0-implemented/06-design-rationale.txt` decisions 2-4 for why
 finding ambiguity and resolving it are two separate steps rather than one.
 
 ## Trigger
