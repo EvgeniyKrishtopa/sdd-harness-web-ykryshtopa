@@ -1,6 +1,6 @@
 ---
 name: debug-loop
-description: Bounded, four-phase fix loop for a reproducible failure — reproduce, isolate (environment-first), diagnose with a recorded expected effect, fix and reverify the same scenario, then classify the fix against the spec — up to maxFixAttempts before escalating to a human. Not a review gate — it blocks nothing on its own, isn't listed in review-gates.md, and doesn't get a seventh-gate number. Runs inline in the calling session, no subagent. Invoked from a web-qa FAIL, a code-review CONFIRMED finding the user chose to fix, or directly by the user for a failure outside any gate.
+description: Bounded, four-phase fix loop for a reproducible failure — reproduce, isolate (environment-first), diagnose with a recorded expected effect, fix and reverify the same scenario, then classify the fix against the spec — up to maxFixAttempts before escalating to a human. Not a review gate — it blocks nothing on its own, isn't listed in review-gates.md, and doesn't get a seventh-gate number. Runs inline in the calling session, no subagent, and leaves a per-failure record it writes as it goes. Invoked from a web-qa FAIL, a code-review CONFIRMED finding the user chose to fix, or directly by the user for a failure outside any gate.
 ---
 
 Run a fix attempt as four explicit phases instead of "try something and see."
@@ -25,14 +25,42 @@ or looping unbounded. This is the total number of fix attempts allowed for
 one failure before escalating, not additional retries layered on top of a
 free first try.
 
+## Leave a record
+
+Every invocation of this loop writes one file, one per failure being
+debugged:
+
+- Inside an OpenSpec change →
+  `openspec/changes/<change>/_debug/<failure-slug>.md`
+- Standalone, with no change in play → `.claude/debug/<failure-slug>.md`.
+  There is no `openspec/changes/` directory to write beside in that case,
+  and this skill must not create one.
+
+**Read `references/debug-record.md` now and follow it** — it holds the
+template, the slug rule, and which phase appends which part.
+
+It is written *as the loop runs*, never assembled at the end. The run that
+most needs a record is the one that spends every attempt and stops, and that
+is exactly the run where nothing is left afterwards to write a summary. A
+flake caught in phase 1 gets a record too, even though no fix was attempted:
+that failure is otherwise noticed, named, and forgotten inside a single
+conversation.
+
+What the record is not is a log line. This skill still writes nothing to
+`harness-log.jsonl` and adds no field to it (see `## Log` below) — the
+invoking gate's `fixIterations`/`escalatedToHuman` already count what can be
+counted, and what was missing is content that doesn't fit in one JSON line.
+
 ## The four phases, once per attempt
 
-1. **Reproduce** — the minimal, reliable way to trigger the failure. If it
-   doesn't reproduce twice in a row, it's a flake, not a fix target: note it
-   as a separate line of investigation (what made it flaky, whether the app
-   degrades gracefully under that condition) and don't spend an attempt on
-   it — go back to reproducing once more before deciding whether a real fix
-   is even in scope.
+1. **Reproduce** — the minimal, reliable way to trigger the failure. Open the
+   record with it — header, failure, reproduction — before going further. If
+   it doesn't reproduce twice in a row, it's a flake, not a fix target: note
+   it in the record as a separate line of investigation (what made it flaky,
+   whether the app degrades gracefully under that condition) and don't spend
+   an attempt on it — go back to reproducing once more before deciding
+   whether a real fix is even in scope. That record stands even though no fix
+   ever follows it.
 2. **Isolate** — narrow the failure to the specific file or condition
    responsible. For a `web-qa`-triggered failure, rule out an environment
    condition *first* — a third-party API rate limit, flaky animation timing
@@ -44,10 +72,13 @@ free first try.
    the fix *before* applying it: one or two sentences on what should be
    different once it lands. This recorded expectation, written down ahead of
    the fix, is what phase 4 checks against — it's the one thing that tells a
-   real attempt apart from a guess.
+   real attempt apart from a guess. Both go into this attempt's block in the
+   record here, at this point in the loop: an expectation written down after
+   the result is already known is a guess in an attempt's clothing.
 4. **Fix and reverify** — apply the fix, then re-run *exactly* the scenario
    from phase 1 (not a broader pass) and compare the outcome against phase
-   3's expectation.
+   3's expectation. Append what actually happened, and which of the two
+   outcomes below it was, to the same block.
    - Matches the expectation → classify the fix against the spec (see
      "After a successful fix: three cases" below), then report success and
      the number of attempts it took.
@@ -113,7 +144,11 @@ the fix lands (for the `web-qa` call site, that means after the group's own
 commit, once the fix has actually folded into it and Gate 3 clears).
 
 Report which of the three cases applies (or that it was skipped, and why)
-in one line, alongside the success report.
+in one line, alongside the success report — and write that same line into the
+record's `## Outcome`, naming the identifier it touched. Said out loud it
+lasts one conversation; the three cases are only countable across changes,
+which is what item 10 of this version wanted them for, once they are written
+down somewhere.
 
 ## Escalate once the limit is reached
 
@@ -151,6 +186,11 @@ in one line, alongside the success report.
   just the last one — that's the entire point of recording the expectation
   in phase 3: the escalation reads as "here's what we tried and why it
   didn't hold," not "it didn't work twice."
+- Name the record's path in that report, not only the retelling. The
+  retelling is fine and stays, but it dies with this conversation, and a
+  human comes back to a deferred failure days later. Close the record's
+  `## Outcome` with the attempts spent *before* reporting, since the reason
+  this branch exists is that the loop stops here.
 
 ## What this loop does not do
 
@@ -191,3 +231,8 @@ does, folding the attempt count and escalation flag this loop produces into
 that log line's `fixIterations`/`escalatedToHuman` fields (#U13) — see
 those gates' own `## Log this gate's run` sections for exactly what each
 field means at their call site.
+
+"No log line" is not "no trace": the record under `## Leave a record` above
+is where this loop's content goes. The two are deliberately split — counts in
+the log, reasoning in the record — and neither borrows a field from the
+other.
