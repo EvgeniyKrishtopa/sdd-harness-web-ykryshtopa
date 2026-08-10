@@ -96,15 +96,21 @@ cover the affected behavior:
    tagged `(added by defect fix)` right after the identifier so the entry
    stays visibly written after the fact rather than during drafting.
 
-Cases 2 and 3 both edit `proposal.md` or a spec delta. Make that edit the
-way `opsx-update-review` step 2 does — edit the artifact directly, show the
-diff — but stop there: do not run `opsx-update-review` steps 3-4, which
-re-run `architecture-review`/`spec-clarify`/`spec-review` through fresh
-subagent dispatches. This classification and its edit happen entirely in
-the current session, off the diagnosis already on hand — no new agent run,
-same as the rest of this loop (see "No subagent is spawned" below). The
-edited artifact gets its next real gate pass on this change's own ordinary
-cycle, not as a side effect of the fix.
+Cases 2 and 3 both edit `proposal.md` or a spec delta the way
+`opsx-update-review` step 2 does — apply the revision directly to that
+artifact — then show the user the diff yourself; do not go on to run
+`opsx-update-review` steps 3-4, which re-run
+`architecture-review`/`spec-clarify`/`spec-review` through fresh subagent
+dispatches. This classification and its edit happen entirely in the current
+session, off the diagnosis already on hand — no new agent run, matching
+every other call site in this skill's own `## Call sites` section below,
+none of which spawns a subagent either. The edited artifact gets its next
+real gate pass on this change's own ordinary cycle, not as a side effect of
+the fix. Commit the edit on its own, never folded into the code fix's
+commit — a spec change and a code change are different units of review even
+when one caused the other. Append it right after whichever commit carries
+the fix lands (for the `web-qa` call site, that means after the group's own
+commit, once the fix has actually folded into it and Gate 3 clears).
 
 Report which of the three cases applies (or that it was skipped, and why)
 in one line, alongside the success report.

@@ -28,10 +28,11 @@ Revise an existing OpenSpec change and re-validate it.
 ## Called from `debug-loop`
 
 `debug-loop`'s post-fix spec classification (see `skills/debug-loop/
-SKILL.md`, "After a successful fix: three cases") edits a criterion the same
-way step 2 above does — locate the artifact, edit it in place, show the
-diff — but stops there. It never continues into steps 3-4: those re-run
-gates through fresh subagent dispatches, and a defect classification already
-inline in the calling session must not grow the number of agent runs a fix
-takes. The edited artifact still gets a real gate pass — on this change's
-own next ordinary cycle, not as a side effect of the fix.
+SKILL.md`, "After a successful fix: three cases") applies step 2 above to
+the relevant criterion — locate the artifact, edit it in place — and shows
+the user the diff itself, but stops there. It never continues into steps
+3-4: those re-run gates through fresh subagent dispatches, and a defect
+classification already inline in the calling session must not grow the
+number of agent runs a fix takes. The edited artifact still gets a real
+gate pass — on this change's own next ordinary cycle, not as a side effect
+of the fix.
