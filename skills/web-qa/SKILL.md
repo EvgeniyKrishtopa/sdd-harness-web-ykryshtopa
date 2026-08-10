@@ -122,18 +122,18 @@ incident this closes.
    `sequenceDiagram` covering that flow; found → pass the subagent that
    flow's actual states (error branches plus happy path), overriding its
    own default for that surface. None found → use its default matrix.
-2. The subagent relays a per-flow PASS/FAIL report, plus the per-surface UI
-   States Matrix — loading/error/empty/offline each PASS/FAIL or explicitly
-   not applicable with a reason, never silently omitted; syncing/conflict
-   included the same way only on a project with background sync, otherwise
-   left out of the matrix entirely rather than marked not-applicable.
+2. The subagent relays a per-flow PASS/FAIL report, the per-surface UI
+   States Matrix (loading/error/empty/offline, syncing/conflict only with
+   background sync, each PASS/FAIL or not-applicable-with-reason, never
+   silent), and a per-surface Keyboard Pass — reachability, focus
+   visibility, tab order, modal focus-trap/Escape, same format, reported
+   beside the matrix, not folded into it (`agents/web-qa-manual-tester.md`).
 
 ## This is a must-pass gate with a fix loop, not CONFIRMED/PLAUSIBLE
 
-- **All-PASS** (every flow, and every applicable UI state) → proceed to
-  Gate 4.
-- **Any FAIL**, in a flow or in any applicable UI state → run the
-  `debug-loop` skill, scoped to the failing flow(s) or state(s):
+- **All-PASS** (every flow, state, and keyboard-pass check that applies) → proceed to Gate 4.
+- **Any FAIL**, in a flow, state, or keyboard-pass check → run the
+  `debug-loop` skill, scoped to what failed:
   reproduce / isolate (its environment-first check — rule out a third-party
   API rate limit, flaky animation timing, note it and re-run rather than
   treating it as a defect, though the app must still degrade gracefully — is

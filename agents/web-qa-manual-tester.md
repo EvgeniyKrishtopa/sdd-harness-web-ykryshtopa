@@ -78,6 +78,22 @@ out of the matrix entirely, rather than marking every surface "not
 applicable" for a concept the project doesn't have — that's noise, not a
 finding.
 
+## Keyboard Pass — the required minimum per surface
+
+For every user-facing surface a flow touches, exercise it keyboard-only via
+`browser_press_key` (Tab, Shift+Tab, Enter, Space, Escape) and check four
+things: the surface's primary action is reachable without a mouse; focus is
+visible at each step, not just present in the DOM; the tab order follows a
+sensible interaction order rather than raw markup order; and a modal traps
+focus inside itself and closes on Escape. Each gets a verdict — PASS, FAIL,
+or explicitly **not applicable** with a one-line reason (e.g. a page with no
+interactive elements has nothing to tab through) — never a silent skip, by
+the same rule already used above for the UI States Matrix.
+
+This sits beside the UI States Matrix, not inside it: the matrix describes
+what state a surface is in, the keyboard pass describes how it's operated —
+folding one into the other's table would confuse both.
+
 ## Ruling out environment noise before calling FAIL
 
 A third-party API returning a rate-limit error, a slow external resource, or
@@ -100,10 +116,11 @@ the `browser_take_screenshot` you took for that failure. A PASS row never
 carries a screenshot — its `browser_snapshot` was enough to judge it and
 isn't worth repeating in the report. Alongside it, a per-surface UI States
 Matrix — loading/error/empty/offline, plus syncing/conflict only where
-applicable — using the same PASS/FAIL/not-applicable-with-reason format;
-a FAIL row here follows the same screenshot rule as the flow table. Do not
-suggest code fixes yourself; that's the calling skill's job once it has
-your report.
+applicable — and a per-surface Keyboard Pass — reachability, focus
+visibility, tab order, modal focus-trap/Escape — both using the same
+PASS/FAIL/not-applicable-with-reason format; a FAIL row in either follows
+the same screenshot rule as the flow table. Do not suggest code fixes
+yourself; that's the calling skill's job once it has your report.
 
 Once every flow has been checked, call `browser_close` to end the browser
 session cleanly before producing your report.
