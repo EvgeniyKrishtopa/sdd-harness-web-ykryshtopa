@@ -95,11 +95,11 @@ disputes point-by-point, and what a user switches off individually.
    (a non-public env var read in a component), or stored where scripts on the
    page can read them — a session token in `localStorage` is the standard
    case, and it is CONFIRMED, not a style opinion.
-4. **DR-04 — External calls** — an outbound request with no timeout and no
-   error path, a response consumed as trusted structured data without
-   validation, or a request URL built from user input (an attacker choosing
-   which host the server calls). Also: retry logic that can amplify a failure
-   into a flood.
+4. **DR-04 — External calls** — an outbound request with no timeout, a
+   response consumed as trusted structured data without validation, or a
+   request URL built from user input (an attacker choosing which host the
+   server calls). Also: retry logic that can amplify a failure into a flood.
+   A missing `catch` on its own is `CR-01`, not this rule.
 5. **DR-05 — File uploads** — no size limit, no type check that inspects
    content rather than trusting the client's declared type, a storage path
    derived from the client-supplied filename (traversal), or uploaded files
@@ -130,8 +130,10 @@ actually does now.
     expressed in two places that can drift apart independently. Quote both.
 11. **DR-11 — Responsibility creep** — this diff pushes a module, service, or
     component past the point where its name describes what it does, by adding
-    a responsibility unrelated to the ones already there. PLAUSIBLE unless
-    you can show the unrelated responsibilities concretely.
+    a responsibility unrelated to the ones already there. Not `CR-03`: that
+    one is about an abstraction nobody needed yet; this is about a module
+    that now needs two sentences to describe. PLAUSIBLE unless you can show
+    the unrelated responsibilities concretely.
 
 ## Output
 

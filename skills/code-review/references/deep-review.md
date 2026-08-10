@@ -15,33 +15,76 @@ this check exists to save.
 
 ```bash
 range="<parent>..HEAD"   # the same range Action step 1 resolves
-risk=""
-paths=$(git diff --name-only $range)
-printf '%s\n' "$paths" | grep -qiE \
-  'auth|login|logout|session|passwo?rd|token|permission|role|polic|payment|billing|checkout|invoice|migrat|schema|\.env|secret|credential|upload' \
-  && risk="path"
-if [ -z "$risk" ]; then
-  git diff $range | grep '^+' | grep -qiE \
-    'localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM' \
-    && risk="content"
+path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment|billing|checkout|invoice|migrat|schema|\.env|secret|credential|upload'
+content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM'
+
+paths=$(git diff --name-only "$range")
+if [ -z "$paths" ]; then
+  echo "prefilter unavailable: git diff --name-only $range listed no files"
+else
+  signal="path"
+  hits=$(printf '%s\n' "$paths" | grep -iE "$path_re")
+  if [ -z "$hits" ]; then
+    signal="content"
+    hits=$(printf '%s\n' "$paths" | while IFS= read -r f; do
+      git diff "$range" -- "$f" | grep '^+' | grep -v '^+++' \
+        | grep -qiE "$content_re" && printf '%s\n' "$f"
+    done)
+  fi
+  [ -z "$hits" ] && echo "risk=none" \
+    || { echo "risk=$signal"; printf '%s\n' "$hits"; }
 fi
 ```
 
-Path signals are checked before content signals, and the content grep looks
-only at **added** lines — a risky pattern this diff *removes* is not a reason
-to spend a review on it.
+It **prints** its result rather than leaving it in a shell variable. Each
+`Bash` call is its own process, so a `$risk` left unset in the environment
+would be gone before anything could read it — the sibling prefilter in
+`traceability-prefilter.md` echoes all three of its outcomes for the same
+reason. It prints the matching **filenames** too, not just the verdict:
+those are what gets handed to the agent.
 
-`$risk` empty → do not spawn `deep-reviewer`; log the skip and carry on with
-Gate 4/5 exactly as before. `$risk` set → run it, and tell the agent which
-signal fired (`path` or `content`) and on which files. That is the only clue
-it has about why it was spawned, and it uses it to decide what to read
-deeply beyond the diff hunks.
+Path signals are checked before content signals. The content grep excludes
+`+++` header lines before matching, so a signal word appearing only in a
+*filename* cannot masquerade as added content (without that `grep -v`, a
+comment tweak in `jwt-utils.ts` reports `risk=content`), and it looks only at
+added lines — a risky pattern this diff *removes* is not worth a review.
 
-Both greps are intentionally broad on the recall side and narrow on the
-precision side: a false fire costs one delegation, a miss costs the only
-security review this plugin has. If a project finds a specific rule
-consistently unhelpful it switches that rule off by code in
-`disabledRules` — the prefilter itself is not the tuning surface.
+## Reading the three outcomes
+
+- **`risk=none`** → do not spawn `deep-reviewer`; log the skip and carry on
+  with Gate 4/5 exactly as before. This is the common case.
+- **`risk=path` / `risk=content` plus filenames** → run it. Tell the agent
+  which signal fired and which files matched: that is the only clue it has
+  about why it was spawned, and it uses it to decide what to read deeply
+  beyond the diff hunks.
+- **`prefilter unavailable`** → **fail open**: spawn `deep-reviewer` on the
+  whole diff and say in the report that the prefilter could not run. A bad
+  revision range produces an empty file list, which is byte-identical to "no
+  risk found" — and quietly skipping is how the only security review in this
+  plugin disappears without anyone noticing. Never collapse this outcome
+  into `risk=none`; it is the same silent-collapse failure
+  `traceability-prefilter.md` guards against for coverage.
+
+Both regexes are deliberately broad on recall and loose on precision: a
+false fire costs one delegation, a miss costs the only security review this
+plugin has. If a project finds a specific rule consistently unhelpful it
+switches that rule off by code in `disabledRules` — the prefilter itself is
+not the tuning surface.
+
+## What the signals do and do not cover
+
+The signals are security-shaped by design. The architecture rules
+(`DR-07`…`DR-11`) therefore ride along on a security signal rather than
+having triggers of their own: a diff that touches auth or billing gets its
+boundaries and layering read as well, and a diff that only reshuffles
+components does not.
+
+That is a deliberate trade, not an oversight. Architecture-shaped path
+signals (`components/`, `hooks/`, `store/`, `services/`) match nearly every
+diff in a React codebase, which would turn a rare deep pass into a permanent
+second reviewer on every run — exactly the cost this whole design refuses.
+Gate 1 still reviews architecture on every change's `design.md`; what rides
+on the risk signal is the second read, against the code as built.
 
 ## Why it is not tied to the change's route
 

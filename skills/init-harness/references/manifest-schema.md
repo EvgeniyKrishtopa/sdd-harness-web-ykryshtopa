@@ -91,15 +91,17 @@ Merge into the file Step 2e already started (it may already contain just the
   escalating to a human. A user who wants a stricter or looser bar edits
   this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
-- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, ...) this
-  project has switched off, keyed against the permanent codes listed in
-  `agents/code-reviewer.md` and `agents/spec-reviewer.md`. Seed it as an
+- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, `"DR-03"`,
+  ...) this project has switched off, keyed against the permanent codes
+  listed in `agents/code-reviewer.md`, `agents/spec-reviewer.md`, and
+  `agents/deep-reviewer.md`. Seed it as an
   empty array; a user edits this list directly when one rule proves
   consistently unhelpful for their project — no separate prompt for it, the
   same don't-ask-unless-raised treatment as `trivialDiffThreshold` above.
   `code-review` and `spec-review` read this list and pass it to their
-  respective agent, which skips findings under any code on it while every
-  other rule in the same review keeps running.
+  respective agent — and `code-review` passes it to `deep-reviewer` as well
+  — which skips findings under any code on it while every other rule in the
+  same review keeps running.
 - `sizeRouting` — a single `enabled` toggle for the size-based routing
   `opsx-propose-review` runs before a change's artifacts exist: touching
   more than one module, changing the data schema, or changing a contract
