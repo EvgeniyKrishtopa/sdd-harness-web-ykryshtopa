@@ -71,7 +71,11 @@ below) — never applied by you.
    project (script names, coverage threshold, package manager, framework)?
    Has any skill grown its own "check for next.config/vite.config/lockfile"
    logic instead of reading that manifest — the exact class of drift this
-   manifest exists to prevent?
+   manifest exists to prevent? When the project's linter is ESLint, also
+   read `skills/init-harness/references/linter-ruleset.md` and report which
+   of its rule sets the project's config is still missing — this surfaces
+   the same recommendation `init-harness` gives once at setup, on every
+   later review too, so a rule set dropped afterward doesn't go unnoticed.
 5. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
    never by hand)?
