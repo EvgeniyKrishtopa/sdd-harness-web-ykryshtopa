@@ -27,8 +27,10 @@ free first try.
 
 ## Leave a record
 
-Every invocation of this loop writes one file, one per failure being
-debugged:
+This loop writes one record per failure it debugs — per *failure*, not per
+invocation. The `code-review` call site hands it every CONFIRMED finding of
+a run in a single invocation; each of those is its own failure and gets its
+own file.
 
 - Inside an OpenSpec change →
   `openspec/changes/<change>/_debug/<failure-slug>.md`
@@ -59,8 +61,10 @@ counted, and what was missing is content that doesn't fit in one JSON line.
    it in the record as a separate line of investigation (what made it flaky,
    whether the app degrades gracefully under that condition) and don't spend
    an attempt on it — go back to reproducing once more before deciding
-   whether a real fix is even in scope. That record stands even though no fix
-   ever follows it.
+   whether a real fix is even in scope. If that further try does reproduce
+   it, the failure was real after all: keep the same record open and start
+   `## Attempt 1` in it. If it doesn't, close the record as a flake — a flake
+   that leaves a trace at all is the whole gain here.
 2. **Isolate** — narrow the failure to the specific file or condition
    responsible. For a `web-qa`-triggered failure, rule out an environment
    condition *first* — a third-party API rate limit, flaky animation timing
@@ -164,10 +168,10 @@ down somewhere.
   second way to mark a stop; this skill runs in the same session that
   already has that context loaded. Keep `<reason>` compact enough to survive
   as `PROGRESS.md`'s single physical `Blocked:` line (e.g. `debug-loop: 2/2
-  attempts exhausted, see commit body`) and put the full per-attempt
-  hypothesis-and-result detail in that commit's own body, the same "what,
-  why, how it was validated" shape `git-conventions.md` already requires of
-  every commit. `opsx-apply-git`'s next run-boundary regeneration (§4 step 7)
+  attempts exhausted, see commit body`) and name the record's path in that
+  commit's own body, alongside the summary the "what, why, how it was
+  validated" shape `git-conventions.md` requires of every commit — the
+  per-attempt hypotheses live in the record now, not copied into the body. `opsx-apply-git`'s next run-boundary regeneration (§4 step 7)
   then carries that reason into `PROGRESS.md` as it already does for any
   other blocked task — nothing new to write there.
 - **`code-review` call site** — this one never gets a blocked-marker. By the
@@ -186,7 +190,7 @@ down somewhere.
   just the last one — that's the entire point of recording the expectation
   in phase 3: the escalation reads as "here's what we tried and why it
   didn't hold," not "it didn't work twice."
-- Name the record's path in that report, not only the retelling. The
+- Name every record's path in that report, not only the retelling. The
   retelling is fine and stays, but it dies with this conversation, and a
   human comes back to a deferred failure days later. Close the record's
   `## Outcome` with the attempts spent *before* reporting, since the reason
