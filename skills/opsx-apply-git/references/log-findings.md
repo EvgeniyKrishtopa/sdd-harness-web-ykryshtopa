@@ -39,8 +39,9 @@ minute, not a dump of the log.
 2. **Checks** — one line per each of the six review checks, six lines
    maximum: `architecture-review`, `spec-review`, `web-qa`, `code-review`,
    `test-coverage`, `harness-review`. For Gates 3-6, use this run's own
-   verdict/`skipReason` already determined in §4 steps 1-3 above — don't
-   re-read the log for those. `architecture-review`/`spec-review` ran once
+   verdict/`skipReason` already determined earlier in this run (`web-qa` in
+   §3; `code-review`/`test-coverage` in §4 step 2; `harness-review` in §4
+   step 3) — don't re-read the log for those. `architecture-review`/`spec-review` ran once
    at change scope, possibly in an earlier session, so read each one's
    latest matching line instead:
    ```bash
