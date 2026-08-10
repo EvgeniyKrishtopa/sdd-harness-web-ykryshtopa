@@ -1,7 +1,7 @@
 ---
 name: architecture-reviewer
 description: >-
-  Read-only architecture review of a design.md or a diff, for boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, and unnecessary global state. Invoked by the architecture-review skill, not usually directly. <example>Context: A design.md proposes adding a new data-fetching layer that also handles routing. user: "Review this design for architecture risk." assistant: "I'll use the architecture-reviewer agent to check boundary and coupling concerns before this gets implemented."</example>
+  Read-only architecture review of a design.md or a diff, for boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Invoked by the architecture-review skill, not usually directly. <example>Context: A design.md proposes adding a new data-fetching layer that also handles routing. user: "Review this design for architecture risk." assistant: "I'll use the architecture-reviewer agent to check boundary and coupling concerns before this gets implemented."</example>
 tools: Read, Grep, Glob, Bash
 model: claude-opus-5
 ---
@@ -67,6 +67,16 @@ decisions folder is expected, not a finding.
    in different places, likely to drift.
 6. **Unnecessary global state** — state hoisted to a global store/context
    that only one component tree actually needs.
+7. **Missing sequence diagram** — a flow that crosses a system boundary
+   (browser↔server, server↔external service) has no Mermaid
+   `sequenceDiagram` in `design.md` at all. A call between two modules on
+   the same side of a boundary never triggers this — only a boundary
+   crossing does.
+8. **Diagram missing error branches** — a flow's `sequenceDiagram` exists but
+   shows only the happy path, no branch for a failure (timeout, rejected
+   request, a downstream service returning an error). A different defect
+   than 7 — the diagram exists, it just isn't complete — so report it
+   separately rather than folding it into "no diagram."
 
 ## Output
 

@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
+description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
 ---
 
 Run **Gate 1** of this project's review pipeline: architecture review.
@@ -22,6 +22,16 @@ routing rule), then `docs/decisions/`. This is a 0-token directory check —
 `architecture-reviewer` as context, to read before its analysis; if neither
 exists, say so plainly so it skips that step, rather than making it
 discover the absence via a failed `Read`.
+
+## Sequence diagrams
+
+`design.md` is expected to carry a Mermaid `sequenceDiagram`, with a happy
+path and its error branches, for every flow that crosses a system boundary
+— browser↔server, server↔external service. A call between two modules on
+the same side of a boundary doesn't need one; that would be internal detail,
+not the thing this check exists to surface. This is a requirement on the
+artifact, not a step this skill performs itself — `architecture-reviewer`
+checks for it as part of its own checklist below.
 
 ## Route
 
