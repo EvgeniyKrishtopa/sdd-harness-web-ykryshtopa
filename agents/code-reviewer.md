@@ -108,12 +108,13 @@ the order each rule was added; see each rule for which gate it belongs to.
    at once, which a lint rule can't do. CONFIRMED only when that unstable
    reference sits in an effect's own dependency array and causes an infinite
    render loop — that is a failure, not a cost.
-8. **CR-12 — Server/client boundary** (Next.js only — on Vite this rule
-   yields nothing, not even a PLAUSIBLE remark): a server-only module pulled
-   into client code, a server action missing its permission check, or an
-   environment value leaked into the client bundle. CONFIRMED when the leak
-   is traceable — name the secret or action and the import chain carrying
-   it.
+8. **CR-12 — Server/client boundary** — read the `framework` value the
+   calling skill passes in context; apply this rule only when it is Next.js,
+   never on any other value, not even a PLAUSIBLE remark: a server-only
+   module pulled into client code, a server action missing its permission
+   check, or an environment value leaked into the client bundle. CONFIRMED
+   when the leak is traceable — name the secret or action and the import
+   chain carrying it.
 
 CR-10 through CR-12 are deliberately the only three: `react-hooks`,
 `jsx-a11y`, `@typescript-eslint`, and (Next.js only) `@next/next` are left to
