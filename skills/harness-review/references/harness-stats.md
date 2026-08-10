@@ -67,7 +67,8 @@ uses for JSON parsing.
    cheap-per-second model that needs three times the steps can still be the
    more expensive one; `durationMs` alone can't show that, this can.
 9. **`skipReason` breakdown per gate** — for every skipped run, which of the
-   four closed-list reasons it was (#U17 point 6). The point of this over
+   five closed-list reasons it was (#U17 point 6, plus `нет признаков риска`
+   on the `deep-review` line, added 0.5.0). The point of this over
    the plain `skippedPct` in item 2 above: a headline skip percentage reads
    as "the trivial-diff filter is working" even when it's entirely one
    rarely-relevant gate skipping itself for an unrelated reason and the

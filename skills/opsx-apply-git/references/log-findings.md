@@ -3,7 +3,7 @@
 Referenced from `SKILL.md` §4 step 6. Background:
 `harness-audit/v0.4.0-implemented/03-log-fields.txt` point 7.
 
-The eight `verdict`-bearing lines this pipeline already writes to
+The nine `verdict`-bearing lines this pipeline already writes to
 `.claude/harness-log.jsonl` (one per gate, plus `opsx-apply-git`'s own two
 skip forms) record what a gate *said*. None of them record whether that
 verdict held up — whether a CONFIRMED finding was actually fixed, or the
@@ -15,7 +15,7 @@ that, a noisy gate and a trustworthy one look identical in the log.
 At the point `SKILL.md` §4 step 6 already forms the run's summary — not
 earlier, at the moment each finding is raised. Track each CONFIRMED finding
 and its resolution as the run goes (across Gates 3-6: `web-qa`,
-`code-review`, `test-coverage`, `harness-review`), then write one line per
+`code-review`, `test-coverage`, `deep-review`, `harness-review`), then write one line per
 finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
 have been CONFIRMED, not for every PLAUSIBLE note.
@@ -43,10 +43,10 @@ waved off by the user).
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
-  --arg gate "<web-qa|code-review|test-coverage|harness-review>" \
+  --arg gate "<web-qa|code-review|test-coverage|deep-review|harness-review>" \
   --arg finding "<short description of what the finding was>" \
   --arg outcome "<fixed|rejected|deferred>" \
-  --arg ruleNumber "<CR-nn/SR-nn, or empty>" \
+  --arg ruleNumber "<CR-nn/SR-nn/DR-nn, or empty>" \
   '{ts:$ts,change:$change,kind:"finding",gate:$gate,finding:$finding,outcome:$outcome,ruleNumber:$ruleNumber}')" \
   >> .claude/harness-log.jsonl
 ```

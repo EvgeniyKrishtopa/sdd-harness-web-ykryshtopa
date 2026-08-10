@@ -231,12 +231,12 @@ implement unattended is reviewed as one unit too, not group-by-group.
    (cost-optimization #36): a 3-line CSS tweak or a typo fix in a `.md` file
    doesn't need a full review pass. This must stay a deterministic shell
    check — never "ask the model if this looks trivial," which would spend
-   exactly the tokens this step exists to avoid. When skipped, write both
-   log lines yourself (same shape `code-review` itself would write, both
-   `verdict:"skipped"`), since that skill never ran:
+   exactly the tokens this step exists to avoid. When skipped, write all
+   three log lines yourself (same shape `code-review` would write, all
+   `verdict:"skipped"`) — nobody else writes `deep-review`'s line either:
    ```bash
    mkdir -p .claude
-   for g in code-review test-coverage; do
+   for g in code-review test-coverage deep-review; do
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
@@ -303,9 +303,10 @@ implement unattended is reviewed as one unit too, not group-by-group.
    attempt's hypothesis to the human — don't push past it (still `rm -f
    "$diff_file"` first if it was set, per above — stopping the run doesn't
    exempt this step from its own cleanup). Clean/PLAUSIBLE in
-   both → continue. Separately from that verdict, `code-reviewer` also
-   reports its own `reviewConfidence`. On **Case A (isolated batch)**, a run
-   with no CONFIRMED finding but `reviewConfidence: low` still continues —
+   every section → continue. Separately from that verdict, `code-reviewer` —
+   and `deep-reviewer` whenever the prefilter spawned it — each report their
+   own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
+   CONFIRMED finding but `reviewConfidence: low` from *either* continues —
    this does not block — but show the human the reason before pushing (step
    4 below): a batch trusted enough to implement unattended got a clean
    verdict the reviewer itself wasn't fully confident in, and that is worth
@@ -361,7 +362,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    there's no ordering constraint forcing this ahead of a group's own
    commit any more — it simply lands as the next commit on the branch.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
-   CONFIRMED finding, print `code-reviewer`'s stated reason to the chat now
+   CONFIRMED finding, print the reviewer's stated reason to the chat now
    — this is the surfacing that step 2 deferred to here. Then push the run's
    branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).

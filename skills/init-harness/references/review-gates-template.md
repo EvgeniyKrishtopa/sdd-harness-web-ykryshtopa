@@ -22,6 +22,12 @@ by design (see below).
   `trivialDiffThreshold` changed lines (default 10) and every changed path
   matching `trivialDiffPaths` (default `*.md`, `*.css`, `*.svg`,
   `public/**`), both configured in `.claude/harness.json`.
+- **Deep review**, inside the same `code-review` step and logged under its
+  own `deep-review` name: a security and architecture-as-built pass on top
+  of Gates 4/5, spawned only when a second 0-token prefilter finds a risk
+  signal in the diff (auth, permissions, payments, migrations, config,
+  secrets, uploads). Most runs skip it, and the skip is logged too. It is
+  not a seventh gate — it pauses on a CONFIRMED finding exactly like Gate 4.
 - **Gate 6 — harness-review**, on the run's last group with pending tasks,
   before its commit — but only when a 0-token precondition check finds this
   run actually touched something it could review (`CLAUDE.md`/`AGENTS.md`,

@@ -467,7 +467,7 @@ LOGEOF
 fi
 
 # The kind:"finding" line (skills/opsx-apply-git/references/log-findings.md)
-# is deliberately a different, shorter shape than the eight verdict lines
+# is deliberately a different, shorter shape than the nine verdict lines
 # above -- see that file's own note -- so it is checked against its own
 # expected field set instead of being folded into the loop above. ruleNumber
 # (0.5.0) is the one field added to this line since it was introduced;

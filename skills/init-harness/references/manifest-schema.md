@@ -34,6 +34,7 @@ Merge into the file Step 2e already started (it may already contain just the
     "spec": "claude-sonnet-5",
     "webQa": "claude-haiku-4-5",
     "code": "claude-sonnet-5",
+    "deep": "claude-opus-5",
     "harness": "claude-haiku-4-5",
     "clarify": "claude-sonnet-5",
     "default": "claude-sonnet-5"
@@ -90,15 +91,17 @@ Merge into the file Step 2e already started (it may already contain just the
   escalating to a human. A user who wants a stricter or looser bar edits
   this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
-- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, ...) this
-  project has switched off, keyed against the permanent codes listed in
-  `agents/code-reviewer.md` and `agents/spec-reviewer.md`. Seed it as an
+- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, `"DR-03"`,
+  ...) this project has switched off, keyed against the permanent codes
+  listed in `agents/code-reviewer.md`, `agents/spec-reviewer.md`, and
+  `agents/deep-reviewer.md`. Seed it as an
   empty array; a user edits this list directly when one rule proves
   consistently unhelpful for their project — no separate prompt for it, the
   same don't-ask-unless-raised treatment as `trivialDiffThreshold` above.
   `code-review` and `spec-review` read this list and pass it to their
-  respective agent, which skips findings under any code on it while every
-  other rule in the same review keeps running.
+  respective agent — and `code-review` passes it to `deep-reviewer` as well
+  — which skips findings under any code on it while every other rule in the
+  same review keeps running.
 - `sizeRouting` — a single `enabled` toggle for the size-based routing
   `opsx-propose-review` runs before a change's artifacts exist: touching
   more than one module, changing the data schema, or changing a contract
@@ -124,8 +127,13 @@ Merge into the file Step 2e already started (it may already contain just the
   `code-review` delegation as Gate 4 (cost-optimization #33), so it runs on
   `models.code`. `clarify` is the same kind of entry for the
   `devils-advocate` agent — not a review gate itself, but read and overridden
-  the same way. Only depart from the seeded defaults if the user asks for a
-  different tier or doesn't have access to one of these models.
+  the same way. `deep` (added 0.5.0) is the entry for the `deep-reviewer`
+  agent, the security/architecture-as-built pass `code-review` spawns only
+  when its risk prefilter fires; it is seeded on a larger model than
+  `code` precisely because it runs rarely — see
+  `skills/code-review/references/deep-review.md`. Only depart from the seeded
+  defaults if the user asks for a different tier or doesn't have access to
+  one of these models.
 
 ## Two rules that hold for the whole file
 
