@@ -70,6 +70,33 @@ elsewhere — this run's own gate verdicts, the findings list above, and
 `.claude/harness-log.jsonl` field to answer a question the log doesn't
 already record.
 
+## Committing the log (point 4)
+
+`.claude/harness-log.jsonl` was a local, never-committed file before 0.6.0
+— every gate above appended to it, but nothing staged it, so it never
+outlived the machine that wrote it. `SKILL.md` §4 step 6.2 closes that gap:
+right there, after this run's Review trail section is composed and before
+`gh pr create`, stage and commit exactly that path:
+
+```bash
+git add .claude/harness-log.jsonl
+git commit -m "chore: log this run's checks"
+git push
+```
+
+This is the run's closing commit — nothing else in this run commits after
+it. It has to be its own commit rather than folded into an earlier one:
+§3's group commits are scope-checked to that group's own implementation
+files only (never the log), and Gates 4-6's writes in §4 land after every
+group is already committed — so by the time this step runs there is no
+earlier, still-open commit left to fold the log into, and this flow never
+amends an already-made commit (see `SKILL.md`'s Exceptions). The `git push` here is a small
+follow-up to the one `SKILL.md` §4 step 4 already did — that push
+happens before this commit exists, so it can't have carried it. `init-harness`
+Step 5 seeds `.gitattributes` with `.claude/harness-log.jsonl merge=union`
+(the same treatment `PROGRESS.md` already gets) so two task-group branches
+that both appended to the log merge without conflict.
+
 `spec-clarify` (0.5.0) writes this same line shape too, but on its own
 timing rather than at `opsx-apply-git`'s PR-open point — it runs before
 implementation starts, once per finding, right after the user resolves it

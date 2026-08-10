@@ -247,12 +247,12 @@ upgrade mode, since a repo set up by an earlier version never got them:
   no next steps, and a clock-in of "now"; after this point only
   `opsx-apply-git` touches it, at its own run boundaries (see
   `references/progress-template.md`).
-- Write `.gitattributes` with `PROGRESS.md merge=union` — append the line if
-  the file exists without it, leave everything else in it alone.
-  `PROGRESS.md` is the one file every task-group branch in this harness's
-  branch-per-group workflow can touch, so without this, every group's PR
-  would conflict on it. Nothing else in this harness needs `merge=union` —
-  in particular not `docs/decisions/`, whose whole design point is that two
+- Write `.gitattributes` with `PROGRESS.md merge=union` and
+  `.claude/harness-log.jsonl merge=union` — append whichever line is
+  missing, leave everything else alone. Both are append-only files every
+  task-group branch can touch, so without this every group's PR would
+  conflict on either one. Nothing else here needs `merge=union` — in
+  particular not `docs/decisions/`, whose whole design point is that two
   branches produce two different files instead of contending for one (see
   `references/decision-template.md`).
 - Check whether the project already has a `docs/adr/` directory. If it does,
