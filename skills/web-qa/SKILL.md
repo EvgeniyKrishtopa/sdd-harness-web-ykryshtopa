@@ -119,9 +119,9 @@ incident this closes.
    `agents/web-qa-manual-tester.md` requires for each touched surface. An
    unaddressed state reads the same as an unexercised flow: incomplete, not a
    pass by default. **States, per surface:** check `design.md` for a Mermaid
-   `sequenceDiagram` covering that flow; found → take the states from its
-   error branches plus its happy path, not the generic default. None found →
-   use the subagent's default matrix instead.
+   `sequenceDiagram` covering that flow; found → pass the subagent that
+   flow's actual states (error branches plus happy path), overriding its
+   own default for that surface. None found → use its default matrix.
 2. The subagent relays a per-flow PASS/FAIL report, plus the per-surface UI
    States Matrix — loading/error/empty/offline each PASS/FAIL or explicitly
    not applicable with a reason, never silently omitted; syncing/conflict

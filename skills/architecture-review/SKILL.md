@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
+description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
 ---
 
 Run **Gate 1** of this project's review pipeline: architecture review.
