@@ -125,70 +125,32 @@ commit counts as a new one — is deliberately not used here: this harness's
 whole argument is that state should be explicit and reviewable, and "which
 version am I running" is exactly that kind of state.
 
-## Upgrading from 0.2.0
+## Keeping a configured repository in step with the plugin
 
 **`/plugin update` only refreshes the plugin itself** — its skills, agents,
-and hooks. It writes nothing into your repository. A repo that `init-harness`
-already configured under 0.2.0 keeps its 0.2.0-shaped files until you run
-`/init-harness` again there; this is the one breaking change in 0.3.0, and
-it applies to every repository already using this harness.
+and hooks. It writes nothing into your repository. Every release that adds a
+file or a manifest key therefore needs a second step in each repo that uses
+the harness, and the step is always the same one:
 
-Run `/init-harness` after updating. It reads `.claude/harness.json`'s
-`harnessVersion` and compares it against the installed plugin's own
-`version`: absent or lower means an already-configured repo, so it switches
-to **upgrade mode** instead of re-running the full first-time questionnaire.
-Upgrade mode only fills in what's actually missing — new files, new manifest
-keys, new lines appended to existing config — and never overwrites a file
-you've customized without showing you the diff and asking first. Files new
-in 0.3.0 that a 0.2.0 repo doesn't have yet: `PROGRESS.md`, `docs/decisions/`
-(created on demand, the first time a decision outlives its change),
-`.claude/docs/laziness-ladder.md`, `openspec/config.yaml`'s `context`/`rules`
-keys, `.gitattributes`, and `.claude/harness.json`'s `harnessVersion`,
-`maxFixAttempts`, and `toolchainVerifiedAt` keys — plus a blocking
-dependency-vulnerability audit appended to `.husky/pre-push`. Running
-`/init-harness` again on a repo already at the current version says so
-plainly and changes nothing.
+```
+/init-harness
+```
 
-## Upgrading from 0.3.0
+It reads `.claude/harness.json`'s `harnessVersion` and compares it against
+the installed plugin's own `version`. Absent or lower means an
+already-configured repo, so it switches to **upgrade mode** instead of
+re-running the first-time questionnaire: it fills in only what's actually
+missing — new files, new manifest keys, new rules appended to an existing
+`openspec/config.yaml` list — and never overwrites a file you may have
+customized without showing you the diff and asking first. On a repo already
+at the current version it says so plainly and changes nothing.
 
-The same `/init-harness` upgrade-mode mechanism described above applies —
-0.4.0 makes no breaking change, so this is routine, not a special step.
-Keys new in 0.4.0 that a 0.3.0 repo doesn't have yet: `.claude/harness.json`'s
-`webQaScenariosDir`, where `web-qa` records and replays saved Playwright
-scenarios. The other addition, the `dead-code-report` skill, needs nothing
-written into your project besides itself — its own state lives in a
-`knip.json` it creates on first run, not in `harness.json`.
-
-## Upgrading from 0.4.1
-
-**Every repository already configured by this harness must run
-`/init-harness` again after updating to 0.5.0.** Same upgrade-mode mechanism
-as above, but unlike 0.4.0 this one is breaking, on the same grounds 0.3.0
-was: several of 0.5.0's checks read files and keys that only upgrade mode
-writes, and until it runs they mark themselves *not applicable* rather than
-failing loudly. Breaking changes land in the minor position before 1.0.0,
-which is why this is 0.5.0 and not 0.4.2.
-
-What a 0.4.1 repo doesn't have yet:
-
-- **`CONTEXT.md`** at the repo root — the project glossary, created empty
-  (heading only) and filled in as terms actually come up. Without it,
-  `spec-reviewer`'s glossary check (`SR-05`) and two of `spec-review`'s five
-  readiness conditions report *not applicable* on every run.
-- **`openspec/config.yaml`'s Given/When/Then rule** for acceptance criteria,
-  appended to the `rules.proposal` list your repo already has. Without it,
-  OpenSpec keeps drafting free-form criteria and the form check has nothing
-  to check.
-- **Four `.claude/harness.json` keys** — `disabledRules` (rule codes you've
-  switched off), `sizeRouting` (the short/full route assessment),
-  `models.clarify` and `models.deep` (the two new agents' model overrides).
-- **A pointer to `CONTEXT.md`** appended to your `CLAUDE.md`/`AGENTS.md`
-  block, without which the glossary never reaches a session's context.
-
-Nothing else needs writing. The per-change files 0.5.0 adds —
-`openspec/changes/<change>/.route`, `test-plan.md`, and the `_debug/`
-records — are created on demand by the skills that own them, on the next
-change you propose.
+The list of what upgrade mode owns lives in one place,
+`skills/init-harness/references/upgrade-mode.md`, and every release that
+teaches the scaffolder to write something new adds its row there in the same
+commit. That inventory is also what Gate 6 (`harness-review`) checks your
+repo against, so a repo that fell behind surfaces as a finding rather than
+as a check quietly reporting "not applicable" forever.
 
 ## First run
 
@@ -342,8 +304,8 @@ carries a permanent code (`CR-01`, `SR-02`, `DR-03`) that never changes even
 when the rule's wording does. A finding names its code, so you can dispute
 one rule rather than a whole gate, and `.claude/harness.json`'s
 `disabledRules` array switches a single rule off while every other rule in
-the same review keeps running — previously the only choice was to tolerate a
-gate or disable it entirely.
+the same review keeps running. Without the codes the choice would be binary
+— tolerate a whole gate, or disable a whole gate.
 
 ## Command names
 
@@ -397,11 +359,11 @@ gate or disable it entirely.
   server for it via `/mcp` (or remove/comment the entry from `.mcp.json` in
   a project fork) rather than leaving it attached by default.
 
-This plugin previously also shipped a `sequential-thinking` MCP server for
-`architecture-review` and `spec-review`'s non-trivial-change reasoning.
-Removed: modern Claude models have native extended thinking that covers the
-same step-by-step reasoning in one pass, without the added round-trip cost
-of an external sequential-thinking tool call per "thought"
+Playwright is the only MCP server here on purpose. `architecture-review` and
+`spec-review` both run a deliberate step-by-step pass on a full-route change,
+and neither reaches for a `sequential-thinking` server to do it: modern
+Claude models have native extended thinking that covers the same reasoning in
+one pass, without an external tool round-trip per "thought"
 (cost-optimization #39).
 
 ## Design principle
