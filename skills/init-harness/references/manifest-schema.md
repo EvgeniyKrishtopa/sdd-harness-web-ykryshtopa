@@ -27,12 +27,16 @@ Merge into the file Step 2e already started (it may already contain just the
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "maxFixAttempts": 2,
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
+  "disabledRules": [],
+  "sizeRouting": { "enabled": true },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
     "webQa": "claude-haiku-4-5",
     "code": "claude-sonnet-5",
+    "deep": "claude-opus-5",
     "harness": "claude-haiku-4-5",
+    "clarify": "claude-sonnet-5",
     "default": "claude-sonnet-5"
   }
 }
@@ -87,17 +91,49 @@ Merge into the file Step 2e already started (it may already contain just the
   escalating to a human. A user who wants a stricter or looser bar edits
   this manifest directly.
 - `openspec` — already written by Step 2e; carry it over unchanged.
-- `models` — one entry per review-gate agent plus a `default` fallback. Seed
-  it with the values shown above, not with whatever each `agents/*.md`
-  currently declares in its own frontmatter — every gate skill
-  (`architecture-review`, `spec-review`, `code-review`, `harness-review`,
-  `web-qa`) reads its own key from this manifest and passes it as the
-  `Agent` tool's `model` override, so this is the actual place a user
-  changes which model a gate runs on, not the agent files themselves. There
-  is no separate `testCoverage` key: Gate 5 (test-coverage) is folded into
-  the same `code-review` delegation as Gate 4 (cost-optimization #33), so it
-  runs on `models.code`. Only depart from the seeded defaults if the user
-  asks for a different tier or doesn't have access to one of these models.
+- `disabledRules` — an array of rule codes (`"CR-07"`, `"SR-02"`, `"DR-03"`,
+  ...) this project has switched off, keyed against the permanent codes
+  listed in `agents/code-reviewer.md`, `agents/spec-reviewer.md`, and
+  `agents/deep-reviewer.md`. Seed it as an
+  empty array; a user edits this list directly when one rule proves
+  consistently unhelpful for their project — no separate prompt for it, the
+  same don't-ask-unless-raised treatment as `trivialDiffThreshold` above.
+  `code-review` and `spec-review` read this list and pass it to their
+  respective agent — and `code-review` passes it to `deep-reviewer` as well
+  — which skips findings under any code on it while every other rule in the
+  same review keeps running.
+- `sizeRouting` — a single `enabled` toggle for the size-based routing
+  `opsx-propose-review` runs before a change's artifacts exist: touching
+  more than one module, changing the data schema, or changing a contract
+  (an API endpoint, an exported signature, a shared type) sends the change
+  down the **full** route (every step this version added runs); none of the
+  three sends it down the **short** route (`spec-clarify`'s ambiguity sweep
+  is skipped, and `spec-review`/`architecture-review` skip their extra
+  deliberation pass — never the checklist itself, and never `code-review` or
+  test-coverage). Seed as `{"enabled": true}`; a user sets it `false` to
+  always take the full route, the same don't-ask-unless-raised treatment as
+  `trivialDiffThreshold`. The route itself is recorded per change, in
+  `openspec/changes/<change>/.route` — not here; this key only turns the
+  assessment on or off.
+- `models` — one entry per model-backed subagent this plugin delegates to,
+  plus a `default` fallback. Seed it with the values shown above, not with
+  whatever each `agents/*.md` currently declares in its own frontmatter —
+  every skill that delegates to one of these agents (`architecture-review`,
+  `spec-review`, `code-review`, `harness-review`, `web-qa`, `spec-clarify`)
+  reads its own key from this manifest and passes it as the `Agent` tool's
+  `model` override, so this is the actual place a user changes which model a
+  delegation runs on, not the agent files themselves. There is no separate
+  `testCoverage` key: Gate 5 (test-coverage) is folded into the same
+  `code-review` delegation as Gate 4 (cost-optimization #33), so it runs on
+  `models.code`. `clarify` is the same kind of entry for the
+  `devils-advocate` agent — not a review gate itself, but read and overridden
+  the same way. `deep` (added 0.5.0) is the entry for the `deep-reviewer`
+  agent, the security/architecture-as-built pass `code-review` spawns only
+  when its risk prefilter fires; it is seeded on a larger model than
+  `code` precisely because it runs rarely — see
+  `skills/code-review/references/deep-review.md`. Only depart from the seeded
+  defaults if the user asks for a different tier or doesn't have access to
+  one of these models.
 
 ## Two rules that hold for the whole file
 

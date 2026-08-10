@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Reviews a run's diff for correctness bugs, reuse/simplification/efficiency cleanups, AND test-coverage gaps against this project's standards and threshold, in one delegation (Gate 4 + Gate 5 merged). Use --fix to apply findings. Run once per run — the whole isolated batch's cumulative diff (after every group in it is already committed), or the single judgement-heavy group's diff — before pushing.
+description: Reviews a run's diff for correctness bugs, reuse/simplification/efficiency cleanups, AND test-coverage gaps against this project's standards and threshold, in one delegation (Gate 4 + Gate 5 merged), plus a security/architecture deep review on diffs a 0-token risk prefilter flags. Use --fix to apply findings. Run once per run — the whole isolated batch's cumulative diff (after every group in it is already committed), or the single judgement-heavy group's diff — before pushing.
 ---
 
 Run **Gate 4 and Gate 5** of this project's review pipeline in one
@@ -22,54 +22,45 @@ trivial-diff pre-filter (cost-optimization #36) before this skill ever runs.
 Skip this section entirely, without running it, when step 2 below (Gate 5
 applicability) will already rule the diff docs/config-only — there is
 nothing to check against and the grep would just discard its own result.
-Otherwise, before spawning `code-reviewer`, compute Gate 5 criterion 1's
-answer by `grep` instead of handing the agent a spec to read cold — the same
-cost-optimization logic as the trivial-diff and Gate-6 prefilters in
-`opsx-apply-git`:
 
-```bash
-change="<change-slug>"
-proposal="openspec/changes/$change/proposal.md"
-ids_file=$(mktemp)
-grep -ohE '\b(FR|NFR)-[0-9]+\b' "$proposal" 2>/dev/null | sort -u > "$ids_file"
-if [ ! -s "$ids_file" ]; then
-  echo "traceability unavailable: no FR-/NFR- identifiers in $proposal"
-else
-  uncovered=""
-  while IFS= read -r id; do
-    grep -rlE "implements $id of $change([^A-Za-z0-9-]|\$)" \
-      --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=openspec \
-      . >/dev/null 2>&1 || uncovered="$uncovered $id"
-  done < "$ids_file"
-  rm -f "$ids_file"
-  if [ -z "$uncovered" ]; then
-    echo "all requirement IDs covered"
-  else
-    echo "uncovered requirement IDs:$uncovered"
-  fi
-fi
-```
+Otherwise run the grep in
+`skills/code-review/references/traceability-prefilter.md` and pass its
+output to `code-reviewer` as context alongside the diff, so the agent reads
+a ready answer instead of deciding coverage from a spec it loaded cold. That
+file also explains why its two shell details are load-bearing and why its
+three possible outputs — a named list of uncovered identifiers, "all
+requirement IDs covered", and "traceability unavailable" — must never be
+collapsed into each other.
 
-The `([^A-Za-z0-9-]|$)` tail is load-bearing, not decoration: a plain
-`grep -F "implements $id of $change"` matches as a substring, so change
-`add-auth`'s `FR-1` would read as covered by a marker actually written for
-change `add-auth-v2` — two different changes, the second only sharing the
-first's slug as a prefix. Anchoring on what follows `$change` (end of line,
-or any character that can't extend a kebab-case slug) rules that out; kebab
-case has no ERE metacharacters, so `$change` and `$id` are safe to embed
-literally.
+## Risk prefilter for the deep review (0 tokens, before delegating)
 
-The `while ... done < "$ids_file"` form (not a pipe into `while`) is deliberate, matching this project's own `.claudeignore` hook: piping into `while read` runs the loop in a subshell in some shells, silently discarding `uncovered` once the loop exits, and a plain `for id in $ids` relies on word-splitting that zsh does not perform on an unquoted expansion by default — either mistake here reports every change as fully covered regardless of what's actually missing.
+`code-reviewer` has no security rules at all. On a diff that carries real
+risk, a second reviewer — `deep-reviewer` — runs on top of it, but only when
+a deterministic shell check says the diff is worth the extra delegation.
 
-Pass this output to `code-reviewer` as context alongside the diff, so it
-reads a ready answer instead of independently deciding whether the spec is
-covered. The three possible outputs are not equivalent and must stay
-distinguishable all the way into the agent's report: **a named list of
-uncovered identifiers**, **"all requirement IDs covered"**, and
-**"traceability unavailable"** (this change's `proposal.md` carries no
-identifiers at all). Collapsing the third into the second is the exact
-silent failure this check exists to avoid — a change with zero identifiers
-would otherwise grep zero, subtract zero, and report full coverage.
+Run the prefilter in `skills/code-review/references/deep-review.md` and keep
+its `$risk` result. Empty → do not spawn `deep-reviewer`, log the skip (see
+below), carry on with Gate 4/5 exactly as before. Set (`path` or `content`)
+→ run it, per step 5 of Action.
+
+Two things that file settles, and that are easy to get wrong here: the
+prefilter is **not** tied to the change's `.route` (the short route skips
+documents, never a check on the result), and the deep pass is a **separate
+agent** rather than more rules inside `code-reviewer` — because rules added
+there would run on every button-label edit too.
+
+## Test plan (0 tokens, before delegating)
+
+Also locate this change's test plan, if it has one, before spawning
+`code-reviewer` — a plain file read, no delegation. Read
+`openspec/changes/<change>/.route` (missing file → `full`, the same
+fallback as above) to know where to look: `full` route →
+`openspec/changes/<change>/test-plan.md`; `short` route → the `## Test
+Plan` section of `proposal.md`. Pass whatever is found to `code-reviewer`
+as further context for Gate 5, alongside the diff. Nothing found (an older
+change, or one the `test-plan` skill never ran for) → tell `code-reviewer`
+explicitly there is no test plan for this change, so it falls back to its
+own requirement-ID-only path instead of silently assuming full coverage.
 
 ## Action
 
@@ -109,20 +100,36 @@ would otherwise grep zero, subtract zero, and report full coverage.
    the `code-reviewer` subagent (`Agent` tool) with that diff — text or
    file-handoff, per step 1 — the Gate-5-applicability note, the final-run
    status, the requirement-ID
-   coverage result computed above, the detected `testRunner` and
+   coverage result computed above, the test-plan lookup result, the
+   detected `testRunner` and
    `coverageThreshold`, and any acceptance criteria as context — overriding
    the agent's own frontmatter default for this run. If the manifest or the
    key is missing, fall back to the agent's own default; never block the
-   gate on a missing override.
-5. If invoked as `/code-review --fix`, apply the findings the subagent
+   gate on a missing override. Also read the manifest's `disabledRules`
+   array and pass it along as context — an empty array or missing key means
+   nothing is disabled; never invent a value.
+5. If the risk prefilter above set `$risk`, delegate to the `deep-reviewer`
+   subagent (`Agent` tool) with the same diff — text or file handoff, per
+   step 1 — the same `disabledRules` list, and the manifest's `models.deep`
+   key as the `model` parameter (missing manifest or key → the agent's own
+   frontmatter default; never block on it). Tell it which signal fired,
+   `path` or `content`, and on which files: it decides what to read deeply,
+   and the signal is the only clue it has about why it was spawned. This is
+   a second delegation, deliberately — the two reviewers have different rule
+   sets, different verification bars, and (usually) different models. It is
+   also the only step in this skill that does not always run.
+6. If invoked as `/code-review --fix`, apply the findings the subagent
    suggests once the user confirms which ones.
 
 ## Handling the result
 
-The subagent returns two labeled sections, Gate 4 and Gate 5 (or Gate 5
-marked not applicable).
+The `code-reviewer` subagent returns two labeled sections, Gate 4 and Gate 5
+(or Gate 5 marked not applicable). `deep-reviewer`, when it ran, returns one
+more. Its findings are handled by exactly the same rules below — a CONFIRMED
+`DR-` finding blocks the push the same way a CONFIRMED `CR-` finding does,
+and is fixed through the same single `debug-loop` invocation.
 
-- **CONFIRMED finding in either section** — show it to the user and ask
+- **CONFIRMED finding in any section** — show it to the user and ask
   whether to fix now or continue anyway. "Fix now" runs through the
   `debug-loop` skill (reproduce the finding, isolate, diagnose with a
   recorded expected effect, fix and reverify), bounded by
@@ -136,12 +143,12 @@ marked not applicable).
   blocked-marker (every group in the run is already committed by this
   point, so there's no open task line to mark) — and stop the run instead of
   pushing.
-- **Clean, or PLAUSIBLE-only in both sections** — proceed to Gate 6's own
+- **Clean, or PLAUSIBLE-only in every section** — proceed to Gate 6's own
   precondition (`opsx-apply-git` §4 step 3).
 
 ## Log this gate's run
 
-After delivering the verdict above, append **two** lines to
+After delivering the verdict above, append **three** lines to
 `.claude/harness-log.jsonl` in the target repo (create the file if it
 doesn't exist yet) — one per gate, since downstream cost analysis (#43)
 tracks them separately even though this session merged them into a single
@@ -179,7 +186,33 @@ printf '%s\n' "$(jq -nc \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
+printf '%s\n' "$(jq -nc \
+  --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --arg change "<change-slug>" \
+  --arg group "<same group-number-or-range>" \
+  --arg gate "deep-review" \
+  --arg verdict "<clean|plausible|confirmed|skipped>" \
+  --arg skipReason "<нет признаков риска, when verdict is skipped; empty otherwise>" \
+  --argjson durationMs <elapsed-ms for the deep-reviewer delegation, 0 if skipped> \
+  --argjson tokensTotal <subagent_tokens from deep-reviewer's own <usage> block, 0 if skipped> \
+  --arg model "<model deep-reviewer ran on, or empty if skipped>" \
+  --arg reviewConfidence "<high|low, from deep-reviewer's Output, or empty if skipped>" \
+  --argjson fixIterations 0 \
+  --argjson escalatedToHuman false \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  >> .claude/harness-log.jsonl
 ```
+
+The `deep-review` line is written on **every** run, including the far more
+common one where the risk prefilter found nothing — a gate that logs only
+when it fires is indistinguishable from one that silently stopped running.
+`нет признаков риска` is its one closed-list skip reason.
+`fixIterations`/`escalatedToHuman` are always `0`/`false` on it, for the same
+reason the `test-coverage` line carries zeros: a CONFIRMED `DR-` finding is
+fixed through the same single `debug-loop` invocation already counted on the
+`code-review` line. Unlike the other two lines, this one carries its own
+`durationMs` and `tokensTotal` — `deep-reviewer` is a separate delegation
+with its own `<usage>` block, not a second section of the first one.
 
 Fill in the change slug and group number or range this run reviewed, each gate's own
 verdict (`skipped` for `test-coverage` when its section didn't apply), and

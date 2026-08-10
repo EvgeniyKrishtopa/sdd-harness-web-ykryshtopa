@@ -235,12 +235,12 @@ rather than merge targets. If a file already exists, read it first:
   or hand-edits the user made to the doc directly — tell the user
   specifically what's different and ask before overwriting. Never replace a
   file the user may have customized without them seeing what would change.
-- Only write straight over the file with no confirmation when it doesn't
-  exist yet.
+- Only write straight over the file with no confirmation when it doesn't exist yet.
 
 Also seed this repo's continuity files — new in both first-install and
 upgrade mode, since a repo set up by an earlier version never got them:
 
+- Write `CONTEXT.md` from `references/context-template.md` if absent — create-if-missing only, never diffed or touched on a re-run; starts empty, fills in as terms come up.
 - Write an initial `PROGRESS.md` at the repo root from
   `references/progress-template.md` if one doesn't already exist — same
   never-overwrite rule as above. A fresh file starts with no current change,

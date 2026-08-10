@@ -18,15 +18,29 @@ either sitting empty or collecting everything:
   architectural stance the *next* change will also need to know about —
   belongs here, in `docs/decisions/`.
 
-`opsx-apply-git` applies this rule at the point decisions actually surface:
-a judgement-heavy group (§3 Case B), where a human is already in the loop for
-exactly this kind of call.
+`opsx-apply-git` applies this rule at both points a decision actually
+surfaces — an autonomous isolated group (§3 Case A) and a judgement-heavy
+group (§3 Case B) alike, filtered first through
+`skills/opsx-apply-git/references/decision-threshold.md`'s bar. Which branch
+the work happened to fall into decides the record's *state* (see States
+below), never whether it gets written at all.
 
 ## If the project already has `docs/adr/`
 
 Use that instead. Check for it before creating `docs/decisions/` for the
 first time; if it exists, say so and write the decision there instead of
 starting a second, competing ADR location in the same repo.
+
+## States
+
+Two states before a decision is superseded: **Proposed** and **Accepted**.
+`opsx-apply-git`'s autonomous series (Case A) writes `Proposed` — nobody
+has confirmed the decision yet, and there was no human in the loop to ask.
+Everything else that writes a decision (Case B, where a human is already
+discussing it live; `record-decision`, invoked directly by a human) writes
+`Accepted` immediately — the confirmation already happened in the act of
+recording it. See `skills/opsx-apply-git/references/decision-threshold.md`
+for the bar that decides whether a decision gets recorded at all.
 
 ## Editing rule
 
@@ -36,6 +50,11 @@ file with `Supersedes: NNNN` pointing at the old one; the old file's
 branches recording two different decisions never conflict: each writes its
 own new file, never edits an existing one.
 
+The one exception: promoting a **Proposed** record to **Accepted** once a
+human has reviewed it. That's the human review this state exists for, not
+the edit this rule forbids — nothing else about the record changes when it
+happens.
+
 ## Template
 
 ```markdown
@@ -44,6 +63,8 @@ own new file, never edits an existing one.
 ## Status
 
 Accepted (YYYY-MM-DD)
+<!-- or: Proposed (YYYY-MM-DD) -- written by an autonomous series, not yet
+     confirmed; promote by changing this line to Accepted (YYYY-MM-DD) -->
 <!-- or: Superseded by NNNN -->
 <!-- if this decision replaces an earlier one: Supersedes: NNNN -->
 

@@ -52,16 +52,55 @@ it ready to implement.
 1. If `openspec/` doesn't exist yet in this repo, stop and tell the user to
    run `init-harness` first — this skill assumes OpenSpec is already
    initialized.
-2. Run the vendored `openspec` proposal flow (`npx openspec` CLI, or the
+2. **Size assessment (deterministic, before any artifact exists).** Read the
+   change as the user just described it and answer three purely observable
+   questions — no judgement about how hard it sounds:
+   - Does it touch more than one module?
+   - Does it change the data schema — a table, column, migration, or any
+     persisted shape?
+   - Does it change a contract other code depends on — an API endpoint, an
+     exported function signature, a shared type, a GraphQL/OpenAPI schema?
+     (User-facing copy that nothing else calls is not a contract change — a
+     button's label is not "the interface.")
+
+   Any **yes** → **full route**: every step below runs as written. All three
+   **no** → **short route**: step 5 (`spec-clarify`) is skipped.
+
+   If `.claude/harness.json`'s `sizeRouting.enabled` is `false`, or the key
+   is absent, skip this assessment and treat the change as full route — a
+   project that hasn't opted in never gets guessed into the cheaper path.
+3. Run the vendored `openspec` proposal flow (`npx openspec` CLI, or the
    vendored `openspec-propose-change` skill if this project has one) to
    generate the full artifact set: proposal, `design.md`, specs, `tasks.md`.
-3. Once `design.md` exists, invoke the **`architecture-review`** skill
-   (Gate 1) against it.
-4. Once every artifact is `status: "done"`, invoke the **`spec-review`**
-   skill (Gate 2) against the whole change — this also classifies every
-   `tasks.md` group as isolated/judgement-heavy.
-5. If either gate raises a CONFIRMED finding, pause and let the user decide
+   As soon as the change's folder exists, write step 2's verdict as the
+   first line of `openspec/changes/<change>/.route` (`short` or `full`),
+   followed by a `# ` comment recording the three answers for audit. A user
+   can override a misjudged route later by editing that first line directly
+   — this assessment is a starting point, not a verdict.
+4. Once `design.md` exists, invoke the **`architecture-review`** skill
+   (Gate 1) against it — it reads `.route` itself to decide how deep to go.
+5. **Short route only skips this step.** Once every artifact is `status:
+   "done"`, invoke the **`spec-clarify`** skill against the whole change —
+   it sweeps for ambiguous wording and resolves every finding with the user
+   (edit on the spot, or defer to `proposal.md`'s Open Questions with an
+   owner and due date) before the change reaches the next step. A change
+   with nothing ambiguous passes this silently.
+6. Invoke the **`spec-review`** skill (Gate 2) against the whole change —
+   this also classifies every `tasks.md` group as isolated/judgement-heavy;
+   it too reads `.route` itself for depth.
+7. If either gate raises a CONFIRMED finding, pause and let the user decide
    whether to revise before declaring the change ready.
-6. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
-   summary, task-group classification table, and that `opsx-apply-git` is
-   the next skill to run.
+8. Once the change is ready, invoke the **`test-plan`** skill against it —
+   one row per acceptance criterion, naming the test(s) that will close it
+   and the level. This runs on **both** routes: the route decides only where
+   the table lands (`test-plan.md` on full, a `## Test Plan` section of
+   `proposal.md` on short), never whether a plan exists. It must run here,
+   not on demand: `code-review`'s Gate 5 checks written tests against this
+   table, and a plan written after the tests exist is a transcript, not a
+   plan. Skip it only if the change already carries one — re-running
+   `test-plan` for a revised change is `opsx-update-review`'s job, not this
+   skill's.
+9. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
+   summary, the route this change took (`short`/`full`), task-group
+   classification table, where the test plan was written, and that
+   `opsx-apply-git` is the next skill to run.

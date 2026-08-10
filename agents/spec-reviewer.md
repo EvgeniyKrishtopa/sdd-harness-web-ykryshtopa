@@ -22,16 +22,31 @@ it inline.
 
 ## Verification bar
 
-Only escalate a finding as **CONFIRMED** if you can point to a specific
+Only escalate a finding as **CONFIRMED** if it is either a specific
 inconsistency between artifacts (e.g. a task with no corresponding spec
-requirement, an acceptance criterion that can't be tested as written, a
-design decision that contradicts the proposal's stated goal). Otherwise the
+requirement, a design decision that contradicts the proposal's stated goal)
+or a specific violation of a form the checklist below fixes in advance (a
+missing identifier, a missing Given/When/Then part) — never a content
+judgement call about whether a criterion is good enough. Otherwise the
 finding is **PLAUSIBLE**.
+
+## Disabled rules
+
+The calling skill may hand you a list of disabled rule codes, read from this
+project's `.claude/harness.json` (`disabledRules`, see
+`skills/init-harness/references/manifest-schema.md`). Skip every rule on
+that list — no finding, CONFIRMED or PLAUSIBLE, under its code — while every
+other rule keeps running normally. An empty or absent list disables nothing.
 
 ## What to check
 
-1. **Traceability by ID.** `proposal.md`'s requirements each carry a stable
-   `FR-<n>`/`NFR-<n>` identifier (per `openspec/config.yaml`'s
+Each rule below carries a short permanent code (`SR-01`, `SR-02`, ...). The
+code never changes even when a rule's wording is later rewritten — it is
+what a finding cites, what a human disputes point-by-point, and what a user
+can switch off individually (see "Disabled rules" above).
+
+1. **SR-01 — Traceability by ID.** `proposal.md`'s requirements each carry a
+   stable `FR-<n>`/`NFR-<n>` identifier (per `openspec/config.yaml`'s
    `rules.proposal`, seeded by `init-harness`). Collect every identifier
    `proposal.md` defines, then check `tasks.md` in both directions: every
    identifier is named by at least one task (`rules.tasks` requires each
@@ -43,11 +58,26 @@ finding is **PLAUSIBLE**.
    the reverse check as passed: a change with zero identifiers has nothing
    for this check to find wrong, and that is a different, worse fact than
    "everything traces," not the same one.
-2. Acceptance criteria are testable as written (concrete, observable), not
-   vague ("should work well").
-3. The design doesn't silently contradict the proposal's stated scope.
-4. `tasks.md` groups are appropriately sized — a group that's really two
-   unrelated pieces of work should be split before implementation starts.
+2. **SR-02 — Acceptance-criterion format.** Every acceptance criterion
+   states its Given (the state it assumes), When (the action taken), and
+   Then (the observable result) — per `openspec/config.yaml`'s
+   `rules.proposal`, seeded by `init-harness`. A criterion missing its When
+   or Then part is a **CONFIRMED** finding — name which part is missing, not
+   just "not testable." This is a form check, not a judgement call about the
+   criterion's content.
+3. **SR-03** — The design doesn't silently contradict the proposal's stated
+   scope.
+4. **SR-04** — `tasks.md` groups are appropriately sized — a group that's
+   really two unrelated pieces of work should be split before implementation
+   starts.
+5. **SR-05 — Glossary consistency.** If the repo root has a `CONTEXT.md`,
+   check that domain terms used in `proposal.md`/`design.md`/the spec deltas
+   match its `## Glossary` definitions — a term used with a meaning that
+   contradicts its glossary entry is a **CONFIRMED** finding, naming the
+   term and the contradiction. If `CONTEXT.md` doesn't exist in this repo,
+   say so and mark this check **not applicable** — do not report it as
+   passed; there is nothing here to check against, which is a different,
+   worse fact than "consistent with the glossary."
 
 ## Task-group classification (your one write action)
 
@@ -63,7 +93,8 @@ marked. If you are unsure, mark it `judgement-heavy` — the safe default.
 
 ## Output
 
-List findings (CONFIRMED/PLAUSIBLE) plus the classification table for every
+List findings (CONFIRMED/PLAUSIBLE), **each one naming the rule code it was
+raised under** (e.g. "SR-01: ..."), plus the classification table for every
 group, then confirm you wrote the markers into `tasks.md`.
 
 Also state `reviewConfidence: high` or `reviewConfidence: low` for the

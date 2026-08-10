@@ -1,6 +1,6 @@
 ---
 name: architecture-review
-description: Reviews an OpenSpec design.md, or a diff, for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state. Use right after a design.md is drafted, before committing any change touching 2+ layers, or for any high-risk change.
+description: Reviews an OpenSpec design.md for architecture risks — boundary violations, mixed concerns, god components/services, circular dependencies, duplicated domain logic, unnecessary global state, and missing or incomplete sequence diagrams for boundary-crossing flows. Use right after a design.md is drafted, before any change touching 2+ layers is implemented. Architecture in already-written code is reviewed by deep-reviewer from the code-review skill, not here.
 ---
 
 Run **Gate 1** of this project's review pipeline: architecture review.
@@ -13,6 +13,34 @@ Before delegating, read `.claude/harness.json`'s `models.architecture` key
 default for this run. If the manifest or the key is missing, fall back to
 the agent's own default — a missing override never blocks the gate.
 
+## Decisions
+
+Before delegating, check for a decisions folder: `docs/adr/` first (an
+existing project convention takes precedence, per `decision-template.md`'s
+routing rule), then `docs/decisions/`. This is a 0-token directory check —
+`test -d`, not a delegation. Pass whichever path exists to
+`architecture-reviewer` as context, to read before its analysis; if neither
+exists, say so plainly so it skips that step, rather than making it
+discover the absence via a failed `Read`.
+
+## Sequence diagrams
+
+`design.md` is expected to carry a Mermaid `sequenceDiagram`, with a happy
+path and its error branches, for every flow that crosses a system boundary
+— browser↔server, server↔external service. A call between two modules on
+the same side of a boundary doesn't need one; that would be internal detail,
+not the thing this check exists to surface. This is a requirement on the
+artifact, not a step this skill performs itself — `architecture-reviewer`
+checks for it as part of its own checklist below.
+
+## Route
+
+Also read the target change's route: the first line of
+`openspec/changes/<change>/.route` (written by `opsx-propose-review`'s size
+assessment), `short` or `full`. If the file is missing — an older change, or
+a repo that hasn't upgraded to this version — treat it as `full`; never
+assume a change opted into the cheaper route it never asked for.
+
 ## When invoked against a design artifact (no diff yet)
 
 1. Read the OpenSpec change's `design.md` (or equivalent proposal doc).
@@ -20,25 +48,31 @@ the agent's own default — a missing override never blocks the gate.
    the note above), pointing it at the design artifact's path — it reviews
    the *proposed* architecture, not a diff, because none exists yet at this
    point in the workflow.
-3. If the design is non-trivial (multiple layers, a new cross-cutting
-   concern, a data-flow change), think through the boundary/coupling
-   implications step by step before handing a verdict to the user, rather
-   than pattern-matching a snap judgment — native extended thinking covers
-   this in one pass; the `sequential-thinking` MCP server this project used
-   to require for it is redundant with that and has been removed
-   (cost-optimization #39).
+3. On a **full** route, think through the boundary/coupling implications
+   step by step before handing a verdict to the user, rather than
+   pattern-matching a snap judgment — native extended thinking covers this
+   in one pass; the `sequential-thinking` MCP server this project used to
+   require for it is redundant with that and has been removed
+   (cost-optimization #39). On a **short** route, skip straight to the
+   agent's own verdict — the checklist itself still runs in full; only this
+   extra deliberation pass is size-gated.
 
-## When invoked against a diff
+## This gate never reviews a diff
 
-1. Run `git diff` (or `git diff --cached` if the target is staged) against
-   the parent branch.
-2. Delegate to `architecture-reviewer` (model per the note above) with that
-   diff.
+Architecture-as-built — boundary violations, layer leaks, cycles and
+duplicated domain rules in the code that actually got written — is reviewed
+by `deep-reviewer`, from the `code-review` skill, on diffs its risk
+prefilter flags. Gate 1 reviews the *proposed* architecture only.
+
+That is deliberate: the two reads answer different questions at different
+moments, and having one skill that could do either meant the diff mode was
+never actually invoked by anything. If you want the code checked, run
+`code-review` — do not point this gate at a diff.
 
 ## Handling the result
 
 - **CONFIRMED finding** — show it to the user and ask whether to revise the
-  design/diff now or proceed anyway. Do not silently continue past an
+  design now or proceed anyway. Do not silently continue past an
   unresolved CONFIRMED finding.
 - **Clean, or PLAUSIBLE-only** — continue the workflow (artifact-creation
   loop, or straight to the next gate).
@@ -58,7 +92,7 @@ mkdir -p .claude
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
-  --arg group "-" \
+  --arg group "<route: short|full>" \
   --arg gate "architecture-review" \
   --arg verdict "<clean|plausible|confirmed>" \
   --arg skipReason "" \
@@ -74,8 +108,9 @@ printf '%s\n' "$(jq -nc \
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock
 time spent from delegating to `architecture-reviewer` to receiving its
-response, the model it actually ran on (`group` is `-`: this gate runs
-at change scope, not per task group), and its stated `reviewConfidence`.
+response, the model it actually ran on (`group` carries this run's route,
+`short` or `full`, in place of the task-group id this gate has none of —
+it always runs at change scope), and its stated `reviewConfidence`.
 `skipReason` is always empty here — this gate never logs `verdict:
 "skipped"` itself. `tokensTotal` is the `subagent_tokens` figure from the
 `<usage>` block the environment appends after the `architecture-reviewer`
@@ -84,7 +119,7 @@ point 5) — never estimate this from `durationMs` or any other proxy; if
 that block is absent, write `0` and say so in the report rather than
 guessing.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
-never computed — because this gate reviews a proposed design or a diff
+never computed — because this gate reviews a proposed design
 directly; there is no `debug-loop` fix cycle attached to Gate 1 for either
 field to describe. If `jq` isn't available, construct the
 equivalent JSON line with `printf` instead. A failed log write never blocks

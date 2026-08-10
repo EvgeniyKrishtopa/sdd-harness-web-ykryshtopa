@@ -16,18 +16,19 @@ exists to prevent.
 | Path | Written by | Merge rule |
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
-| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys; never touch `schema`, never replace existing content without asking |
+| `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
 | `.claudeignore` | Step 7 | append missing lines |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0 — see Step 8); never drop keys already there |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0, and `disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0 — see Step 8); never drop keys already there |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
+| `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
-| `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case B, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead |
+| `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case A or B, or `record-decision`, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead (0.5.0: Case A and `record-decision` both added as writers alongside Case B) |
 
 ## How upgrade mode runs
 

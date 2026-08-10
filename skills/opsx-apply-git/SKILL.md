@@ -137,9 +137,11 @@ case it is:
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: weigh what to build against
    `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). If a
-   design decision surfaces mid-group,
-   the classification was wrong — stop, leave it uncommitted, tell the user.
+   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
+   decision the agent can't confidently make means the classification was
+   wrong — stop, leave it uncommitted, tell the user. One it CAN make
+   confidently: read `references/decision-threshold.md` — it may still
+   need recording (Proposed) without stopping the group.
 3. Once green (its own verification + lint), confirm scope (`git status -s`,
    `git diff --stat` — no unrelated files) and commit the group's own
    implementation immediately (Conventional Commits, per
@@ -156,9 +158,11 @@ case it is:
 4. Next pending group: isolated → continue the loop; judgement-heavy or none
    left → end the batch, go to §4.
 5. Any pause during implementation (an error, an ambiguity, a design
-   decision surfacing) stops the batch where it is — report and wait, never
-   commit a half-finished group. Write `<!-- blocked: <reason> -->` on the
-   specific task line that caused the stop and commit that one-line edit on
+   decision the agent can't confidently make — step 2's other kind, the one
+   it CAN make, never pauses here) stops the batch where it is — report and
+   wait, never commit a half-finished group. Write `<!-- blocked: <reason>
+   -->` on the specific task line that caused the stop and commit that
+   one-line edit on
    its own (see §3's Blocked tasks section) — the task itself stays
    uncommitted and unchecked; only the marker is committed. A CONFIRMED finding from the batch-level
    `code-review` pass in §4 can only surface once every group in the batch
@@ -177,15 +181,10 @@ case it is:
    answered, write `<!-- blocked: <reason> -->` on the specific task line
    waiting on it and commit that one-line edit on its own (see §3's Blocked
    tasks section) — an ordinary pause answered within the same turn never
-   touches `tasks.md`; only one that outlives the run does. Route each decision reached this way: scoped to this change's own lifetime →
-   note it in the change's own `design.md` (it archives with the change,
-   which is fine — nothing outside this change needs it again); outlives this
-   change — a convention, a tool choice, a stance the *next* change will also
-   need → write it as a new `docs/decisions/NNNN-<slug>.md` per
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/decision-template.md`,
-   including its required `Alternatives Considered` section. Check for an
-   existing `docs/adr/` first — if the project already has one, use that
-   instead of creating `docs/decisions/` alongside it, and say so.
+   touches `tasks.md`; only one that outlives the run does. A decision
+   reached this way was already discussed live, so if it crosses
+   `references/decision-threshold.md`'s bar, record it straight as
+   Accepted (never Proposed) — that file has the bar and the routing rule.
 3. Once green, confirm scope and — if this is also the *last* group with
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the
@@ -232,12 +231,12 @@ implement unattended is reviewed as one unit too, not group-by-group.
    (cost-optimization #36): a 3-line CSS tweak or a typo fix in a `.md` file
    doesn't need a full review pass. This must stay a deterministic shell
    check — never "ask the model if this looks trivial," which would spend
-   exactly the tokens this step exists to avoid. When skipped, write both
-   log lines yourself (same shape `code-review` itself would write, both
-   `verdict:"skipped"`), since that skill never ran:
+   exactly the tokens this step exists to avoid. When skipped, write all
+   three log lines yourself (same shape `code-review` would write, all
+   `verdict:"skipped"`) — nobody else writes `deep-review`'s line either:
    ```bash
    mkdir -p .claude
-   for g in code-review test-coverage; do
+   for g in code-review test-coverage deep-review; do
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
@@ -304,9 +303,10 @@ implement unattended is reviewed as one unit too, not group-by-group.
    attempt's hypothesis to the human — don't push past it (still `rm -f
    "$diff_file"` first if it was set, per above — stopping the run doesn't
    exempt this step from its own cleanup). Clean/PLAUSIBLE in
-   both → continue. Separately from that verdict, `code-reviewer` also
-   reports its own `reviewConfidence`. On **Case A (isolated batch)**, a run
-   with no CONFIRMED finding but `reviewConfidence: low` still continues —
+   every section → continue. Separately from that verdict, `code-reviewer` —
+   and `deep-reviewer` whenever the prefilter spawned it — each report their
+   own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
+   CONFIRMED finding but `reviewConfidence: low` from *either* continues —
    this does not block — but show the human the reason before pushing (step
    4 below): a batch trusted enough to implement unattended got a clean
    verdict the reviewer itself wasn't fully confident in, and that is worth
@@ -362,7 +362,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    there's no ordering constraint forcing this ahead of a group's own
    commit any more — it simply lands as the next commit on the branch.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
-   CONFIRMED finding, print `code-reviewer`'s stated reason to the chat now
+   CONFIRMED finding, print the reviewer's stated reason to the chat now
    — this is the surfacing that step 2 deferred to here. Then push the run's
    branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
