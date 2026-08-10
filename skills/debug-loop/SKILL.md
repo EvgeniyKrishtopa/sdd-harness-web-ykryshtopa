@@ -1,6 +1,6 @@
 ---
 name: debug-loop
-description: Bounded, four-phase fix loop for a reproducible failure — reproduce, isolate (environment-first), diagnose with a recorded expected effect, fix and reverify the same scenario — up to maxFixAttempts before escalating to a human. Not a review gate — it blocks nothing on its own, isn't listed in review-gates.md, and doesn't get a seventh-gate number. Runs inline in the calling session, no subagent. Invoked from a web-qa FAIL, a code-review CONFIRMED finding the user chose to fix, or directly by the user for a failure outside any gate.
+description: Bounded, four-phase fix loop for a reproducible failure — reproduce, isolate (environment-first), diagnose with a recorded expected effect, fix and reverify the same scenario, then classify the fix against the spec — up to maxFixAttempts before escalating to a human. Not a review gate — it blocks nothing on its own, isn't listed in review-gates.md, and doesn't get a seventh-gate number. Runs inline in the calling session, no subagent. Invoked from a web-qa FAIL, a code-review CONFIRMED finding the user chose to fix, or directly by the user for a failure outside any gate.
 ---
 
 Run a fix attempt as four explicit phases instead of "try something and see."
@@ -48,13 +48,72 @@ free first try.
 4. **Fix and reverify** — apply the fix, then re-run *exactly* the scenario
    from phase 1 (not a broader pass) and compare the outcome against phase
    3's expectation.
-   - Matches the expectation → the loop ends here; report success and the
-     number of attempts it took.
+   - Matches the expectation → classify the fix against the spec (see
+     "After a successful fix: three cases" below), then report success and
+     the number of attempts it took.
    - Still fails, or passes for a different reason than expected → this
      attempt is spent. Below `maxFixAttempts` → back to phase 1 with a fresh
      reproduction, since the failure may have changed shape. At
      `maxFixAttempts` → stop. Do not make a
      (`maxFixAttempts` + 1)th attempt — go to Escalate.
+
+## After a successful fix: three cases
+
+A fix that stops the moment its test goes green leaves the spec exactly as
+it was when it let the defect through — the next task to touch this area
+inherits the same gap. Classify every defect this loop actually fixed
+(phase 4 matched its expectation) into exactly one of three cases before
+reporting success, unless one of these applies — then skip straight to
+reporting success as before:
+
+- Phase 2 already ruled the cause external (a third-party rate limit, an
+  environment/flake condition) rather than a defect in this codebase's own
+  logic — there is nothing to feed back into a spec that never claimed to
+  cover it.
+- This invocation has no OpenSpec change behind it — a standalone fix with
+  no `openspec/changes/<change>/` in play. Say so plainly and stop; there is
+  no spec to check it against.
+
+Otherwise, read phase 3's diagnosis against the change's `proposal.md` (and
+its spec deltas) for the FR-/NFR- identifier whose Given/When/Then criteria
+cover the affected behavior:
+
+1. **Criterion exists and was violated** — the Then line already states the
+   behavior the fix restores; this is a regression, not a spec gap. Confirm
+   a test pins this exact scenario (write one now if phase 4's
+   reverification was a manual repro only). The spec is not touched.
+2. **Criterion exists but is ambiguous** — the Then line's wording was loose
+   enough that the pre-fix behavior was also a legal reading of it; this
+   defect fell through the same kind of fork `spec-clarify` looks for,
+   just found after the fact. Edit the Then line in place so it states the
+   reading the fix actually implements, and show the user the diff — the
+   same clarify action `spec-clarify` step 4c takes, done directly here
+   since there is no fresh ambiguity to hunt for, only one to record.
+3. **No criterion covers this behavior at all** — the most common and least
+   comfortable case: the change shipped with a gap in its requirements. Add
+   a new Given/When/Then criterion under the relevant FR-/NFR- (or a new
+   identifier if none fits), stating the behavior the fix now guarantees,
+   tagged `(added by defect fix)` right after the identifier so the entry
+   stays visibly written after the fact rather than during drafting.
+
+Cases 2 and 3 both edit `proposal.md` or a spec delta the way
+`opsx-update-review` step 2 does — apply the revision directly to that
+artifact — then show the user the diff yourself; do not go on to run
+`opsx-update-review` steps 3-4, which re-run
+`architecture-review`/`spec-clarify`/`spec-review` through fresh subagent
+dispatches. This classification and its edit happen entirely in the current
+session, off the diagnosis already on hand — no new agent run, matching
+every other call site in this skill's own `## Call sites` section below,
+none of which spawns a subagent either. The edited artifact gets its next
+real gate pass on this change's own ordinary cycle, not as a side effect of
+the fix. Commit the edit on its own, never folded into the code fix's
+commit — a spec change and a code change are different units of review even
+when one caused the other. Append it right after whichever commit carries
+the fix lands (for the `web-qa` call site, that means after the group's own
+commit, once the fix has actually folded into it and Gate 3 clears).
+
+Report which of the three cases applies (or that it was skipped, and why)
+in one line, alongside the success report.
 
 ## Escalate once the limit is reached
 
