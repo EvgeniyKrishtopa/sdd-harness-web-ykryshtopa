@@ -98,16 +98,16 @@ own requirement-ID-only path instead of silently assuming full coverage.
 4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
    the `code-reviewer` subagent (`Agent` tool) with that diff — text or
-   file-handoff, per step 1 — the Gate-5-applicability note, the final-run
-   status, the requirement-ID
-   coverage result computed above, the test-plan lookup result, the
-   detected `testRunner` and
-   `coverageThreshold`, and any acceptance criteria as context — overriding
-   the agent's own frontmatter default for this run. If the manifest or the
-   key is missing, fall back to the agent's own default; never block the
-   gate on a missing override. Also read the manifest's `disabledRules`
-   array and pass it along as context — an empty array or missing key means
-   nothing is disabled; never invent a value.
+   file-handoff, per step 1 — plus the Gate-5-applicability note, the
+   final-run status, the requirement-ID coverage result computed above, the
+   test-plan lookup result, the detected `testRunner`, `coverageThreshold`,
+   and `framework` (so CR-12 only fires on Next.js), and any acceptance
+   criteria as context — overriding the agent's own frontmatter default for
+   this run. If the manifest or the key is missing, fall back to the
+   agent's own default; never block the gate on a missing override. Also
+   read the manifest's `disabledRules` array and pass it along as context —
+   an empty array or missing key means nothing is disabled; never invent a
+   value.
 5. If the risk prefilter above set `$risk`, delegate to the `deep-reviewer`
    subagent (`Agent` tool) with the same diff — text or file handoff, per
    step 1 — the same `disabledRules` list, and the manifest's `models.deep`
