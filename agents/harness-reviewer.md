@@ -129,10 +129,11 @@ plugin or target alike — it looks at the repo root, not at any path
 `init-harness` owns:
 
 10. **Continuous build presence** — does the repo have at least one
-    continuous-build file: `.github/workflows/*.yml`, `.github/workflows/
-    *.yaml`, `.gitlab-ci.yml`, `bitbucket-pipelines.yml`, or
-    `azure-pipelines.yml`? An empty `.github/workflows/` directory with no
-    files inside counts as absent, same as no directory at all.
+    continuous-build file: `.github/workflows/*.yml`,
+    `.github/workflows/*.yaml`, `.gitlab-ci.yml`,
+    `bitbucket-pipelines.yml`, or `azure-pipelines.yml`? An empty
+    `.github/workflows/` directory with no files inside counts as absent,
+    same as no directory at all.
 
     Found at least one → say nothing about it. Do not open it, do not
     compare its commands against the manifest's scripts, and do not judge
