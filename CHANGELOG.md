@@ -9,6 +9,126 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.6.0
+
+**Every repository `init-harness` already configured must run
+`/init-harness` again, in upgrade mode, after updating this plugin.** Same
+grounds as 0.3.0 and 0.5.0: `/plugin update` refreshes the plugin only.
+Until upgrade mode runs in your repository it has no `forge` key in
+`.claude/harness.json` (so delivery keeps assuming GitHub, which is wrong
+on any other forge), no `.claude/harness-log.jsonl merge=union` line in
+`.gitattributes` (so the newly-committed journal collides on every
+task-group merge), and never sees the linter ruleset recommendation.
+Breaking changes land in the minor position before 1.0.0, which is why this
+is 0.6.0 and not 0.5.1.
+
+**context7 is now a mandatory dependency of this plugin**, declared in its
+own `.mcp.json` next to Playwright. `/plugin update` brings it along —
+there is nothing to install or configure separately, and no API key is
+required (without one it runs at a lower request limit).
+
+Two halves. The first makes the plugin honest about what it does *not* do:
+it was written for GitHub only and said nothing about it, and it let a repo
+with no continuous build at all believe the harness covered that too. The
+second closes the gap the first-line promise opened — "a harness for Vite
+and Next.js" whose twenty review rules would apply unchanged to a backend
+in another language. Nine items.
+
+### Added — the plugin says what it doesn't cover
+
+- **The code forge is detected, recorded, and warned about.**
+  `init-harness` reads `git remote get-url origin` and writes
+  `.claude/harness.json`'s new `forge` key — `"github"` or `"other"`, two
+  values because this harness's delivery step fails identically on GitLab,
+  Bitbucket and Azure DevOps. On `"other"` setup says so in one paragraph
+  and finishes normally; the repo is fully configured, it just loses one
+  step. At delivery, `opsx-apply-git` reads the same key: `"github"` opens
+  the PR through `gh pr create` exactly as before, `"other"` skips `gh` and
+  prints the branch, the target branch and the composed PR body for you to
+  paste. Archiving asks you whether the run's PR merged instead of calling
+  `gh pr view`. A manifest written before 0.6.0 has no key and behaves as
+  `"github"` — unchanged.
+- **Gate 6 notices a missing continuous build.** One presence check for
+  `.github/workflows/*.yml|yaml`, `.gitlab-ci.yml`,
+  `bitbucket-pipelines.yml` or `azure-pipelines.yml` — found, and it says
+  nothing; absent, and it reports once per run that quality here is
+  verified only on whichever machine runs this harness. It never opens the
+  file it finds, never grades it, and never names a file to create: this
+  plugin does not write a continuous-build description for any forge, and
+  reading one to judge it would take that decision back through a side
+  door.
+
+### Added — the review leaves a trail
+
+- **A second section in every PR body, "Review trail"**, right after "What
+  changed and why": a link to `openspec/changes/<name>/`, one line per each
+  of the six checks with its verdict (or its skip reason, from the closed
+  list already in the journal), this run's CONFIRMED findings with rule
+  code and outcome, and the ambiguities deferred with an owner and a due
+  date. PLAUSIBLE notes stay out on purpose, more than ten findings prints
+  ten plus a pointer to the journal, and a clean run prints the section too
+  with an explicit "no findings" — a section that appears only when
+  something was found is indistinguishable from one that stopped being
+  printed. No new journal field: it is assembled from what the pipeline
+  already writes.
+- **`.claude/harness-log.jsonl` is committed with the run.** It was a local
+  file nine writers appended to and nobody staged, which is also what made
+  the monthly harness-diet comparison meaningless. `init-harness` now seeds
+  `.gitattributes` with `.claude/harness-log.jsonl merge=union` (the same
+  treatment `PROGRESS.md` gets, for the same reason), and the run's closing
+  commit carries the journal. Nothing trims it automatically — that button
+  stays out, same call as 0.5.0.
+
+### Added — the code review knows it is reviewing a frontend
+
+- **A line-count cap on `agents/*.md`**, 200 lines, checked by
+  `tests/smoke-json-schema.sh` with no grandfathered exceptions. Introduced
+  *before* the rules below, so the cap is a limit rather than a
+  rubber-stamp of whatever the files grew to. An agent file has no
+  `references/` escape hatch the way a `SKILL.md` does — it is its prompt,
+  in full, every time — so the fix for hitting the cap is tighter wording,
+  which is written next to the check.
+- **`init-harness` reports which linter rule sets the project is missing** —
+  `react-hooks`, `jsx-a11y`, `@typescript-eslint` always, `@next/next` on
+  Next.js only — naming what each one stops catching. A recommendation, not
+  a requirement: it installs nothing, writes nothing into your linter
+  config, and never stops setup. A project on Biome (or with no linter
+  config) gets one explicit line saying the check was skipped and why,
+  because silence there reads exactly like a pass. Gate 6 reports the same
+  list on every later review, from the same single file, so a rule set
+  dropped later doesn't go unnoticed.
+- **Three frontend rules in `code-reviewer`: `CR-10`, `CR-11`, `CR-12`.**
+  Effect cleanup and lifecycle leaks; unstable references crossing a
+  component boundary (PLAUSIBLE by default — it is a cost, not a breakage —
+  CONFIRMED only when the unstable value sits in an effect's dependency
+  array and loops); and the server/client boundary, which fires only when
+  the manifest's `framework` is Next.js and stays entirely silent on Vite.
+  Exactly three, because the five classes a linter catches deterministically
+  and for free are left to the linter — written down next to the rules so
+  the next release doesn't add a fourth that duplicates a lint rule.
+- **A required keyboard pass in Gate 3**, per user-facing surface, beside
+  the UI States Matrix rather than inside it: the primary action reachable
+  without a mouse, focus visible at each step, a sensible tab order, and a
+  modal that traps focus and closes on Escape. PASS / FAIL /
+  not-applicable-with-a-reason, never a silent skip — and a FAIL blocks the
+  run into `debug-loop` like any other Gate 3 failure, because a check that
+  only prints is a check that gets skipped.
+
+### Added — current library docs, at generation and at review
+
+- **context7 is consulted before framework-specific code is written**, and
+  again at code review when the diff touches a library that wasn't checked.
+  One trigger list, one mark format, two readers
+  (`skills/opsx-apply-git/references/context7-lookup.md`): a task naming a
+  library or framework-specific API gets the lookup before the first line
+  of code, and the group's commit message carries `context7: <name>
+  checked`. Gate 4's own 0-token diff scan reads that mark and does not ask
+  twice. The result reaches `code-reviewer` as further evidence for `CR-01`
+  — not a new rule code. Unavailable at either point, the work continues
+  and the output says plainly what failed and why; a silent skip is not
+  allowed. Nothing about this touches the journal — it is not one of the
+  six checks.
+
 ## 0.5.0
 
 **Every repository `init-harness` already configured must run
