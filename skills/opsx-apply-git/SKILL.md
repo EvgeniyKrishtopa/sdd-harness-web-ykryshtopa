@@ -136,8 +136,12 @@ case it is:
 1. Sync the parent (see above), cut one batch branch off it
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: weigh what to build against
-   `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
+   `.claude/docs/laziness-ladder.md`, and check
+   `references/context7-lookup.md`'s trigger against the task's own text
+   and acceptance criteria, before writing anything new — a named library
+   or framework-specific API there means looking it up via context7 first
+   and marking the group's commit per that file. Then implement its
+   sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
    decision the agent can't confidently make means the classification was
    wrong — stop, leave it uncommitted, tell the user. One it CAN make
    confidently: read `references/decision-threshold.md` — it may still
@@ -174,8 +178,10 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Weigh what to build against
-   `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement with the standard guardrails, but pause and ask on every design
+   `.claude/docs/laziness-ladder.md`, and check
+   `references/context7-lookup.md`'s trigger the same way Case A's step 2
+   does, before writing anything new, then implement with the standard
+   guardrails, but pause and ask on every design
    decision or ambiguity. If
    the run ends (report and stop, §4 step 7) before that question is
    answered, write `<!-- blocked: <reason> -->` on the specific task line
@@ -366,7 +372,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    — this is the surfacing that step 2 deferred to here. Then push the run's
    branch (`git push -u origin <branch>`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
-6. Write the run's summary, log this run's CONFIRMED findings (`references/log-findings.md`), then open the PR:
+6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain
       language covering what this run actually did and why, in terms a
       human who hasn't read the diff can follow. This is *not* satisfied by
@@ -375,16 +381,22 @@ implement unattended is reviewed as one unit too, not group-by-group.
       process, and the point of this section is to force the run to be
       stated in words, which is only possible once it's actually
       understood.
-   2. Print that section to the chat now, before running `gh pr create` —
-      this is the one point in an autonomous batch where a human watching
-      the session sees the run described in prose instead of tool output,
-      while there's still a chance to intervene before the PR opens.
-   3. Open one PR from the run's branch into the parent (`gh pr create`),
-      covering every group in this run, with the PR body **starting** with
-      this same section. **Judgement-heavy run** → the existing
+   2. Commit and push `.claude/harness-log.jsonl` (per `log-findings.md`),
+      then print both sections — before step 6.3 opens or prints the PR, the
+      one point in an autonomous batch where a human sees the run in prose
+      instead of tool output, with a chance to intervene.
+   3. `.claude/harness.json`'s `forge` key decides how this run's PR opens —
+      absent (a manifest written before 0.6.0) behaves the same as
+      `"github"`, unchanged. `"github"` → open one PR from the run's branch
+      into the parent (`gh pr create`). `"other"` → skip `gh` entirely and
+      print the branch name, the parent branch it targets, and the composed
+      PR body instead, so the human opens the PR by hand in under a minute.
+      Either way, cover every group in this run, with the PR body
+      **starting** with "What changed and why" and "Review trail" right
+      after it. **Judgement-heavy run** → the existing
       `⚠️ Judgement-heavy: needs careful human review` marker still leads the
-      body, with the "What changed and why" section right after it. Leave
-      the PR open — the human owns the merge.
+      body, ahead of both sections. Leave the PR open — the human owns the
+      merge.
 7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
    current change and branch, last commit, done/in-progress/blocked groups
    (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
@@ -415,16 +427,21 @@ acceptance that never happened (#19).
 **Read `references/archive-run.md` now and follow it.** Its steps are
 numbered as below; other skills cite these numbers, so they stay listed here:
 
-1. **Check the run's PR state** (`gh pr view <branch-or-number> --json state
-   --jq .state`) — three outcomes, not two. `MERGED` → sync the parent and
-   cut the archive branch off its now-current tip. `OPEN` → stop and report;
-   archiving waits on the human's merge. `CLOSED` and not merged → stop and
-   ask, the merge isn't coming.
+1. **Check the run's PR state.** `.claude/harness.json`'s `forge` is
+   `"other"` → ask the human directly whether this run's PR has merged.
+   Anything else (`"github"`, or absent) → `gh pr view <branch-or-number>
+   --json state --jq .state`. Either source resolves to the same three
+   outcomes, not two: `MERGED` → sync the parent and cut the archive branch
+   off its now-current tip. `OPEN` (or the human says not yet) → stop and
+   report; archiving waits on the human's merge. `CLOSED` and not merged (or
+   the human says it was rejected) → stop and ask, the merge isn't coming.
 2. Run `openspec archive <change-name>`.
 3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
    narrower override of "never commit without being asked", same
    justification as §3's per-group commit override.
-4. Push the archive branch and open a PR into the parent. Leave it open.
+4. Push the archive branch. Same `forge` branch as step 6.3 above: `"other"`
+   → print the archive branch name and the parent branch instead of a PR
+   call; otherwise open a PR into the parent (`gh pr create`). Leave it open.
 5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
    no current change and no next steps remain for it, noting the archive
    location and archive PR URL. Then report the full session.

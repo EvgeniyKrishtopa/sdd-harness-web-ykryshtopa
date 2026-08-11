@@ -69,14 +69,17 @@ running normally. An empty or absent list disables nothing.
 Each rule below carries a short permanent code (`CR-01`, `CR-02`, ...). The
 code never changes even when a rule's wording is later rewritten — it is
 what a finding cites, what a human disputes point-by-point, and what a user
-can switch off individually (see "Disabled rules" above). Numbering runs
-sequentially through Gate 4 then Gate 5, in the order the rules appear here.
+can switch off individually (see "Disabled rules" above). Numbering runs in
+the order each rule was added; see each rule for which gate it belongs to.
 
 ### Gate 4 — correctness and simplification
 
 1. **CR-01 — Correctness** — logic errors, unhandled edge cases (empty
    arrays, network failures, race conditions in effects), incorrect type
-   assumptions, missing error handling on async calls.
+   assumptions, missing error handling on async calls. The calling skill may
+   also hand you a context7 lookup on a library/API the diff uses — read it
+   as extra evidence for this same rule, not a separate finding, and say so
+   plainly if it names a pattern this diff is behind on.
 2. **CR-02 — Reuse** — duplicated logic that already exists elsewhere in the
    diff's neighborhood; a new helper that reinvents an existing utility.
 3. **CR-03 — Simplification** — unnecessary abstraction, premature
@@ -96,6 +99,33 @@ sequentially through Gate 4 then Gate 5, in the order the rules appear here.
      investigate;
    - a critical user path this diff touches (auth, payment, any irreversible
      action) with no log checkpoint anywhere between its entry and its exit.
+6. **CR-10 — Effect cleanup and lifecycle leaks** — a subscription, timer,
+   event listener, or in-flight request started in an effect with nothing
+   tearing it down; a state update firing after the component that owns it
+   is gone. A linter sees the dependency array; it does not see whether the
+   effect returns a cleanup function.
+7. **CR-11 — Unstable references across a component boundary** (PLAUSIBLE by
+   default — this is about render cost, not breakage): an object, array, or
+   function rebuilt every render and handed to a context value or a
+   memoized descendant's prop — seeing it takes reading two or three files
+   at once, which a lint rule can't do. CONFIRMED only when that unstable
+   reference sits in an effect's own dependency array and causes an infinite
+   render loop — that is a failure, not a cost.
+8. **CR-12 — Server/client boundary** — read the `framework` value the
+   calling skill passes in context; apply this rule only when it is Next.js,
+   never on any other value, not even a PLAUSIBLE remark: a server-only
+   module pulled into client code, a server action missing its permission
+   check, or an environment value leaked into the client bundle. CONFIRMED
+   when the leak is traceable — name the secret or action and the import
+   chain carrying it.
+
+CR-10 through CR-12 are deliberately the only three: `react-hooks`,
+`jsx-a11y`, `@typescript-eslint`, and (Next.js only) `@next/next` are left to
+the linter on purpose — see `skills/init-harness/references/linter-ruleset.md`.
+This is the laziness ladder applied to this agent's own rule set: a rule
+earns a place here only when it can't be expressed as a lint rule, because a
+lint rule costs nothing and runs before commit. Do not add a rule for a class
+one of those already catches.
 
 ### Gate 5 — test coverage
 

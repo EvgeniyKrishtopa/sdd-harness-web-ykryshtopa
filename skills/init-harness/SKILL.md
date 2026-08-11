@@ -89,6 +89,13 @@ detection procedure every other skill and hook defers to via the manifest
 Step 8 writes below — don't inline a shorter or different version of it here
 or anywhere else.
 
+Also detect which code forge this repository is hosted on — **read
+`references/forge-detection.md` now and follow it.** It covers the `git
+remote get-url origin` check, the two-value `github`/`other` result Step 8
+writes to the manifest's `forge` key, and the one-paragraph warning to show
+the user when it resolves to `other`; setup still finishes and the repo is
+still considered configured either way.
+
 ## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
 This harness is built on OpenSpec (spec-driven development CLI) — it is not
@@ -247,12 +254,12 @@ upgrade mode, since a repo set up by an earlier version never got them:
   no next steps, and a clock-in of "now"; after this point only
   `opsx-apply-git` touches it, at its own run boundaries (see
   `references/progress-template.md`).
-- Write `.gitattributes` with `PROGRESS.md merge=union` — append the line if
-  the file exists without it, leave everything else in it alone.
-  `PROGRESS.md` is the one file every task-group branch in this harness's
-  branch-per-group workflow can touch, so without this, every group's PR
-  would conflict on it. Nothing else in this harness needs `merge=union` —
-  in particular not `docs/decisions/`, whose whole design point is that two
+- Write `.gitattributes` with `PROGRESS.md merge=union` and
+  `.claude/harness-log.jsonl merge=union` — append whichever line is
+  missing, leave everything else alone. Both are append-only files every
+  task-group branch can touch, so without this every group's PR would
+  conflict on either one. Nothing else here needs `merge=union` — in
+  particular not `docs/decisions/`, whose whole design point is that two
   branches produce two different files instead of contending for one (see
   `references/decision-template.md`).
 - Check whether the project already has a `docs/adr/` directory. If it does,
@@ -358,16 +365,19 @@ it walks, in order:
 Only once all three pass does this step write `harnessVersion` and
 `toolchainVerifiedAt`. That pair is the difference between "the harness found
 these names" and "the harness ran these commands" — do not write either one
-on any other path.
+on any other path. Then **read `references/linter-ruleset.md` now and
+follow it** — a recommendation, not a fourth check: it reports which rule
+sets the project's linter config is missing, without stopping the run or
+writing anything; a linter other than ESLint skips this with one explicit
+line saying so.
 
 ## Step 9 — create or append CLAUDE.md's harness pointer block
 
-`.claude/docs/*.md` (Step 5) is **not** auto-loaded the way
-`CLAUDE.md`/`AGENTS.md` is. Without a pointer from the root instruction file,
-nothing in Step 5 is discoverable — and the auto-commit override
-`opsx-apply-git` §3/§5.3 relies on is only recognized when it is referenced
-from the project's CLAUDE.md. Skipping this step doesn't just lose
-documentation; it silently withdraws that authorization.
+`.claude/docs/*.md` (Step 5) is **not** auto-loaded like `CLAUDE.md`/
+`AGENTS.md`. Without this pointer, Step 5's docs are undiscoverable, and the
+auto-commit override `opsx-apply-git` §3/§5.3 relies on is recognized only
+when referenced from CLAUDE.md — skipping this step silently withdraws that
+override too.
 
 **Read `references/claude-md-pointer-template.md` now and follow it** — it
 holds the block to write and the create-vs-append rule. Never overwrite or
@@ -379,29 +389,26 @@ short: Gate 6 checks the root instruction file stays near 200 lines.
 In upgrade mode, report the shorter form Step 0 describes — version
 transition, files created, files appended to, files left alone — not the
 full first-install summary below, which mostly restates what the user
-already has.
+already has. Either mode: state that the three scripts were run and passed
+(Step 8b), naming them — this is the one thing in the report the user can't
+infer from the file list, and it is the difference between "the harness
+found these names" and "the harness ran these commands".
 
-Either mode: state that the three scripts were run and passed (Step 8b),
-naming them — this is the one thing in the report the user can't infer from
-the file list, and it is the difference between "the harness found these
-names" and "the harness ran these commands".
-
-For a first-time install: summarize what was detected (framework, package manager, test runner),
-confirm OpenSpec is initialized and say whether `openspec/config.yaml`
-(Step 2f) got the user's domain description or only the technical half —
-they can still add it later, and knowing it's missing is what prompts them
-to. State the coverage threshold chosen, and
-list the files written — including confirming the native pre-commit and
-pre-push hooks are now in place (Step 3), noting that this plugin's Claude Code hooks are
-already active with nothing to install (Step 6), the
+For a first-time install: summarize what was detected (framework, package
+manager, test runner), confirm OpenSpec is initialized and say whether
+`openspec/config.yaml` (Step 2f) got the user's domain description or only
+the technical half — they can still add it later, and knowing it's missing
+is what prompts them to. State the coverage threshold chosen, and list the
+files written — including confirming the native pre-commit and pre-push
+hooks are now in place (Step 3), noting that this plugin's Claude Code hooks
+are already active with nothing to install (Step 6), the
 permissions/`.claudeignore` distinction from Steps 6-7 (what
 `permissions.deny` actually enforces vs. what the `.claudeignore` guard hook
 covers), that `.claude/harness.json` (Step 8) is now the source every other
 skill reads for stack details, and whether `CLAUDE.md`/`AGENTS.md` (Step 9)
 was created or appended to — say plainly that this is required for the
 auto-commit override at group/archive boundaries to apply. Tell the user
-their harness is ready and that `opsx-propose-review` is the next command to
-run when they want to start their first spec-driven change.
+their harness is ready and that `opsx-propose-review` is next.
 
 Either mode: mention that after a future `/plugin update`, running this skill
 again is what brings this repository's own files up to the new version — the

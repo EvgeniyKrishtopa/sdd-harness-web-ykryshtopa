@@ -71,7 +71,11 @@ below) — never applied by you.
    project (script names, coverage threshold, package manager, framework)?
    Has any skill grown its own "check for next.config/vite.config/lockfile"
    logic instead of reading that manifest — the exact class of drift this
-   manifest exists to prevent?
+   manifest exists to prevent? When the project's linter is ESLint, also
+   read `skills/init-harness/references/linter-ruleset.md` and report which
+   of its rule sets the project's config is still missing — this surfaces
+   the same recommendation `init-harness` gives once at setup, on every
+   later review too, so a rule set dropped afterward doesn't go unnoticed.
 5. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
    never by hand)?
@@ -119,6 +123,32 @@ project:
    mutate commands are off-limits? A `Bash`-carrying agent with no such
    section is the exact "read-only" claim not backed by anything but
    good faith that this check exists to catch.
+
+Unlike the three checks above, item 10 applies to every repo under review,
+plugin or target alike — it looks at the repo root, not at any path
+`init-harness` owns:
+
+10. **Continuous build presence** — does the repo have at least one
+    continuous-build file: `.github/workflows/*.yml`,
+    `.github/workflows/*.yaml`, `.gitlab-ci.yml`,
+    `bitbucket-pipelines.yml`, or `azure-pipelines.yml`? An empty
+    `.github/workflows/` directory with no files inside counts as absent,
+    same as no directory at all.
+
+    Found at least one → say nothing about it. Do not open it, do not
+    compare its commands against the manifest's scripts, and do not judge
+    its quality — this check is presence only, on purpose: this plugin
+    never generates or edits a continuous-build description for any forge,
+    and reading one to grade it would take that decision back through a
+    side door.
+
+    Found none → exactly one finding, every run, and it is **CONFIRMED**
+    (presence or absence is read off the filesystem, no judgement
+    involved): quality here is verified only on whichever machine runs this
+    harness; this plugin does not write a continuous-build description for
+    any forge; set one up yourself. Never name a specific file to create or
+    content to put in it — that is exactly the line this plugin doesn't
+    cross. Like every finding in this checklist, it never blocks anything.
 
 ## Output
 

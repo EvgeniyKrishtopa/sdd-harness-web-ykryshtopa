@@ -8,6 +8,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "version": 1,
   "harnessVersion": "0.3.0",
   "toolchainVerifiedAt": "2026-08-01T12:00:00Z",
+  "forge": "github",
   "framework": "vite",
   "packageManager": "yarn",
   "runCmd": "yarn",
@@ -60,6 +61,14 @@ Merge into the file Step 2e already started (it may already contain just the
   under the same rule: only once the three scripts were actually run and
   actually passed. Its absence means they weren't, which is what lets a
   later run tell a proven toolchain from an assumed one.
+- `forge` — which code-hosting forge this repo's `origin` points to:
+  `"github"` or `"other"`, the value Step 1's detection determines (see
+  `references/forge-detection.md`) and Step 8 writes in with the rest of
+  this file — `"other"` covers GitLab, Bitbucket,
+  Azure DevOps, and no `origin` at all alike, since this harness's delivery
+  step behaves identically (unsupported) on all three of the first group.
+  `opsx-apply-git`'s delivery step and `archive-run.md`'s PR-state check
+  both read this key instead of assuming GitHub.
 - `framework`, `packageManager`, `testRunner`, `buildDir`, `lockfile` — the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/

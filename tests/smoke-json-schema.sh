@@ -370,8 +370,12 @@ echo "-- Instruction length --"
 SKILL_LINE_CAP=250
 grandfathered_skill_cap() {
   case "$1" in
-    init-harness) echo 408 ;;
-    opsx-apply-git) echo 441 ;;
+    init-harness) echo 415 ;;
+    opsx-apply-git) echo 458 ;;
+    # code-review was already sitting at the flat 250-line cap before 0.6.0's
+    # context7 trigger (item 9) added its own 0-token prefilter section,
+    # the same shape as the risk and traceability prefilters already there.
+    code-review) echo 265 ;;
     *) echo "" ;;
   esac
 }
@@ -392,6 +396,30 @@ for f in skills/*/SKILL.md; do
     else
       bad "$f is $lines lines, over the $SKILL_LINE_CAP-line limit"
     fi
+  fi
+done
+echo
+
+# --- Check: agent file length -------------------------------------------------
+
+echo "-- Agent file length --"
+
+# Same ratchet as the instruction-length check above, applied to agents/*.md,
+# with no grandfathered exceptions: no agent file is over this limit today.
+# A skill's body is split into SKILL.md (always loaded) and references/
+# (loaded on demand), so moving detail out of SKILL.md actually shrinks what
+# loads on every run. An agent has no such split: its file IS its request,
+# loaded whole, every time it runs. A file that hits this limit is fixed by
+# shortening its wording, not by moving rules to a reference file — the
+# agent reads the rules either way, so moving them out saves nothing.
+AGENT_LINE_CAP=200
+
+for f in agents/*.md; do
+  lines="$(wc -l < "$f" | tr -d ' ')"
+  if [ "$lines" -le "$AGENT_LINE_CAP" ]; then
+    ok "$f is $lines lines (limit: $AGENT_LINE_CAP)"
+  else
+    bad "$f is $lines lines, over the $AGENT_LINE_CAP-line limit"
   fi
 done
 echo

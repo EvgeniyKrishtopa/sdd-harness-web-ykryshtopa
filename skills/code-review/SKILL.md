@@ -49,6 +49,19 @@ documents, never a check on the result), and the deep pass is a **separate
 agent** rather than more rules inside `code-reviewer` — because rules added
 there would run on every button-label edit too.
 
+## context7 trigger (0 tokens, before delegating)
+
+Run the diff scan in
+`skills/opsx-apply-git/references/context7-lookup.md` — the same list and
+mark this run's own generation step already used, so both places recognize
+the same names. Empty match → no context7 context to pass. Non-empty match
+already carried in this run's own commit messages (its mark) → pass
+`code-reviewer` the fact that generation already checked it, no second call.
+Non-empty match with no mark → call context7 per that file and pass the
+result to `code-reviewer` as further context — it strengthens CR-01, it is
+not a new rule code. Unavailable at this step → say so plainly in the
+review's own output and continue without it; never a silent skip.
+
 ## Test plan (0 tokens, before delegating)
 
 Also locate this change's test plan, if it has one, before spawning
@@ -98,16 +111,18 @@ own requirement-ID-only path instead of silently assuming full coverage.
 4. Read `.claude/harness.json`'s `models.code` key (written by
    `init-harness`) and pass it as the `model` parameter when delegating to
    the `code-reviewer` subagent (`Agent` tool) with that diff — text or
-   file-handoff, per step 1 — the Gate-5-applicability note, the final-run
-   status, the requirement-ID
-   coverage result computed above, the test-plan lookup result, the
-   detected `testRunner` and
-   `coverageThreshold`, and any acceptance criteria as context — overriding
-   the agent's own frontmatter default for this run. If the manifest or the
-   key is missing, fall back to the agent's own default; never block the
-   gate on a missing override. Also read the manifest's `disabledRules`
-   array and pass it along as context — an empty array or missing key means
-   nothing is disabled; never invent a value.
+   file-handoff, per step 1 — plus the Gate-5-applicability note, the
+   final-run status, the requirement-ID coverage result computed above, the
+   test-plan lookup result, the detected `testRunner`, `coverageThreshold`,
+   and `framework` (so CR-12 only fires on Next.js), and any acceptance
+   criteria as context — overriding the agent's own frontmatter default for
+   this run. If the manifest or the key is missing, fall back to the
+   agent's own default; never block the gate on a missing override. Also
+   read the manifest's `disabledRules` array and pass it along as context —
+   an empty array or missing key means nothing is disabled; never invent a
+   value. Also pass the context7 trigger's result above, whatever it was
+   (no match, already-marked, freshly looked up, or unavailable) — it
+   strengthens `code-reviewer`'s own CR-01 check, not a separate finding.
 5. If the risk prefilter above set `$risk`, delegate to the `deep-reviewer`
    subagent (`Agent` tool) with the same diff — text or file handoff, per
    step 1 — the same `disabledRules` list, and the manifest's `models.deep`
