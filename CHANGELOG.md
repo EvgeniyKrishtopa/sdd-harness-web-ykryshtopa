@@ -9,6 +9,65 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.6.2
+
+Gate 3 and the context7 lookup now run on the servers this plugin pins,
+instead of quietly accepting whichever copy the user happens to have
+configured. Both holes were the same shape: the version was pinned in
+`.mcp.json`, and then the instructions named a tool that belongs to a
+different server.
+
+### Fixed — the pinned servers are the ones actually used
+
+- **`web-qa-manual-tester` lists only the plugin-namespaced browser tools.**
+  It used to carry each of the eleven twice — once as
+  `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`, once bare.
+  The bare spelling is a *different* server, supplied by the project or the
+  user at whatever version they asked for, frequently `@latest`. The
+  fallback made a browser pass on an unverified Playwright possible without
+  anyone noticing. Disabling the plugin's own server now leaves nothing that
+  resolves, so the agent refuses to launch — a loud failure in place of a
+  quiet one. All eleven names were confirmed against a live server, and a
+  real browser pass was driven end to end against
+  `tests/fixtures/vite-vitest-yarn`.
+- **The context7 lookup names the plugin's own tools.**
+  `references/context7-lookup.md` said to call `mcp__context7__*`, which is
+  the user's server if they have one and nothing at all if they don't. It
+  now names
+  `mcp__plugin_sdd-harness-web-ykryshtopa_context7__{resolve-library-id,query-docs}`,
+  pinned to `@upstash/context7-mcp@4.0.0`.
+
+### Changed — the server list is no longer `.mcp.json`
+
+- **It lives in `mcp-config.json`, named by `plugin.json`'s `mcpServers`
+  key.** A file called `.mcp.json` in the plugin's root doubles as *this
+  repository's* project MCP config, which requires an `mcpServers` wrapper
+  and reported `Invalid input: expected record, received undefined` on every
+  `claude mcp list`. Consumers never saw it; the plugin's own diagnostics
+  carried a permanent red line, which is how a real one gets missed. The
+  content also moved to the documented wrapper shape. Both shapes load — the
+  bare one was verified working before the change — so this is about
+  readable diagnostics, not a broken load.
+
+### Added — the report names a duplicate server
+
+- **`init-harness` says so when you already run your own `playwright` or
+  `context7`.** They coexist, tools are namespaced apart, the harness uses
+  its own pinned copy, and `/mcp` disables either side; the only cost is a
+  second process. Found nothing, or `claude mcp list` unavailable → it says
+  nothing. `references/mcp-duplicates.md` also records the two things not to
+  say: that the user must remove theirs, and that disabling the plugin's own
+  copy is equivalent.
+
+### Fixed — a test that failed for the wrong reason
+
+- **`hook-behaviour.sh` drops `node_modules` when copying the fixture.**
+  The fixture is a runnable app, so a live browser pass leaves dependencies
+  behind; they are gitignored, invisible in `git status`, and a real
+  `node_modules/.bin/tsc` in the copy makes the Stop hook's
+  "no manifest and no local tsc" case unreachable. The suite went red with
+  nothing about the plugin changed.
+
 ## 0.6.1
 
 The `Claude Code >= 2.1.220` requirement is now checked, not just written
