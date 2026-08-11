@@ -113,6 +113,37 @@ EOF
 out="$(CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
 verdict "malformed PROGRESS.md -> exits 0, does not crash" "EXIT=0" "$out"
 rm -f PROGRESS.md
+
+# The Claude Code version floor. The hook reads the running binary through
+# CLAUDE_CODE_EXECPATH, so a stub that prints a version is enough to drive
+# all three branches without installing anything.
+stub() { printf 'echo "%s (Claude Code)"\n' "$1" > "$WORK/claude-stub"; chmod +x "$WORK/claude-stub"; }
+
+stub "2.1.100"
+out="$(CLAUDE_CODE_EXECPATH="$WORK/claude-stub" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
+verdict "below the floor -> warns, naming both versions" "Claude Code 2.1.100 is below the required 2.1.220" "$out"
+verdict "below the floor -> still prints the git banner" "=== Branch ===" "$out"
+verdict "below the floor -> exits 0 (a warning, not a block)" "EXIT=0" "$out"
+
+# 2.1.9 vs 2.1.220 is the case a string comparison gets backwards.
+stub "2.1.9"
+verdict "2.1.9 is compared as a version, not a string" "2.1.9 is below the required" \
+  "$(CLAUDE_CODE_EXECPATH="$WORK/claude-stub" sh "$CMD/session.sh" </dev/null 2>&1)"
+
+stub "2.1.220"
+verdict_absent "exactly at the floor -> no warning" "below the required" \
+  "$(CLAUDE_CODE_EXECPATH="$WORK/claude-stub" sh "$CMD/session.sh" </dev/null 2>&1)"
+
+stub "2.2.0"
+verdict_absent "above the floor -> no warning" "below the required" \
+  "$(CLAUDE_CODE_EXECPATH="$WORK/claude-stub" sh "$CMD/session.sh" </dev/null 2>&1)"
+
+# Unreadable version: the banner is deliberately quieter than init-harness,
+# which prints an explicit "skipped" line. Every session, in every repo, for
+# what is usually a PATH quirk, would train people to ignore the banner.
+out="$(CLAUDE_CODE_EXECPATH="$WORK/no-such-binary" sh "$CMD/session.sh" </dev/null 2>&1; echo "EXIT=$?")"
+verdict_absent "unreadable version -> no warning" "below the required" "$out"
+verdict "unreadable version -> exits 0, banner intact" "=== Branch ===" "$out"
 echo
 
 echo "-- PreToolUse: git commit guard --"

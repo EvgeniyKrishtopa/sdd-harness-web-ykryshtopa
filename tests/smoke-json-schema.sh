@@ -519,6 +519,28 @@ else
   bad "$FINDING_LINE_REF does not exist"
 fi
 
+# The Claude Code version floor is one number that has to be stated in three
+# places at once -- the reference that explains it, the SessionStart hook that
+# warns on it, and the README bullet a user reads before installing. Nothing
+# in the plugin format can hold it once (`requirements` in plugin.json is an
+# unknown key Claude Code ignores), so the copies are kept honest here: a
+# release that raises the floor has to raise it everywhere or this goes red.
+FLOOR_REF="skills/init-harness/references/claude-code-version.md"
+if [ -f "$FLOOR_REF" ]; then
+  ref_floor="$(grep -oE 'Claude Code >= [0-9]+\.[0-9]+\.[0-9]+' "$FLOOR_REF" | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+  hook_floor="$(grep -oE "floor='[0-9]+\.[0-9]+\.[0-9]+'" hooks/hooks.json | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+  readme_floor="$(grep -oE '\*\*Claude Code >= [0-9]+\.[0-9]+\.[0-9]+\*\*' README.md | head -1 | grep -oE '[0-9]+\.[0-9]+\.[0-9]+')"
+  if [ -z "$ref_floor" ] || [ -z "$hook_floor" ] || [ -z "$readme_floor" ]; then
+    bad "version floor not found in all three places (ref:\"$ref_floor\" hook:\"$hook_floor\" readme:\"$readme_floor\")"
+  elif [ "$ref_floor" = "$hook_floor" ] && [ "$ref_floor" = "$readme_floor" ]; then
+    ok "the Claude Code floor ($ref_floor) matches in $FLOOR_REF, hooks.json and README.md"
+  else
+    bad "Claude Code floor disagrees: $FLOOR_REF says $ref_floor, hooks.json says $hook_floor, README.md says $readme_floor"
+  fi
+else
+  bad "$FLOOR_REF does not exist"
+fi
+
 # debug-loop's description needs to name concrete trigger phrases, not just
 # describe what the skill generically does -- that's what lets Claude's own
 # skill-matcher and a human reader tell when to reach for it.

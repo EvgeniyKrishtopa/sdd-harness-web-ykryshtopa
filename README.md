@@ -22,7 +22,18 @@ What it puts around your work:
 
 ## Requirements
 
-- **Claude Code >= 2.1.220** — a hard floor, not a preference. The harness
+- **Claude Code >= 2.1.220** — a hard floor, not a preference, and one the
+  plugin now checks rather than only documents. The plugin format has no
+  field for declaring a minimum host version (`requirements` in
+  `plugin.json` validates as an unknown key Claude Code ignores at load
+  time), so the check happens twice instead: `/init-harness` reads the
+  running version before anything else and stops without writing a single
+  file if it's below the floor, and the `SessionStart` hook re-checks it
+  every session and prints a warning above the git banner — because setup
+  runs once, while the version can change under a repo any day after that.
+  Neither one can be read → setup says so in one line and continues; the
+  banner stays quiet. Reasoning and procedure:
+  `skills/init-harness/references/claude-code-version.md`. The harness
   relies on plugin-bundled MCP tool names
   (`mcp__plugin_<plugin>_<server>__<tool>`, without which Gate 3's agent
   resolves nothing), on file permission rules being honoured for
@@ -190,7 +201,9 @@ way its skills and agents do: commit/merge/push guards, `.claudeignore`
 enforcement, typecheck-before-stop, and a `SessionStart` banner printing
 branch, status and recent commits plus (once `PROGRESS.md` exists) its
 `Status` and `Next steps`, so a new session's first read answers what `git
-log` alone can't. The guards are plain shell, no model call: they prompt for
+log` alone can't. That banner also carries the Claude Code version warning
+described under [Requirements](#requirements) — above the git section, and
+only when the running version is below the floor. The guards are plain shell, no model call: they prompt for
 confirmation on a protected-branch commit, a secret-shaped or unusually
 large staged diff, or a force-push, and stay out of the way otherwise.
 
