@@ -11,21 +11,10 @@ position.
 
 ## 0.6.0
 
-**Every repository `init-harness` already configured must run
-`/init-harness` again, in upgrade mode, after updating this plugin.** Same
-grounds as 0.3.0 and 0.5.0: `/plugin update` refreshes the plugin only.
-Until upgrade mode runs in your repository it has no `forge` key in
-`.claude/harness.json` (so delivery keeps assuming GitHub, which is wrong
-on any other forge), no `.claude/harness-log.jsonl merge=union` line in
-`.gitattributes` (so the newly-committed journal collides on every
-task-group merge), and never sees the linter ruleset recommendation.
-Breaking changes land in the minor position before 1.0.0, which is why this
-is 0.6.0 and not 0.5.1.
-
 **context7 is now a mandatory dependency of this plugin**, declared in its
-own `.mcp.json` next to Playwright. `/plugin update` brings it along —
-there is nothing to install or configure separately, and no API key is
-required (without one it runs at a lower request limit).
+own `.mcp.json` next to Playwright. It installs and starts with the plugin —
+nothing to set up separately, and no API key is required (without one it
+runs at a lower request limit).
 
 Two halves. The first makes the plugin honest about what it does *not* do:
 it was written for GitHub only and said nothing about it, and it let a repo
@@ -46,8 +35,7 @@ in another language. Nine items.
   the PR through `gh pr create` exactly as before, `"other"` skips `gh` and
   prints the branch, the target branch and the composed PR body for you to
   paste. Archiving asks you whether the run's PR merged instead of calling
-  `gh pr view`. A manifest written before 0.6.0 has no key and behaves as
-  `"github"` — unchanged.
+  `gh pr view`.
 - **Gate 6 notices a missing continuous build.** One presence check for
   `.github/workflows/*.yml|yaml`, `.gitlab-ci.yml`,
   `bitbucket-pipelines.yml` or `azure-pipelines.yml` — found, and it says
