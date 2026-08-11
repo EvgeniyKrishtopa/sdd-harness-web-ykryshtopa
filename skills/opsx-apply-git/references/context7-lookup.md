@@ -61,6 +61,7 @@ Before calling context7 itself, `code-review` checks whether this run's own
 commits already carry the mark for the matched name(s):
 
 ```bash
+range="<parent>..HEAD"   # the same range the trigger scan above resolves
 already=$(git log "$range" --format=%B | grep -oE 'context7: .*checked' || true)
 ```
 
