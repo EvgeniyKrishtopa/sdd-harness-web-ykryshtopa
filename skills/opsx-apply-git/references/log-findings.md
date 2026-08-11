@@ -76,7 +76,7 @@ already record.
 — every gate above appended to it, but nothing staged it, so it never
 outlived the machine that wrote it. `SKILL.md` §4 step 6.2 closes that gap:
 right there, after this run's Review trail section is composed and before
-`gh pr create`, stage and commit exactly that path:
+step 6.3 opens (or prints) the PR, stage and commit exactly that path:
 
 ```bash
 git add .claude/harness-log.jsonl

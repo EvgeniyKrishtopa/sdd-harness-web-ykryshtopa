@@ -3,7 +3,7 @@
 Read this from `opsx-apply-git` §3 step 2, in both cases, before writing any
 code for a task, and from `code-review/SKILL.md` before delegating to
 `code-reviewer`, when its own 0-token diff scan (below) fires. One trigger
-list, one mark format, two readers — `harness-audit/v0.6.0-planned/`
+list, one mark format, two readers — `harness-audit/v0.6.0-implemented/`
 `04-design-rationale.txt` decision 10 explains why this lives in one file
 instead of being split across two pointing at each other.
 

@@ -382,9 +382,9 @@ implement unattended is reviewed as one unit too, not group-by-group.
       stated in words, which is only possible once it's actually
       understood.
    2. Commit and push `.claude/harness-log.jsonl` (per `log-findings.md`),
-      then print both sections — before `gh pr create`, the one point in an
-      autonomous batch where a human watching the session sees the run
-      described in prose instead of tool output, with a chance to intervene.
+      then print both sections — before step 6.3 opens or prints the PR, the
+      one point in an autonomous batch where a human sees the run in prose
+      instead of tool output, with a chance to intervene.
    3. `.claude/harness.json`'s `forge` key decides how this run's PR opens —
       absent (a manifest written before 0.6.0) behaves the same as
       `"github"`, unchanged. `"github"` → open one PR from the run's branch
