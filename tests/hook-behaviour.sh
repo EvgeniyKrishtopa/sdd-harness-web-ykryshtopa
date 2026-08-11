@@ -34,6 +34,14 @@ jq -r '.hooks.Stop[0].hooks[0].command'         "$HOOKS" > "$CMD/stop.sh"
 jq -r '.hooks.SessionStart[0].hooks[0].command' "$HOOKS" > "$CMD/session.sh"
 
 cp -R "$ROOT/tests/fixtures/vite-vitest-yarn/." "$REPO/"
+# The fixture is a runnable app, so anyone who starts it by hand (a live web-qa
+# pass, say) leaves node_modules behind. It is gitignored, invisible in `git
+# status`, and copying it in here silently changes what the hooks find: the
+# Stop-hook case below asserts the "no manifest and no local tsc" path, and a
+# real node_modules/.bin/tsc makes that path unreachable. The suite then fails
+# on a machine where nothing about the plugin changed. Build artifacts are
+# dropped for the same reason.
+rm -rf "$REPO/node_modules" "$REPO/dist" "$REPO/coverage"
 cd "$REPO" || exit 1
 git init -q -b main
 git add -A
