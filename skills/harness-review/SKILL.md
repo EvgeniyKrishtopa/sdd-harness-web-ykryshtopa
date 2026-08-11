@@ -40,7 +40,9 @@ how the reviewer tells "the plugin was updated but this repo wasn't" from
 "up to date". That comparison needs both halves, so it doesn't run when the
 repo under review has no `.claude/harness.json` of its own (this plugin's
 own repo, for one); the agent reports that it couldn't run rather than
-reporting a match.
+reporting a match. One check runs outside that scope on purpose: whether the
+repo root has at least one continuous-build file at all (checklist item 10)
+— a presence check only, not a path `init-harness` writes or owns.
 Name the change so the reviewer can check for anything the change's
 implementation should have updated in the harness but didn't — including
 whether `.claude/harness.json` still matches reality (e.g. a new script
