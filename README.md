@@ -405,7 +405,7 @@ quiet when it doesn't
 
 Both stay resident for the whole session even though each is used at one
 point only: as of Claude Code 2.1.220 there is no supported way for a
-plugin's `.mcp.json` to load a server per-skill or per-gate. Two things
+plugin's server list to load a server per-skill or per-gate. Two things
 narrow the cost — Claude Code 2.1.x defers MCP tool schemas (`ToolSearch`)
 instead of loading them up front (24 tools for `@playwright/mcp@0.0.78`,
 measured by asking the server itself), and `npx` resolves an already-cached

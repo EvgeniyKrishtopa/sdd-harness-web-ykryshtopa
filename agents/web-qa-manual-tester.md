@@ -14,7 +14,7 @@ and report what actually happens.
 
 Claude Code names a tool from a **plugin-bundled** MCP server
 `mcp__plugin_<plugin-name>_<server-name>__<tool>` — for this plugin's own
-`.mcp.json` entry that is
+`mcp-config.json` entry that is
 `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_navigate`, not
 `mcp__playwright__browser_navigate`. The bare `mcp__playwright__*` spelling
 is not the same server under another name: it is whatever Playwright MCP the
@@ -24,7 +24,7 @@ version that config asks for — frequently `@latest`.
 This list used to carry both spellings, so the gate would run either way.
 It no longer does. "Either way" meant Gate 3 could drive a Playwright
 version nobody verified against these instructions, which cancels the reason
-`.mcp.json` pins `@playwright/mcp@0.0.78` in the first place. A user who
+`mcp-config.json` pins `@playwright/mcp@0.0.78` in the first place. A user who
 already runs their own Playwright MCP keeps it — the two servers coexist and
 their tools are namespaced apart — but this gate only ever drives the
 pinned one.
