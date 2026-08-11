@@ -27,6 +27,13 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
   toolless (2.1.208+); and the `Stop` hook relies on `stop_hook_active`.
   2.1.220 is the version every gate, hook and manifest here was verified
   against.
+- **GitHub as the code forge, with `gh` installed and authenticated** — the
+  delivery step (`opsx-apply-git`) opens pull requests through `gh pr
+  create`, and only that path is proven. `/init-harness` detects the forge
+  from `git remote get-url origin` and records it; on any other forge
+  (GitLab, Bitbucket, Azure DevOps, or no `origin` at all) every gate still
+  runs, but delivery prints the branch, the target branch, and the PR body
+  instead of opening the PR — you open it by hand.
 - **Node >= 20.19.0** — required by OpenSpec.
 - **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
   This harness's gates are designed around OpenSpec's Expanded workflow set,
@@ -261,7 +268,8 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
    hypothesis under `_debug/`, and classifies the fixed defect against the
    specification so a missing acceptance criterion gets added rather than
    silently staying missing.
-4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
+4. You merge each run's PR — opened on GitHub, or opened by hand on any
+   other forge (see Requirements) — and the next `opsx-apply-git` re-syncs
    from that merge.
 5. On the last group, `opsx-apply-git` archives the change via its own PR.
 
