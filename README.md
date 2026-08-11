@@ -379,8 +379,14 @@ rule.
   Because it ships *inside* the plugin, Claude Code exposes its tools as
   `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*` rather than
   the bare `mcp__playwright__browser_*` a project-level `.mcp.json` would
-  produce; `web-qa-manual-tester`'s `tools:` list carries both spellings so
-  the gate works either way.
+  produce, and `web-qa-manual-tester`'s `tools:` list names **only** the
+  first form. It used to carry both, which quietly let the gate run against
+  whatever Playwright MCP a user had configured, at whatever version — the
+  opposite of what pinning `@playwright/mcp@0.0.78` is for. Disabling this
+  plugin's own server therefore doesn't fall back to yours; it leaves the
+  agent with nothing that resolves, so it refuses to launch, which is the
+  failure you want to see rather than a browser pass on an unverified
+  version.
 - **context7** (`@upstash/context7-mcp`) — mandatory since 0.6.0. Used by
   `opsx-apply-git` before writing framework-specific code, and by
   `code-review` when a diff touches a library that wasn't checked at
@@ -388,6 +394,14 @@ rule.
   being unavailable never blocks a run — the output says what failed and
   why. Trigger and mark format:
   `skills/opsx-apply-git/references/context7-lookup.md`.
+
+If you already run your own `playwright` or `context7` MCP server, both keep
+running: the two are separate servers with separately namespaced tools, so
+neither shadows the other and neither changes the other's version. The only
+cost is a second process, and `/mcp` disables whichever side you don't want.
+`/init-harness` says so in its report when it finds a duplicate, and stays
+quiet when it doesn't
+(`skills/init-harness/references/mcp-duplicates.md`).
 
 Both stay resident for the whole session even though each is used at one
 point only: as of Claude Code 2.1.220 there is no supported way for a

@@ -301,14 +301,12 @@ needs to do.
 ## Step 7 — write `.claudeignore` and its enforcement hook
 
 The user may expect a `.claudeignore` file the way `.gitignore` works.
-**Be upfront that this isn't an official Claude Code mechanism** — Claude
-Code has no built-in reader for a file of this name; Anthropic's guidance is
-to use `permissions.deny` (Step 6) instead. This plugin makes the file
-meaningful anyway by pairing it with a `PreToolUse` hook (already active via
-this plugin's `hooks/hooks.json`, matcher `Read|Grep|Glob` — see the note in
-Step 6, nothing to install here) that reads `.claudeignore` and denies
-matching reads — see `references/claudeignore-template.md` for the full
-explanation and the template content.
+**Be upfront that this isn't an official Claude Code mechanism** — nothing
+reads a file of this name built-in, and Anthropic's guidance is
+`permissions.deny` (Step 6) instead. This plugin makes it meaningful anyway
+by pairing it with a `PreToolUse` hook (already active via `hooks/hooks.json`,
+matcher `Read|Grep|Glob`, nothing to install here) that reads `.claudeignore`
+and denies matching reads — see `references/claudeignore-template.md`.
 
 1. Write `.claudeignore` from that template, substituting its two
    placeholders — `{{BUILD_DIR}}` and `{{LOCKFILE}}`, same values as Step 6
@@ -322,8 +320,7 @@ explanation and the template content.
 
 This is the single machine-readable source of truth every other skill
 (`opsx-apply-git`, `web-qa`, `code-review`, `harness-review`) and this
-plugin's `Stop` typecheck hook read instead of re-detecting the stack
-themselves.
+plugin's `Stop` typecheck hook read instead of re-detecting the stack.
 
 **Read `references/manifest-schema.md` now and follow it** — it holds the
 full key list and what each key means. Merge into the file Step 2e already
@@ -332,21 +329,19 @@ started; never overwrite its `openspec` key, only add the rest around it.
 Two rules from that file are worth stating here too, because they are the
 ones a run gets wrong: every field must be a real detected or user-confirmed
 value (never a literal placeholder — ask rather than guess), and
-`harnessVersion`/`toolchainVerifiedAt` are **not** written here. They are
-claims about a finished run, and Step 8b writes them once it passes.
+`harnessVersion`/`toolchainVerifiedAt` are **not** written here — they are
+claims about a finished run, which Step 8b writes once it passes.
 
 ## Step 8b — prove the toolchain actually runs
 
 Everything up to here has *detected* a toolchain. Nothing has *run* it. A
 project whose script is called `type-check` rather than `typecheck` gets a
-`.husky/pre-commit` that fails on every commit and a `Stop` hook that reports
-"script not found" as if it were a type error — neither of which surfaces
-during setup. An instruction to be careful is not a check; this step is the
-check.
-
-Runs in **both** first-install and upgrade mode, on a clean tree (if the tree
-is dirty, ask the user to commit or stash first — a lint failure from their
-own uncommitted work would be blamed on the harness).
+`.husky/pre-commit` that fails on every commit and a `Stop` hook reporting
+"script not found" as if it were a type error — neither surfacing during
+setup. An instruction to be careful is not a check; this step is the check.
+It runs in **both** modes, on a clean tree (dirty → ask the user to commit
+or stash first; a lint failure from their own uncommitted work would be
+blamed on the harness).
 
 **Read `references/toolchain-proof.md` now and follow it.** The four checks
 it walks, in order:
@@ -376,8 +371,7 @@ line saying so.
 `.claude/docs/*.md` (Step 5) is **not** auto-loaded like `CLAUDE.md`/
 `AGENTS.md`. Without this pointer, Step 5's docs are undiscoverable, and the
 auto-commit override `opsx-apply-git` §3/§5.3 relies on is recognized only
-when referenced from CLAUDE.md — skipping this step silently withdraws that
-override too.
+when referenced from CLAUDE.md — skipping this step withdraws that override.
 
 **Read `references/claude-md-pointer-template.md` now and follow it** — it
 holds the block to write and the create-vs-append rule. Never overwrite or
@@ -388,11 +382,11 @@ short: Gate 6 checks the root instruction file stays near 200 lines.
 
 In upgrade mode, report the shorter form Step 0 describes — version
 transition, files created, files appended to, files left alone — not the
-full first-install summary below, which mostly restates what the user
-already has. Either mode: state that the three scripts were run and passed
-(Step 8b), naming them — this is the one thing in the report the user can't
-infer from the file list, and it is the difference between "the harness
-found these names" and "the harness ran these commands".
+full first-install summary below, which mostly restates what the user has.
+Either mode: state that the three scripts were run and passed (Step 8b),
+naming them — the one thing in the report the user can't infer from the file
+list, and the difference between "the harness found these names" and "the
+harness ran these commands".
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether
@@ -413,3 +407,9 @@ their harness is ready and that `opsx-propose-review` is next.
 Either mode: mention that after a future `/plugin update`, running this skill
 again is what brings this repository's own files up to the new version — the
 plugin update alone doesn't, and Gate 6 will flag the gap in the meantime.
+
+Either mode, last: check whether the user runs their own copy of a server
+this plugin already ships — **read `references/mcp-duplicates.md` now and
+follow it.** Found one → one short paragraph saying which, and that the
+harness uses its own pinned copy regardless. Found none, or the check
+couldn't run → say nothing at all.
