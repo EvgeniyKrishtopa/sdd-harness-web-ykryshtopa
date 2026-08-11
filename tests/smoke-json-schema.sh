@@ -174,7 +174,7 @@ process.exit(Array.isArray(p) && p.length > 0 && p.every(x => x && typeof x === 
 # --- Checks 1 & 2: JSON syntax + shape --------------------------------------
 
 echo "-- JSON syntax --"
-for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json .mcp.json; do
+for f in .claude-plugin/plugin.json .claude-plugin/marketplace.json hooks/hooks.json mcp-config.json; do
   if [ ! -f "$f" ]; then
     bad "$f does not exist"
     continue
@@ -256,19 +256,39 @@ if [ -f .claude-plugin/marketplace.json ] && json_valid .claude-plugin/marketpla
   fi
 fi
 
-# #21: .mcp.json must declare at least one launchable server, in either of
-# the two shapes Claude Code accepts (see mcp_entries_launchable above).
-if [ -f .mcp.json ] && json_valid .mcp.json; then
-  if json_lacks_top_key .mcp.json mcpServers; then
+# #21: the server list must declare at least one launchable server, in either
+# of the two shapes Claude Code accepts (see mcp_entries_launchable above).
+#
+# The file is mcp-config.json, named in plugin.json's "mcpServers" key, and
+# deliberately NOT .mcp.json: a file of that name in the repo root is also read
+# as this repository's own *project* MCP config, which requires the mcpServers
+# wrapper and fails loudly in `claude mcp list` without it. Both spellings load
+# fine as a plugin -- verified live, both servers Connected -- so the rename is
+# about the plugin repo's own diagnostics staying readable, nothing else.
+if [ -f .mcp.json ]; then
+  bad ".mcp.json is back in the repo root -- it doubles as this repo's project MCP config and breaks \`claude mcp list\`; the plugin's list belongs in mcp-config.json"
+else
+  ok "no .mcp.json in the repo root (the plugin's server list lives in mcp-config.json)"
+fi
+if [ -f mcp-config.json ] && json_valid mcp-config.json; then
+  if json_lacks_top_key mcp-config.json mcpServers; then
     shape='servers as top-level keys (the shipped-plugin form)'
   else
     shape='servers under an "mcpServers" wrapper (the documented form)'
   fi
-  if mcp_entries_launchable .mcp.json; then
-    ok ".mcp.json declares $shape, each with a \"command\" or \"url\""
+  if mcp_entries_launchable mcp-config.json; then
+    ok "mcp-config.json declares $shape, each with a \"command\" or \"url\""
   else
-    bad ".mcp.json has $shape but an entry is missing both \"command\" and \"url\", or there are no servers at all"
+    bad "mcp-config.json has $shape but an entry is missing both \"command\" and \"url\", or there are no servers at all"
   fi
+  declared="$(sed -n 's/.*"mcpServers"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)"
+  if [ "$declared" = "./mcp-config.json" ]; then
+    ok ".claude-plugin/plugin.json points \"mcpServers\" at ./mcp-config.json"
+  else
+    bad ".claude-plugin/plugin.json's \"mcpServers\" is \"$declared\", not \"./mcp-config.json\" -- the servers would not load"
+  fi
+else
+  bad "mcp-config.json is missing or not valid JSON"
 fi
 echo
 
@@ -703,7 +723,7 @@ if command -v claude >/dev/null 2>&1; then
   trap 'rm -rf "$vtmp"' EXIT
   mkdir -p "$vtmp/.claude-plugin"
   cp .claude-plugin/plugin.json "$vtmp/.claude-plugin/" 2>/dev/null
-  [ -f .mcp.json ] && cp .mcp.json "$vtmp/"
+  [ -f mcp-config.json ] && cp mcp-config.json "$vtmp/"
   for d in agents skills hooks commands; do
     [ -d "$d" ] && cp -R "$d" "$vtmp/"
   done

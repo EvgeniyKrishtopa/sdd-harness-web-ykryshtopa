@@ -43,10 +43,20 @@ check the mark (below) before deciding whether to call it.
 
 ## Looking it up
 
-Two MCP calls, in order: `mcp__context7__resolve-library-id` with the
-matched name, to get its context7-compatible ID; then
-`mcp__context7__query-docs` with that ID and the matched API/topic, read
-before writing (or, at review time, before judging) the code that uses it.
+Two MCP calls, in order:
+`mcp__plugin_sdd-harness-web-ykryshtopa_context7__resolve-library-id` with
+the matched name, to get its context7-compatible ID; then
+`mcp__plugin_sdd-harness-web-ykryshtopa_context7__query-docs` with that ID
+and the matched API/topic, read before writing (or, at review time, before
+judging) the code that uses it.
+
+Those are the plugin's own server, pinned to `@upstash/context7-mcp@4.0.0`
+in `mcp-config.json`. The bare `mcp__context7__*` spelling is a *different*
+server — one the user or the project configured, commonly at `@latest` — and
+naming it here would quietly undo the pin, the same way the bare Playwright
+names once did in `agents/web-qa-manual-tester.md`. If only the bare pair
+resolves, this plugin's server is disabled: say so in the output and
+continue without the lookup, exactly as for any other context7 failure.
 
 ## The mark
 

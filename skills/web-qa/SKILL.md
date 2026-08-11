@@ -38,7 +38,7 @@ Gate 4.
 
    This plugin's Playwright **MCP server** (distinct from the `playwright`
    test/browser-automation package, if the project also has that as a test
-   dependency) stays resident for the whole session per `.mcp.json`,
+   dependency) stays resident for the whole session per `mcp-config.json`,
    regardless of whether this gate ever runs — there's no supported
    per-gate MCP toggle in this Claude Code version. If this project runs
    this gate often, install `@playwright/mcp` as a devDependency so `npx`

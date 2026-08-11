@@ -6,7 +6,7 @@ session, and lets them decide.
 
 ## The condition
 
-This plugin ships two MCP servers in its own `.mcp.json`, at pinned
+This plugin ships two MCP servers in its own `mcp-config.json`, at pinned
 versions: `@playwright/mcp` for Gate 3 and `@upstash/context7-mcp` for
 library docs. A user may independently have a server for either one in their
 own configuration — commonly at `@latest`, and commonly under the plain name
