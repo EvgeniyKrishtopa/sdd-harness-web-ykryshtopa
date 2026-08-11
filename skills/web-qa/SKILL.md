@@ -106,12 +106,12 @@ incident this closes.
    is missing, fall back to the agent's own default; never block the gate on
    a missing override. The subagent drives the **Playwright MCP server**
    (navigate, click, fill, snapshot via the accessibility tree, screenshot)
-   against the running dev server. Those tools are named
-   `mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*` when the
-   server comes from this plugin's own `.mcp.json` — the bare
-   `mcp__playwright__browser_*` form only applies when the project supplies
-   Playwright MCP itself; the agent's `tools:` list carries both spellings
-   for that reason. Scope its flows to the *whole change's* diff against the
+   against the running dev server — this plugin's own pinned server only
+   (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a
+   Playwright MCP the project or the user supplies at some other version;
+   the reasoning is in `agents/web-qa-manual-tester.md`. Disabled via `/mcp`
+   → the agent refuses to launch, which is the intended loud failure. Scope
+   its flows to the *whole change's* diff against the
    parent branch, not just the last group, so the final pass covers
    everything the change touched — the replay above already re-verified
    whatever earlier changes recorded, so this pass is what covers what's
