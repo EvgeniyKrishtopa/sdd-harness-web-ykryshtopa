@@ -379,12 +379,18 @@ implement unattended is reviewed as one unit too, not group-by-group.
       then print both sections — before `gh pr create`, the one point in an
       autonomous batch where a human watching the session sees the run
       described in prose instead of tool output, with a chance to intervene.
-   3. Open one PR from the run's branch into the parent (`gh pr create`),
-      covering every group in this run, with the PR body **starting** with
-      "What changed and why" and "Review trail" right after it.
-      **Judgement-heavy run** → the existing
+   3. `.claude/harness.json`'s `forge` key decides how this run's PR opens —
+      absent (a manifest written before 0.6.0) behaves the same as
+      `"github"`, unchanged. `"github"` → open one PR from the run's branch
+      into the parent (`gh pr create`). `"other"` → skip `gh` entirely and
+      print the branch name, the parent branch it targets, and the composed
+      PR body instead, so the human opens the PR by hand in under a minute.
+      Either way, cover every group in this run, with the PR body
+      **starting** with "What changed and why" and "Review trail" right
+      after it. **Judgement-heavy run** → the existing
       `⚠️ Judgement-heavy: needs careful human review` marker still leads the
-      body, ahead of both sections. Leave the PR open — the human owns the merge.
+      body, ahead of both sections. Leave the PR open — the human owns the
+      merge.
 7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
    current change and branch, last commit, done/in-progress/blocked groups
    (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
@@ -415,11 +421,14 @@ acceptance that never happened (#19).
 **Read `references/archive-run.md` now and follow it.** Its steps are
 numbered as below; other skills cite these numbers, so they stay listed here:
 
-1. **Check the run's PR state** (`gh pr view <branch-or-number> --json state
-   --jq .state`) — three outcomes, not two. `MERGED` → sync the parent and
-   cut the archive branch off its now-current tip. `OPEN` → stop and report;
-   archiving waits on the human's merge. `CLOSED` and not merged → stop and
-   ask, the merge isn't coming.
+1. **Check the run's PR state.** `.claude/harness.json`'s `forge` is
+   `"other"` → ask the human directly whether this run's PR has merged.
+   Anything else (`"github"`, or absent) → `gh pr view <branch-or-number>
+   --json state --jq .state`. Either source resolves to the same three
+   outcomes, not two: `MERGED` → sync the parent and cut the archive branch
+   off its now-current tip. `OPEN` (or the human says not yet) → stop and
+   report; archiving waits on the human's merge. `CLOSED` and not merged (or
+   the human says it was rejected) → stop and ask, the merge isn't coming.
 2. Run `openspec archive <change-name>`.
 3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
    narrower override of "never commit without being asked", same

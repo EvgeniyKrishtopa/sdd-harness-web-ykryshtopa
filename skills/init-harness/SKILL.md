@@ -89,6 +89,13 @@ detection procedure every other skill and hook defers to via the manifest
 Step 8 writes below — don't inline a shorter or different version of it here
 or anywhere else.
 
+Also detect which code forge this repository is hosted on — **read
+`references/forge-detection.md` now and follow it.** It covers the `git
+remote get-url origin` check, the two-value `github`/`other` result Step 8
+writes to the manifest's `forge` key, and the one-paragraph warning to show
+the user when it resolves to `other`; setup still finishes and the repo is
+still considered configured either way.
+
 ## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
 This harness is built on OpenSpec (spec-driven development CLI) — it is not
