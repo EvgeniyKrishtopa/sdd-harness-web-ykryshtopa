@@ -34,6 +34,13 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
   (GitLab, Bitbucket, Azure DevOps, or no `origin` at all) every gate still
   runs, but delivery prints the branch, the target branch, and the PR body
   instead of opening the PR — you open it by hand.
+- **context7 MCP server, a mandatory plugin dependency** — installed and
+  started automatically via `.mcp.json` (`@upstash/context7-mcp`), no
+  separate setup needed. Used to check current library/API docs before
+  writing framework-specific code, and again at code review if the diff
+  touches one that wasn't checked. Works without an API key too, at a lower
+  request limit; unavailable at either point never blocks the run — see
+  `skills/opsx-apply-git/references/context7-lookup.md`.
 - **Node >= 20.19.0** — required by OpenSpec.
 - **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
   This harness's gates are designed around OpenSpec's Expanded workflow set,

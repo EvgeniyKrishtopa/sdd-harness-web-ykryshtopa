@@ -136,8 +136,12 @@ case it is:
 1. Sync the parent (see above), cut one batch branch off it
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: weigh what to build against
-   `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
+   `.claude/docs/laziness-ladder.md`, and check
+   `references/context7-lookup.md`'s trigger against the task's own text
+   and acceptance criteria, before writing anything new — a named library
+   or framework-specific API there means looking it up via context7 first
+   and marking the group's commit per that file. Then implement its
+   sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
    decision the agent can't confidently make means the classification was
    wrong — stop, leave it uncommitted, tell the user. One it CAN make
    confidently: read `references/decision-threshold.md` — it may still
@@ -174,8 +178,10 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Weigh what to build against
-   `.claude/docs/laziness-ladder.md` before writing anything new, then
-   implement with the standard guardrails, but pause and ask on every design
+   `.claude/docs/laziness-ladder.md`, and check
+   `references/context7-lookup.md`'s trigger the same way Case A's step 2
+   does, before writing anything new, then implement with the standard
+   guardrails, but pause and ask on every design
    decision or ambiguity. If
    the run ends (report and stop, §4 step 7) before that question is
    answered, write `<!-- blocked: <reason> -->` on the specific task line

@@ -76,7 +76,10 @@ the order each rule was added; see each rule for which gate it belongs to.
 
 1. **CR-01 — Correctness** — logic errors, unhandled edge cases (empty
    arrays, network failures, race conditions in effects), incorrect type
-   assumptions, missing error handling on async calls.
+   assumptions, missing error handling on async calls. The calling skill may
+   also hand you a context7 lookup on a library/API the diff uses — read it
+   as extra evidence for this same rule, not a separate finding, and say so
+   plainly if it names a pattern this diff is behind on.
 2. **CR-02 — Reuse** — duplicated logic that already exists elsewhere in the
    diff's neighborhood; a new helper that reinvents an existing utility.
 3. **CR-03 — Simplification** — unnecessary abstraction, premature

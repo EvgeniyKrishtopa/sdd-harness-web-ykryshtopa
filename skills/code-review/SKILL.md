@@ -49,6 +49,19 @@ documents, never a check on the result), and the deep pass is a **separate
 agent** rather than more rules inside `code-reviewer` — because rules added
 there would run on every button-label edit too.
 
+## context7 trigger (0 tokens, before delegating)
+
+Run the diff scan in
+`skills/opsx-apply-git/references/context7-lookup.md` — the same list and
+mark this run's own generation step already used, so both places recognize
+the same names. Empty match → no context7 context to pass. Non-empty match
+already carried in this run's own commit messages (its mark) → pass
+`code-reviewer` the fact that generation already checked it, no second call.
+Non-empty match with no mark → call context7 per that file and pass the
+result to `code-reviewer` as further context — it strengthens CR-01, it is
+not a new rule code. Unavailable at this step → say so plainly in the
+review's own output and continue without it; never a silent skip.
+
 ## Test plan (0 tokens, before delegating)
 
 Also locate this change's test plan, if it has one, before spawning
@@ -107,7 +120,9 @@ own requirement-ID-only path instead of silently assuming full coverage.
    agent's own default; never block the gate on a missing override. Also
    read the manifest's `disabledRules` array and pass it along as context —
    an empty array or missing key means nothing is disabled; never invent a
-   value.
+   value. Also pass the context7 trigger's result above, whatever it was
+   (no match, already-marked, freshly looked up, or unavailable) — it
+   strengthens `code-reviewer`'s own CR-01 check, not a separate finding.
 5. If the risk prefilter above set `$risk`, delegate to the `deep-reviewer`
    subagent (`Agent` tool) with the same diff — text or file handoff, per
    step 1 — the same `disabledRules` list, and the manifest's `models.deep`
