@@ -9,6 +9,44 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.6.1
+
+The `Claude Code >= 2.1.220` requirement is now checked, not just written
+down. It sat in the README where nothing enforced it, so an install on an
+older version was recorded as fully configured while the four behaviours the
+harness leans on — plugin-bundled MCP tool names, `Edit(path)`/`Read(path)`
+permission rules, a subagent refusing to launch with unresolvable `tools:`,
+and `stop_hook_active` — failed silently instead of loudly.
+
+The plugin format offers no place to declare a minimum host version:
+`requirements` in `plugin.json` validates as an unknown key Claude Code
+ignores at load time. So the check happens in the two places that can
+actually run.
+
+### Added — the version floor is enforced twice
+
+- **`init-harness` checks it before Step 0** and stops without writing a
+  single file when the running version is below the floor — the same shape
+  as the existing Node check, for the same reason: a repo half-configured
+  against an unsupported runtime is worse than one not configured at all.
+  Procedure and reasoning in the new
+  `skills/init-harness/references/claude-code-version.md`.
+- **The `SessionStart` hook re-checks every session**, printing a two-line
+  warning above the git banner. Setup runs once per repository; the version
+  can change under it any day after that, and a repo configured months ago
+  would otherwise never look again.
+- **The version is read from `CLAUDE_CODE_EXECPATH` before `PATH`** — that
+  is the binary hosting the session, which can be an older install than the
+  `claude` on `PATH` — and compared with `sort -V`, so `2.1.9` doesn't read
+  as newer than `2.1.220`.
+- **Unreadable version behaves differently in the two places, on purpose.**
+  Setup prints one explicit "skipped, and why" line and continues; the
+  banner prints nothing. A warning shown every session in every repository,
+  for what is usually a `PATH` quirk, trains people to ignore the banner.
+- **The floor is one number in three files**, so `smoke-json-schema.sh` now
+  asserts the reference, the hook and the README agree on it, and
+  `hook-behaviour.sh` drives all three branches through a stub binary.
+
 ## 0.6.0
 
 **context7 is now a mandatory dependency of this plugin**, declared in its
