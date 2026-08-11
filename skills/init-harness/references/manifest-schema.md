@@ -62,8 +62,9 @@ Merge into the file Step 2e already started (it may already contain just the
   actually passed. Its absence means they weren't, which is what lets a
   later run tell a proven toolchain from an assumed one.
 - `forge` — which code-hosting forge this repo's `origin` points to:
-  `"github"` or `"other"`. Written by Step 1's detection (see
-  `references/forge-detection.md`) — `"other"` covers GitLab, Bitbucket,
+  `"github"` or `"other"`, the value Step 1's detection determines (see
+  `references/forge-detection.md`) and Step 8 writes in with the rest of
+  this file — `"other"` covers GitLab, Bitbucket,
   Azure DevOps, and no `origin` at all alike, since this harness's delivery
   step behaves identically (unsupported) on all three of the first group.
   `opsx-apply-git`'s delivery step and `archive-run.md`'s PR-state check

@@ -433,7 +433,9 @@ numbered as below; other skills cite these numbers, so they stay listed here:
 3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
    narrower override of "never commit without being asked", same
    justification as §3's per-group commit override.
-4. Push the archive branch and open a PR into the parent. Leave it open.
+4. Push the archive branch. Same `forge` branch as step 6.3 above: `"other"`
+   → print the archive branch name and the parent branch instead of a PR
+   call; otherwise open a PR into the parent (`gh pr create`). Leave it open.
 5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
    no current change and no next steps remain for it, noting the archive
    location and archive PR URL. Then report the full session.

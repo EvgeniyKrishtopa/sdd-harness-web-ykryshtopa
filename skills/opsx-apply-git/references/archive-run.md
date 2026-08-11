@@ -38,7 +38,10 @@ a change that was never actually accepted (#19).
 3. Commit the archive move (`chore: archive <change-name>`) — this is a
    second, narrower override of "never commit without being asked," same
    justification as §3's per-group commit override.
-4. Push the archive branch, open a PR into the parent. Leave it open.
+4. Push the archive branch. Same `forge` branch as §4 step 6.3: `"other"` →
+   print the archive branch name and the parent branch instead of opening a
+   PR; otherwise (`"github"`, or absent) open a PR into the parent
+   (`gh pr create`). Leave it open.
 5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
    current change and no next steps remain for it, noting the archive
    location and archive PR URL — the same self-checking regeneration as §4

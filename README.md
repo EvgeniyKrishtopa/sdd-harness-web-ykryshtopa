@@ -268,7 +268,8 @@ of the way otherwise; no model call is involved. `/init-harness` does not copy t
    hypothesis under `_debug/`, and classifies the fixed defect against the
    specification so a missing acceptance criterion gets added rather than
    silently staying missing.
-4. You merge each run's PR on GitHub; the next `opsx-apply-git` re-syncs
+4. You merge each run's PR — opened on GitHub, or opened by hand on any
+   other forge (see Requirements) — and the next `opsx-apply-git` re-syncs
    from that merge.
 5. On the last group, `opsx-apply-git` archives the change via its own PR.
 

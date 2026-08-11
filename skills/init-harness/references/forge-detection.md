@@ -14,10 +14,9 @@ origin_url="$(git remote get-url origin 2>/dev/null)"
 No `origin` at all is not an error — it resolves the same as any other
 non-GitHub address, below.
 
-Match `$origin_url` against GitHub's hosts, in whichever URL form git
-produced (`https://github.com/...`, `git@github.com:...`,
-`ssh://git@github.com/...`, and the same host forms under
-`api.github.com` for a GitHub Enterprise Server tunnel):
+Match `$origin_url` against the `github.com` host, in whichever URL form
+git produced (`https://github.com/...`, `git@github.com:...`,
+`ssh://git@github.com/...`):
 
 - Matches → `"github"`.
 - Doesn't match, or `origin_url` is empty → `"other"`. Two values are
