@@ -7,12 +7,17 @@ Run this when adding the harness to a repository, and again after the plugin
 itself is updated — Step 0 decides which of the two is happening. Run it
 before using any other skill in this plugin.
 
+Before Step 0, check the running Claude Code version — **read
+`references/claude-code-version.md` now and follow it.** It holds the floor
+this harness is built against and its three outcomes: at or above it the run
+continues, below it the run stops having written nothing, unreadable prints
+one explicit line and continues.
+
 ## Step 0 — first-time install, or upgrade of a repo an earlier version set up?
 
-This skill used to be a one-shot scaffolder. It isn't anymore: every release
-that adds a file to the target repo (see the inventory in
-`references/upgrade-mode.md`) has to reach repositories that were set up by
-an earlier version, not just new ones.
+This skill is no longer a one-shot scaffolder: every release that adds a
+file to the target repo (see the inventory in `references/upgrade-mode.md`)
+has to reach repositories an earlier version set up, not just new ones.
 `/plugin update` refreshes the skills, agents, and hooks — everything that
 lives *in the plugin*. Nothing that lives *in the repository* changes until
 this skill runs again. Deciding which mode to run in is therefore the first
@@ -25,12 +30,12 @@ plugin_version="$(jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.
 repo_version="$(jq -r '.harnessVersion // empty' .claude/harness.json 2>/dev/null)"
 ```
 
-Never hardcode the plugin version in this skill's text — it is read from
-`.claude-plugin/plugin.json` through `${CLAUDE_PLUGIN_ROOT}` every time, so
-it cannot drift away from the manifest at the next version bump. Note that
-`.claude/harness.json`'s `"version": 1` is a *different* number: it is the
-schema version of the manifest itself, it is not the plugin's version, and
-the two are never compared against each other or collapsed into one field.
+Never hardcode the plugin version in this skill's text — reading it from
+`.claude-plugin/plugin.json` through `${CLAUDE_PLUGIN_ROOT}` every time is
+what stops it drifting from the manifest at the next bump.
+`.claude/harness.json`'s `"version": 1` is a *different* number — the
+manifest's own schema version, never compared against the plugin's or
+collapsed into one field with it.
 
 Then take exactly one of these four branches:
 
@@ -63,21 +68,19 @@ the `$older` of the two.
 
 ### Upgrade mode, and the file inventory this skill owns
 
-On branch 3, **read `references/upgrade-mode.md` now and follow it** — it
-holds the procedure (which steps run, which questions are skipped, when
-`harnessVersion` may be written) and the inventory of every file this skill
-writes into a target repo, with each one's merge rule.
-
-That inventory is the contract: every future release that teaches this skill
-to write a new file **must add it there in the same commit**, or the file
-reaches new repositories and no existing one. Gate 6 reads the same table
-when it checks for drift.
+On branch 3, **read `references/upgrade-mode.md` now and follow it** — the
+procedure (which steps run, which questions are skipped, when
+`harnessVersion` may be written) plus the inventory of every file this skill
+writes into a target repo, with each one's merge rule. That inventory is the
+contract: a release that teaches this skill to write a new file **must add
+it there in the same commit**, or the file reaches new repositories and no
+existing one. Gate 6 reads the same table when it checks for drift.
 
 Upgrade mode is the *only* way a repo picks up a new release's files. Do not
-add automatic migration to `SessionStart` or any other hook: writing into the
-user's repository without them asking is something this harness does nowhere
-else. Version drift is *detected* automatically (Gate 6, checklist item 6)
-and *fixed* on command.
+add automatic migration to `SessionStart` or any other hook: writing into
+the user's repository unasked is something this harness does nowhere else.
+Version drift is *detected* automatically (Gate 6, checklist item 6) and
+*fixed* on command.
 
 ## Step 1 — detect the project
 
@@ -191,11 +194,9 @@ actually is — so this step is not fully unattended.
 
 This plugin's Claude Code hooks only fire when **Claude itself** commits or
 pushes through the Bash tool — they do nothing when the human commits from a
-terminal. Native git hooks close that gap.
-
-Do this now, **before Step 6** writes `permissions.deny` — that step denies
-`npm install`/`add` and equivalents, which would block installing Husky and
-`lint-staged` if this were done afterward.
+terminal. Native git hooks close that gap. Do this now, **before Step 6**
+writes `permissions.deny`: that step denies `npm install`/`add` and
+equivalents, which would block installing Husky and `lint-staged` afterward.
 
 **Read `references/git-hooks.md` now and follow it.** It covers both hook
 files, the `lint-staged` config, the package-manager-specific audit command
@@ -286,13 +287,12 @@ can ship on the project's behalf. Merge `references/permissions-template.md`'s
 `allow`/`deny` arrays into the target repo's `.claude/settings.json`,
 substituting all four of its placeholders — `{{PACKAGE_MANAGER}}`,
 `{{BUILD_DIR}}` (`dist` for Vite, `.next` for Next.js), `{{SERVE_SCRIPT}}`
-(`preview` for Vite, `start` for Next.js), and `{{LOCKFILE}}` — never
-overwrite an existing
-`permissions` block, merge and de-duplicate entries into it instead. This is
-the actually-enforced mechanism for hard blocks (secrets, destructive
-commands) — see that file's notes on why the three non-detected package
-managers' install commands stay denied regardless of which one this project
-uses.
+(`preview` for Vite, `start` for Next.js), and `{{LOCKFILE}}` — and never
+overwrite an existing `permissions` block: merge and de-duplicate entries
+into it instead. This is the actually-enforced mechanism for hard blocks
+(secrets, destructive commands) — see that file's notes on why the three
+non-detected package managers' install commands stay denied regardless of
+which one this project uses.
 
 By this point Steps 2 and 3 have already installed OpenSpec and Husky, so
 denying further ad-hoc installs here doesn't block anything this skill still

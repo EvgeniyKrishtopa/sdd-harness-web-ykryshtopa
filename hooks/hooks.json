@@ -53,7 +53,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi; cd \"${CLAUDE_PROJECT_DIR:-.}\" 2>/dev/null; if [ -f PROGRESS.md ]; then echo '=== Progress (PROGRESS.md) ==='; awk '{gsub(/\\r$/,\"\")} /^## Status$/{s=1;next} /^## Next steps$/{s=2;next} /^## /{s=0} s==1 && /^- (In progress|Blocked):/ {print} s==2 && NF {print}' PROGRESS.md; fi"
+            "command": "floor='2.1.220'; cc=$(\"${CLAUDE_CODE_EXECPATH:-claude}\" --version 2>/dev/null | grep -oE '[0-9]+\\.[0-9]+\\.[0-9]+' | head -1); if [ -n \"$cc\" ] && [ \"$cc\" != \"$floor\" ] && [ \"$(printf '%s\\n%s\\n' \"$cc\" \"$floor\" | sort -V | head -1)\" = \"$cc\" ]; then echo \"=== Harness warning: Claude Code $cc is below the required $floor ===\"; echo 'Gate 3 resolves no browser tools, the permissions block may not apply, and the Stop hook has no loop guard - all of them silently. Upgrade Claude Code, then re-run /init-harness.'; fi; if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then echo '=== Branch ==='; git branch --show-current; echo '=== Git Status ==='; git status -s; echo '=== Recent commits ==='; git log --oneline -5; else echo 'Not a git repository.'; fi; cd \"${CLAUDE_PROJECT_DIR:-.}\" 2>/dev/null; if [ -f PROGRESS.md ]; then echo '=== Progress (PROGRESS.md) ==='; awk '{gsub(/\\r$/,\"\")} /^## Status$/{s=1;next} /^## Next steps$/{s=2;next} /^## /{s=0} s==1 && /^- (In progress|Blocked):/ {print} s==2 && NF {print}' PROGRESS.md; fi"
           }
         ]
       }
