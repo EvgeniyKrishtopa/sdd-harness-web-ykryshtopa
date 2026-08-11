@@ -34,6 +34,13 @@ framework-detecting form so it can be dropped into any Vite or Next.js repo.
   (GitLab, Bitbucket, Azure DevOps, or no `origin` at all) every gate still
   runs, but delivery prints the branch, the target branch, and the PR body
   instead of opening the PR — you open it by hand.
+- **context7 MCP server, a mandatory plugin dependency** — installed and
+  started automatically via `.mcp.json` (`@upstash/context7-mcp`), no
+  separate setup needed. Used to check current library/API docs before
+  writing framework-specific code, and again at code review if the diff
+  touches one that wasn't checked. Works without an API key too, at a lower
+  request limit; unavailable at either point never blocks the run — see
+  `skills/opsx-apply-git/references/context7-lookup.md`.
 - **Node >= 20.19.0** — required by OpenSpec.
 - **OpenSpec configured with the `new`, `continue` and `verify` workflows.**
   This harness's gates are designed around OpenSpec's Expanded workflow set,
@@ -64,7 +71,7 @@ adding it and installing from it are two steps against the same name:
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`), and `claude plugin details
 sdd-harness-web-ykryshtopa` is the quickest check that it loaded: it should
-list 14 skills, 7 agents by name, 3 hook events and 1 MCP server. To install
+list 14 skills, 7 agents by name, 3 hook events and 2 MCP servers. To install
 from a local checkout instead of GitHub, pass the absolute path to
 `marketplace add`. There is no npm package — Claude Code installs plugins
 from marketplaces, not from the npm registry.
@@ -351,25 +358,32 @@ the same review keeps running. Without the codes the choice would be binary
   bare `mcp__playwright__browser_*` a project-level `.mcp.json` would
   produce — `web-qa-manual-tester`'s `tools:` list carries both spellings so
   the gate works whichever way Playwright MCP is provided.
-  This is the only MCP server this plugin ships, and it stays resident for
-  the whole session even though only Gate 3 ever calls it — there is no
-  supported way, as of Claude Code 2.1.220, for a plugin's `.mcp.json` to
-  load a server conditionally per-skill or per-gate; servers listed there
-  attach for the session's lifetime once enabled. Two things narrow the
-  actual cost, though: (1) Claude Code 2.1.x defers MCP tool schemas
-  (`ToolSearch`) rather than loading all of Playwright's tools into context
-  up front — 24 of them, as of `@playwright/mcp@0.0.78`, measured by asking
-  the server itself — so the static footprint is smaller than a naive count
-  suggests; (2) `npx` resolves an already-cached/locally-installed package
-  without a registry round-trip, so a project that installs
-  `@playwright/mcp` as a devDependency (rather than relying on `npx -y` to
-  fetch it fresh) avoids the network check on session start. Neither
-  eliminates the server being resident for gates 1/2/4/5/6, which never
-  touch a browser — if a session is known not to run `web-qa`, disable the
-  server for it via `/mcp` (or remove/comment the entry from `.mcp.json` in
-  a project fork) rather than leaving it attached by default.
+  It stays resident for the whole session even though only Gate 3 ever
+  calls it — there is no supported way, as of Claude Code 2.1.220, for a
+  plugin's `.mcp.json` to load a server conditionally per-skill or per-gate;
+  servers listed there attach for the session's lifetime once enabled. Two
+  things narrow the actual cost, though: (1) Claude Code 2.1.x defers MCP
+  tool schemas (`ToolSearch`) rather than loading all of Playwright's tools
+  into context up front — 24 of them, as of `@playwright/mcp@0.0.78`,
+  measured by asking the server itself — so the static footprint is smaller
+  than a naive count suggests; (2) `npx` resolves an already-cached/locally-
+  installed package without a registry round-trip, so a project that
+  installs `@playwright/mcp` as a devDependency (rather than relying on
+  `npx -y` to fetch it fresh) avoids the network check on session start.
+  Neither eliminates the server being resident for gates 1/2/4/5/6, which
+  never touch a browser — if a session is known not to run `web-qa`,
+  disable the server for it via `/mcp` (or remove/comment the entry from
+  `.mcp.json` in a project fork) rather than leaving it attached by
+  default.
+- **context7** (`@upstash/context7-mcp`) — a mandatory dependency since
+  0.6.0 (item 9), used by `opsx-apply-git` before writing framework-specific
+  code and by `code-review` when a diff touches one without having been
+  checked; see `skills/opsx-apply-git/references/context7-lookup.md` for the
+  trigger and `04-design-rationale.txt` decision 8 for why it's mandatory
+  rather than conditional on the user already having it configured.
 
-Playwright is the only MCP server here on purpose. `architecture-review` and
+Playwright and context7 are the only two MCP servers here, and each earns
+its place on its own terms rather than by default. `architecture-review` and
 `spec-review` both run a deliberate step-by-step pass on a full-route change,
 and neither reaches for a `sequential-thinking` server to do it: modern
 Claude models have native extended thinking that covers the same reasoning in
