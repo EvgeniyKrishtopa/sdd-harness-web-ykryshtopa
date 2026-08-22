@@ -8,7 +8,7 @@ dropped into any Vite or Next.js repo.
 
 What it puts around your work:
 
-- **Six automated review gates** (five agent delegations — Gates 4 and 5
+- **Seven automated review gates** (six agent delegations — Gates 4 and 5
   share one), plus a **security/architecture deep review** that spawns only
   when a 0-token prefilter flags the diff as risky.
 - **An ambiguity sweep and a test plan** before implementation starts.
@@ -232,15 +232,29 @@ large staged diff, or a force-push, and stay out of the way otherwise.
 **1. `/opsx-propose-review` — propose a change.** Before any artifact exists
 it sizes the change from three observable questions (more than one module? a
 data-schema change? a contract change?) and records `short` or `full` in
-`openspec/changes/<change>/.route`. Then Gate 1; then — on the full route —
-`spec-clarify`, which sweeps the drafted artifacts for wording two engineers
-would read two ways and closes each finding with you one question at a time;
-then Gate 2; then `test-plan`. You end up with a change whose ambiguities
-are resolved, whose readiness is a printed five-condition checklist rather
-than a phrase, and whose acceptance criteria each already have a planned
-test.
+`openspec/changes/<change>/.route`. The same step records a second, separate
+marker — `openspec/changes/<change>/.scaffold`, `yes` or `no` — from two more
+observable questions (new module? a new boundary crossing?), but only when
+the manifest has `scaffold.enabled: true`; otherwise it's written `no`
+without asking. Then Gate 1; then — on the full route — `spec-clarify`,
+which sweeps the drafted artifacts for wording two engineers would read two
+ways and closes each finding with you one question at a time; then Gate 2;
+then `test-plan`. You end up with a change whose ambiguities are resolved,
+whose readiness is a printed five-condition checklist rather than a phrase,
+and whose acceptance criteria each already have a planned test.
 
-**2. `/opsx-apply-git` — implement the next run.** Either an autonomous
+**2. `/opsx-scaffold` — turn the approved design into files, when the
+change needs one.** Runs only when `.scaffold` says `yes`; every other
+change skips straight to step 3. It never re-opens the architecture — that
+was already settled in `design.md` and at Gate 1 — it only draws a file map
+(path, responsibility, export) from those already-approved boundaries,
+confirms the map with you in one question, then creates the files as typed
+stub signatures with no bodies. Gate 2b (`architecture-reviewer`, in its
+scaffold-review mode) checks the result against `design.md` before it's
+committed on its own branch and merged. The scaffold map itself is written
+into `design.md` as a new section, not a new file.
+
+**3. `/opsx-apply-git` — implement the next run.** Either an autonomous
 batch of `isolated` groups into one PR, or one `judgement-heavy` group with
 you in the loop. Before writing code for a task that names a library or a
 framework-specific API, it looks the API up through context7 and marks the
@@ -250,7 +264,7 @@ group's commit accordingly. A decision that crosses the recording threshold
 group, `Accepted` when you were in the loop — and Gate 1 reads the accepted
 ones back on every later change.
 
-**3. Gates 3-6 run once per run**, after every group in it is committed and
+**4. Gates 3-6 run once per run**, after every group in it is committed and
 before push — not once per group — per `.claude/docs/review-gates.md`:
 `web-qa` → `code-review` (Gates 4 + 5 in one delegation) → `harness-review`.
 
@@ -274,7 +288,7 @@ before push — not once per group — per `.claude/docs/review-gates.md`:
   classifies the fixed defect against the specification, so a missing
   acceptance criterion gets added rather than silently staying missing.
 
-**4. You merge the run's PR.** Its body carries two sections: *What changed
+**5. You merge the run's PR.** Its body carries two sections: *What changed
 and why* in plain prose, and a **Review trail** — a link to the change, one
 line per gate with its verdict or its skip reason, this run's CONFIRMED
 findings with rule code and outcome, and any ambiguity deferred with an
@@ -284,7 +298,7 @@ owner and a due date. A clean run prints the section too, with an explicit
 it. On a non-GitHub forge the PR body is printed for you to paste instead.
 The next `opsx-apply-git` re-syncs from your merge.
 
-**5. On the last group**, `opsx-apply-git` archives the change via its own
+**6. On the last group**, `opsx-apply-git` archives the change via its own
 PR.
 
 ---
@@ -295,6 +309,7 @@ PR.
 |---|---|---|
 | `init-harness` | — | Scaffolder: detects stack, installs OpenSpec, writes docs/hooks; re-run after a plugin update to upgrade the repo |
 | `opsx-propose-review` | 1-2 | Size the change, propose it, run architecture + clarify + spec review, then build its test plan |
+| `opsx-scaffold` | 2b | On a change that needs one: turn `design.md`'s approved boundaries into typed stub files, confirmed with you, then reviewed |
 | `opsx-apply-git` | 3-6 | Implement a run inside the branch-per-group workflow |
 | `opsx-update-review` | 1-2 | Revise an existing change's plan and re-run what the revision touched |
 | `architecture-review` | 1 | Boundary/coupling risk on `design.md`, against the project's accepted decisions, plus sequence diagrams for boundary-crossing flows |

@@ -9,6 +9,60 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.7.0
+
+**Run `/init-harness` again, in upgrade mode, after updating this plugin,
+or the new stage stays off.** `.claude/harness.json` gains a `scaffold` key
+this release, and unlike every other flag it added before, a missing key
+(or `enabled: false`) means the new stage does **not** run — a repository
+last configured by an earlier plugin version won't have a new step sprung on
+it the moment the plugin updates. Upgrade mode seeds the key `{"enabled":
+true}`; turn it back off in `.claude/harness.json` afterward if you don't
+want the stage.
+
+A `design.md` can describe a boundary in words — "data fetching lives in the
+access layer" — without saying where the files actually go, and nothing
+catches the gap until code review, when the feature is already written and
+fixing it means moving files instead of editing a line. This release adds a
+stage between proposing a change and implementing it that turns an
+already-approved `design.md` into real files first: typed signatures at
+their final paths, stub bodies only, no logic.
+
+### Added — the scaffold stage
+
+- **A new skill, `opsx-scaffold`.** On a change whose proposal step judged
+  it needs one, it reads `design.md`'s already-approved boundaries, draws a
+  file map (path / responsibility / export), confirms it with you in one
+  question, then creates the files as typed stubs and runs typecheck and
+  lint. It never reopens the architecture — that stays Gate 1's job; the
+  only question here is whether the file map is correct. Runs on its own
+  branch, one commit, merged before the change's first task group starts.
+- **`opsx-propose-review` now also computes a `.scaffold` marker**
+  (`openspec/changes/<change>/.scaffold`, `yes` or `no`) alongside the
+  existing `.route` marker, from two observable questions — does the change
+  add a new module, or a new boundary crossing? — asked only when the
+  manifest's `scaffold` key is enabled. `no`, or the file missing, sends the
+  change straight to `opsx-apply-git` as before; the everyday workflow for a
+  change that doesn't need a scaffold does not change at all.
+- **A "Scaffold map" section in `design.md`**, written by `opsx-scaffold`
+  once the files exist, not before — real paths and real exports rather than
+  a plan. No new per-change document.
+- **Gate 2b — scaffold-review.** `architecture-reviewer` gains a
+  scaffold-review mode (rules `SC-1`..`SC-6`) that checks the scaffold's
+  layout, signatures and imports against `design.md`'s already-approved
+  boundaries — never the architecture itself. It runs only when a change's
+  own `.scaffold` marker is `yes` and the manifest has the stage enabled;
+  otherwise no scaffold-review line is logged at all. The eight existing
+  `architecture-reviewer` rules over `design.md` itself are untouched.
+- **`scaffold` in `.claude/harness.json`** — a single `enabled` toggle for
+  the whole stage. See the upgrade note above for why its default runs
+  backwards from every other manifest flag.
+
+### Changed — the pipeline is seven gates now
+
+- README and the plugin description both said six automated review gates;
+  both now say seven, and name the scaffold check alongside the rest.
+
 ## 0.6.2
 
 Gate 3 and the context7 lookup now run on the servers this plugin pins,
