@@ -30,6 +30,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "openspec": { "profile": "custom", "workflows": ["propose", "explore", "new", "continue", "apply", "update", "ff", "sync", "archive", "bulk-archive", "verify", "onboard"] },
   "disabledRules": [],
   "sizeRouting": { "enabled": true },
+  "scaffold": { "enabled": true },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
@@ -124,6 +125,21 @@ Merge into the file Step 2e already started (it may already contain just the
   `trivialDiffThreshold`. The route itself is recorded per change, in
   `openspec/changes/<change>/.route` — not here; this key only turns the
   assessment on or off.
+- `scaffold` (added 0.7.0) — a single `enabled` toggle for the scaffold
+  stage: `opsx-scaffold` turning an approved `design.md` into real stub
+  files before a change's feature code is written, reviewed by
+  `architecture-reviewer`'s scaffold-review mode as Gate 2b. Unlike
+  `sizeRouting` above, **the key missing, or `enabled: false`, both mean the
+  stage is off** — not the opposite. Seed it `{"enabled": true}` on a fresh
+  `init-harness` run, first-time or upgrade alike; never leave it unwritten.
+  The reason the absent-key default runs backwards from `sizeRouting`: this
+  stage adds a step to the human's own workflow, and a repository last
+  configured by an earlier plugin version must not start springing an
+  unfamiliar stage on someone the moment they update the plugin, before
+  they've run `init-harness` in upgrade mode to actually opt in. The
+  per-change verdict itself is computed and recorded separately, in
+  `openspec/changes/<change>/.scaffold` — this key only turns the stage on
+  or off.
 - `models` — one entry per model-backed subagent this plugin delegates to,
   plus a `default` fallback. Seed it with the values shown above, not with
   whatever each `agents/*.md` currently declares in its own frontmatter —
