@@ -51,23 +51,48 @@ neighboring step, that step is scoped wrong.
    the manifest. A failure gets fixed in the scaffold, never waved off by
    loosening the check. The project's existing test suite must stay green —
    this stage adds no tests of its own.
-   The scaffold's own review will run here, between this step and the next
-   — its rules are added in a later version of this stage. Nothing is
-   called from this place yet.
-8. Append the "Scaffold map" section to `design.md` — see below.
-9. If the human rejected a real alternative during step 5's conversation,
-   record it through the existing decision threshold
-   (`skills/opsx-apply-git/references/decision-threshold.md`). No rejected
-   alternative → write nothing; a decision record for every single
-   scaffold is not the goal.
-10. Branch `feature/<change>-scaffold` off the change's own parent branch,
-    one commit `scaffold(<change>): <short summary>`, open a merge request
-    into the parent. The human merges it. Once merged, the parent branch
-    already contains the scaffold, and the change's first task group builds
-    on top of it rather than inventing structure of its own.
-11. Report: how many files were created, where the map was written, whether
-    a decision was recorded, and that `opsx-apply-git` is the next skill to
-    run.
+8. **Run the scaffold review — Gate 2b.** Read `.claude/harness.json`'s
+   `models.architecture` key and pass it as the `model` override, the same
+   way `architecture-review` does; missing manifest or key → the agent's own
+   default, never a reason to stop. Check for a decisions folder the same
+   way `architecture-review` does — `docs/adr/` first, then
+   `docs/decisions/`, a 0-token `test -d` — and pass whichever exists.
+   Delegate to the `architecture-reviewer` subagent (`Agent` tool) in its
+   scaffold-review mode, handing it: this branch's diff against its parent
+   branch, `design.md` (including its sequence diagrams), `tasks.md`, and
+   the decisions-folder path if one exists. Also pass the manifest's
+   `disabledRules` array as context, the same way `architecture-review`
+   does — an empty or missing array disables nothing.
+   - **CONFIRMED finding** — show it to the human and ask whether to fix the
+     scaffold now or continue anyway. Do not silently continue past an
+     unresolved CONFIRMED finding. A fix lands as its own commit on this
+     same scaffold branch — this stage's one-commit shape from step 10
+     below still holds for the scaffold itself; a fix commit added after
+     review is expected, not an exception to it.
+   - **Clean, or PLAUSIBLE-only** — continue to the next step.
+   Then append one line to `.claude/harness-log.jsonl` (create it if
+   missing), the same shape every other gate's line uses — see
+   `skills/architecture-review/SKILL.md`'s own logging step for the exact
+   `jq` command and field meanings — with `gate: "scaffold-review"` and
+   `group` carrying this change's route (`.route`'s first line, `short` or
+   `full`; this gate runs at change scope, not per task group).
+   `fixIterations`/`escalatedToHuman` are always `0`/`false`: a CONFIRMED
+   finding here is fixed by hand in conversation, not by `debug-loop`.
+9. Append the "Scaffold map" section to `design.md` — see below.
+10. If the human rejected a real alternative during step 5's conversation,
+    record it through the existing decision threshold
+    (`skills/opsx-apply-git/references/decision-threshold.md`). No rejected
+    alternative → write nothing; a decision record for every single
+    scaffold is not the goal.
+11. Branch `feature/<change>-scaffold` off the change's own parent branch,
+    one commit `scaffold(<change>): <short summary>` (plus the review's fix
+    commit from step 8, if there was one), open a merge request into the
+    parent. The human merges it. Once merged, the parent branch already
+    contains the scaffold, and the change's first task group builds on top
+    of it rather than inventing structure of its own.
+12. Report: how many files were created, where the map was written, the
+    scaffold review's verdict, whether a decision was recorded, and that
+    `opsx-apply-git` is the next skill to run.
 
 ## What a scaffold is
 
