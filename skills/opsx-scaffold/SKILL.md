@@ -98,3 +98,30 @@ actually checks something; a mismatch against the sequence diagrams becomes
 visible before any logic is written (a diagram shows an error branch a
 signature's return type doesn't account for); and implementation gets a
 contract to satisfy, not just an empty folder to fill however it likes.
+
+## Scaffold map
+
+Step 8 appends a section to `design.md`, titled `## Scaffold map`, a
+three-column table:
+
+```
+| File | Responsibility | Exports |
+| --- | --- | --- |
+| path/to/file.ts | what it's responsible for | name, name |
+```
+
+Real paths, real exports — write this section **after** the files exist
+(step 6), never before, so it describes what is actually on disk rather than
+what was planned. No new document: this is a section of the change's
+existing `design.md`, not a new file under the change's own folder.
+
+**What goes in the map vs. what goes in a decision record.** The same
+conversation (step 5) can produce both, and they are not the same thing.
+If the human rejected a real alternative out loud — "modules by feature, not
+a shared components folder" — that's a decision; it had a live alternative
+someone could have picked instead, and step 9 above is what records it. If
+the answer was simply where something landed — "the cart lives in
+`features/cart`, only `api.ts` is exported outward" — that's a fact about
+the code, and it belongs in this map, not in a decision record. Never write
+a decision record for a scaffold that had no rejected alternative — most
+scaffolds won't have one, and that's the expected case, not a gap.
