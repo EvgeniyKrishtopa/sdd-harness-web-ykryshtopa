@@ -131,9 +131,11 @@ Same verification bar as design-review mode: CONFIRMED needs a file/line,
 the exact rule broken, and a concrete way it bites; anything short of that
 is PLAUSIBLE.
 
-SC-* codes switch off the same way as the design-review checks and
-`CR-*`/`DR-*`: via this project's `disabledRules` in `.claude/harness.json`,
-passed in by the calling skill. No separate mechanism.
+SC-* codes switch off the same way `CR-*`/`DR-*` do in the other review
+agents: via this project's `disabledRules` in `.claude/harness.json`, passed
+in by `opsx-scaffold` (the only caller of scaffold-review mode). No separate
+mechanism. The eight design-review checks above carry no codes and are not
+affected by this list — that's unchanged by this addition.
 
 ## Output
 
