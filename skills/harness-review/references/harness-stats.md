@@ -1,6 +1,6 @@
 # `harness-stats` — reading the log nobody was reading
 
-`.claude/harness-log.jsonl` (written by all six gates and both skip-forms
+`.claude/harness-log.jsonl` (written by all seven gates and both skip-forms
 in `opsx-apply-git`, see each gate's own `## Log` section and #U13) is
 appended to on every run. Until this file existed, nothing ever read it
 back. This is that read path: one deterministic snippet, callable on demand
@@ -33,7 +33,7 @@ uses for JSON parsing.
 ## What it computes
 
 1. **Runs and verdict distribution per gate** — how many times each of the
-   six gates ran, broken down by verdict (`clean`/`plausible`/`confirmed`/
+   seven gates ran, broken down by verdict (`clean`/`plausible`/`confirmed`/
    `skipped`).
 2. **Skipped fraction per gate** — the whole reason `opsx-apply-git`'s
    0-token prefilters (#35 trivial-diff, #36 Gate 6 precondition) exist is

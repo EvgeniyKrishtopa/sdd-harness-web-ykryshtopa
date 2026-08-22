@@ -1,13 +1,22 @@
 # Automated Review Gates
 
 AI review is a sensor, not a final verdict — the human owns the merge.
-Gates 1, 2, 4, 5 surface findings and pause only on a CONFIRMED finding;
+Gates 1, 2, 2b, 4, 5 surface findings and pause only on a CONFIRMED finding;
 PLAUSIBLE-only or clean reviews never pause anything. Gates 3 and 6 differ
 by design (see below).
 
 - **Gate 1 — architecture-review**, after `design.md` is drafted.
 - **Gate 2 — spec-review**, after the full artifact set is done. Also
   classifies every `tasks.md` group isolated/judgement-heavy.
+- **Gate 2b — scaffold-review**, inside `opsx-scaffold`, on a change whose
+  proposal step judged it needs a scaffold (`.scaffold` marker `yes`) and
+  whose manifest has `scaffold.enabled: true`. `architecture-reviewer`, in
+  its scaffold-review mode, checks the scaffold's file layout, signatures,
+  and imports against `design.md`'s already-approved boundaries — never the
+  architecture itself, which stays Gate 1's job. A change whose marker is
+  `no` never invokes `opsx-scaffold` at all; a repo without the manifest key
+  (or `enabled: false`) still invokes it, but it stops at its own key check
+  before reaching this gate. Either way, no scaffold-review line is logged.
 - **Gate 3 — web-qa**, on the last group only, if the change touched
   user-facing UI. Must-pass with a fix loop, not CONFIRMED/PLAUSIBLE.
 - **Gate 4 + Gate 5 — code-review**, once per run: correctness/
