@@ -23,15 +23,17 @@ neighboring step, that step is scoped wrong.
    `.claude/docs/git-conventions.md` and `.claude/harness.json` — the same
    first read `opsx-apply-git` does in its own steps 0-1. Manifest missing →
    stop and send the human to `init-harness` first.
-1. Read `openspec/changes/<change>/.scaffold`. First line `no` → say in one
+1. Read the `scaffold` key in `.claude/harness.json` — before anything else
+   below. Key missing, or `enabled: false` → say in one line that this repo
+   hasn't turned the stage on, name `opsx-apply-git` as the next skill, and
+   stop. An unconfigured or disabled repo never gets this stage sprung on it
+   unannounced, regardless of what any individual change's own marker says.
+2. Read `openspec/changes/<change>/.scaffold`. First line `no` → say in one
    line that this change doesn't need a scaffold, name `opsx-apply-git` as
    the next skill, and stop. File missing entirely (an older change, or a
    repo still on a plugin version before this one) → treat it as `no`.
    Never infer on your own that a change needs a scaffold just because the
    marker is absent.
-2. Read the `scaffold` key in `.claude/harness.json`. Key missing, or
-   `enabled: false` → stop the same way as step 1. An unconfigured or
-   disabled repo never gets this stage sprung on it unannounced.
 3. Read this change's `design.md` (boundaries, module composition, sequence
    diagrams) and the spec files listed under `contextFiles`
    (`openspec instructions apply --change "<name>" --json`). Read `tasks.md`

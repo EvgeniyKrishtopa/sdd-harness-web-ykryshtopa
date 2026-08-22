@@ -71,8 +71,12 @@ it ready to implement.
    project that hasn't opted in never gets guessed into the cheaper path.
 
    **Scaffold check — a separate block, not mixed with the route questions
-   above: different output, different file.** Answer two more purely
-   observable questions:
+   above: different output, different file.** First read `.claude/harness.json`'s
+   `scaffold` key — before the two questions below, not after. Key missing,
+   or `enabled` not `true` → scaffold `no`, skip the two questions entirely;
+   a repo that hasn't opted into the stage has nothing to compute here. Only
+   when `scaffold.enabled` is `true` do the two observable questions below
+   apply:
    - Does the change create a new module — a folder that doesn't exist yet
      in the project, at the same level where existing modules live?
    - Does the change open a new boundary crossing — a new route handler, a
