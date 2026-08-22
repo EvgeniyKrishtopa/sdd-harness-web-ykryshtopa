@@ -4,13 +4,13 @@ description: Finds unused files, exports, types, and dependencies with knip plus
 ---
 
 Find code nothing references anymore, and hand the result to the normal
-change process. This is **not** one of this project's six review gates —
+change process. This is **not** one of this project's seven review gates —
 it runs on demand, not on every task, and it does not write to
 `.claude/harness-log.jsonl` (see "Not a gate" below).
 
 ## Why this exists
 
-The six automated gates only ever look at what a task *changed*. A function
+The seven automated gates only ever look at what a task *changed*. A function
 that a task stopped calling — without touching the function itself — never
 appears in any diff, so no gate ever sees it. It just accumulates. See
 `harness-audit/v0.4.0-implemented/01-review-blind-spots.txt`, point 2, for the
@@ -147,7 +147,7 @@ by hand instead of attempting to edit executable config.
 
 ## Not a gate
 
-This command is not one of the six review gates and does not append to
+This command is not one of the seven review gates and does not append to
 `.claude/harness-log.jsonl` — adding a line here would distort the log's
 skip-rate accounting for a command that, by design, doesn't run on every
 task the way a gate does. Run it by hand, roughly monthly, alongside the

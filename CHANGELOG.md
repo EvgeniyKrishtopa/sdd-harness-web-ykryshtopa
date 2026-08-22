@@ -61,7 +61,23 @@ their final paths, stub bodies only, no logic.
 ### Changed — the pipeline is seven gates now
 
 - README and the plugin description both said six automated review gates;
-  both now say seven, and name the scaffold check alongside the rest.
+  both now say seven, and name the scaffold check alongside the rest. So do
+  the four other places that had their own copy of the count: the
+  marketplace entry's description, the CLAUDE.md pointer block
+  `init-harness` writes into every configured repo, `harness-stats`'
+  per-gate metric, and `dead-code-report`'s three "not one of the gates"
+  disclaimers.
+- **README's two rule surfaces name Gate 2b.** The design-principle section
+  listed the gates that pause only on a CONFIRMED finding without it, and
+  the rule-code section listed `CR-*`/`SR-*`/`DR-*` without the new `SC-*`
+  — which is switched off through the same `disabledRules` array. The eight
+  design-review checks still carry no codes, and the section now says so.
+- **`opsx-update-review` recomputes the `.scaffold` marker** when its
+  revision changed whether the change adds a module or opens a boundary
+  crossing. The marker is computed once at proposal time; without this a
+  change reworked into needing a scaffold went straight to
+  `opsx-apply-git`, since nothing downstream recomputes it. Its final report
+  names the next skill from that marker, the way `opsx-propose-review` does.
 
 ## 0.6.2
 
