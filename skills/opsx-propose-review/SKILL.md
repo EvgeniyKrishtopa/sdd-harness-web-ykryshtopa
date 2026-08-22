@@ -69,14 +69,32 @@ it ready to implement.
    If `.claude/harness.json`'s `sizeRouting.enabled` is `false`, or the key
    is absent, skip this assessment and treat the change as full route — a
    project that hasn't opted in never gets guessed into the cheaper path.
+
+   **Scaffold check — a separate block, not mixed with the route questions
+   above: different output, different file.** Answer two more purely
+   observable questions:
+   - Does the change create a new module — a folder that doesn't exist yet
+     in the project, at the same level where existing modules live?
+   - Does the change open a new boundary crossing — a new route handler, a
+     new server-side endpoint, a new client to an external service?
+
+   Any **yes** → scaffold `yes`. Both **no** → scaffold `no`. "The change is
+   large" is not itself a reason for `yes` — a large change entirely inside
+   existing modules still doesn't need a scaffold. No separate question to
+   the human here; this is computed silently, the same way the route
+   questions above are.
 3. Run the vendored `openspec` proposal flow (`npx openspec` CLI, or the
    vendored `openspec-propose-change` skill if this project has one) to
    generate the full artifact set: proposal, `design.md`, specs, `tasks.md`.
-   As soon as the change's folder exists, write step 2's verdict as the
-   first line of `openspec/changes/<change>/.route` (`short` or `full`),
-   followed by a `# ` comment recording the three answers for audit. A user
-   can override a misjudged route later by editing that first line directly
-   — this assessment is a starting point, not a verdict.
+   As soon as the change's folder exists, write step 2's route verdict as
+   the first line of `openspec/changes/<change>/.route` (`short` or `full`),
+   followed by a `# ` comment recording the three route answers for audit.
+   Write the scaffold verdict the same way, at the same moment, into its own
+   `openspec/changes/<change>/.scaffold` (`yes` or `no`, then a `# ` comment
+   with the two scaffold answers) — a separate file because it drives a
+   separate decision (step 9 below), not a variant of the route. A user can
+   override a misjudged verdict later by editing either file's first line
+   directly — both are a starting point, not a verdict.
 4. Once `design.md` exists, invoke the **`architecture-review`** skill
    (Gate 1) against it — it reads `.route` itself to decide how deep to go.
 5. **Short route only skips this step.** Once every artifact is `status:
@@ -102,5 +120,7 @@ it ready to implement.
    skill's.
 9. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
    summary, the route this change took (`short`/`full`), task-group
-   classification table, where the test plan was written, and that
-   `opsx-apply-git` is the next skill to run.
+   classification table, where the test plan was written, and the next
+   skill to run — read `openspec/changes/<change>/.scaffold`'s first line:
+   `yes` → `opsx-scaffold`; `no` (or the file is missing) → `opsx-apply-git`,
+   as before.
