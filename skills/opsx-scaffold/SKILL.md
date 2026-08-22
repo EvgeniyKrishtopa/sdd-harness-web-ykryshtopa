@@ -17,9 +17,12 @@ neighboring step, that step is scoped wrong.
 
 ## Steps
 
-0. Read `.claude/docs/git-conventions.md` and `.claude/harness.json` — the
-   same first read `opsx-apply-git` does in its own steps 0-1. Manifest
-   missing → stop and send the human to `init-harness` first.
+0. Select the change (explicit name, inferred from conversation, or ask via
+   `AskUserQuestion` if ambiguous) — the same first move `opsx-apply-git`
+   and `opsx-update-review` make before touching a change's files. Then read
+   `.claude/docs/git-conventions.md` and `.claude/harness.json` — the same
+   first read `opsx-apply-git` does in its own steps 0-1. Manifest missing →
+   stop and send the human to `init-harness` first.
 1. Read `openspec/changes/<change>/.scaffold`. First line `no` → say in one
    line that this change doesn't need a scaffold, name `opsx-apply-git` as
    the next skill, and stop. File missing entirely (an older change, or a
