@@ -14,8 +14,9 @@ by design (see below).
   its scaffold-review mode, checks the scaffold's file layout, signatures,
   and imports against `design.md`'s already-approved boundaries — never the
   architecture itself, which stays Gate 1's job. A change whose marker is
-  `no`, or a repo without the manifest key, skips this stage entirely —
-  `opsx-scaffold` never runs, so no line is logged for it either.
+  `no` never invokes `opsx-scaffold` at all; a repo without the manifest key
+  (or `enabled: false`) still invokes it, but it stops at its own key check
+  before reaching this gate. Either way, no scaffold-review line is logged.
 - **Gate 3 — web-qa**, on the last group only, if the change touched
   user-facing UI. Must-pass with a fix loop, not CONFIRMED/PLAUSIBLE.
 - **Gate 4 + Gate 5 — code-review**, once per run: correctness/

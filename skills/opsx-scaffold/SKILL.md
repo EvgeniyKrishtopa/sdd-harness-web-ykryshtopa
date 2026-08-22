@@ -68,7 +68,7 @@ neighboring step, that step is scoped wrong.
    - **CONFIRMED finding** — show it to the human and ask whether to fix the
      scaffold now or continue anyway. Do not silently continue past an
      unresolved CONFIRMED finding. A fix lands as its own commit on this
-     same scaffold branch — this stage's one-commit shape from step 10
+     same scaffold branch — this stage's one-commit shape from step 11
      below still holds for the scaffold itself; a fix commit added after
      review is expected, not an exception to it.
    - **Clean, or PLAUSIBLE-only** — continue to the next step.
@@ -76,10 +76,12 @@ neighboring step, that step is scoped wrong.
    missing), the same shape every other gate's line uses — see
    `skills/architecture-review/SKILL.md`'s own logging step for the exact
    `jq` command and field meanings — with `gate: "scaffold-review"` and
-   `group` carrying this change's route (`.route`'s first line, `short` or
-   `full`; this gate runs at change scope, not per task group).
-   `fixIterations`/`escalatedToHuman` are always `0`/`false`: a CONFIRMED
-   finding here is fixed by hand in conversation, not by `debug-loop`.
+   `group` carrying this change's route: `openspec/changes/<change>/.route`'s
+   first line, `short` or `full`; missing → treat as `full`, the same rule
+   `architecture-review` uses (this gate runs at change scope, not per task
+   group). `fixIterations`/`escalatedToHuman` are always `0`/`false`: a
+   CONFIRMED finding here is fixed by hand in conversation, not by
+   `debug-loop`.
 9. Append the "Scaffold map" section to `design.md` — see below.
 10. If the human rejected a real alternative during step 5's conversation,
     record it through the existing decision threshold
@@ -131,7 +133,7 @@ contract to satisfy, not just an empty folder to fill however it likes.
 
 ## Scaffold map
 
-Step 8 appends a section to `design.md`, titled `## Scaffold map`, a
+Step 9 appends a section to `design.md`, titled `## Scaffold map`, a
 three-column table:
 
 ```
@@ -149,7 +151,7 @@ existing `design.md`, not a new file under the change's own folder.
 conversation (step 5) can produce both, and they are not the same thing.
 If the human rejected a real alternative out loud — "modules by feature, not
 a shared components folder" — that's a decision; it had a live alternative
-someone could have picked instead, and step 9 above is what records it. If
+someone could have picked instead, and step 10 above is what records it. If
 the answer was simply where something landed — "the cart lives in
 `features/cart`, only `api.ts` is exported outward" — that's a fact about
 the code, and it belongs in this map, not in a decision record. Never write
