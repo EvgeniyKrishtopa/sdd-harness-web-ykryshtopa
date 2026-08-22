@@ -28,9 +28,17 @@ Revise an existing OpenSpec change and re-validate it.
    the coverage floor, so a stale row quietly certifies a criterion nobody
    tests. Leave the plan alone when the revision touched neither the
    criteria nor the requirement identifiers.
-6. Report what changed, the gates re-run, whether the test plan was
-   rebuilt, and whether the change is still ready for `opsx-apply-git` or
-   needs another round.
+6. If the revision changed whether the change adds a new module or opens a
+   new boundary crossing, recompute `openspec/changes/<change>/.scaffold`
+   the same way `opsx-propose-review`'s step 2 does — same two observable
+   questions, same manifest `scaffold.enabled` precondition. A marker
+   computed against the previous plan sends a change that now needs a
+   scaffold straight past the stage; nothing downstream recomputes it.
+   Revision touched neither → leave the file alone.
+7. Report what changed, the gates re-run, whether the test plan was
+   rebuilt, and the next skill — `.scaffold` first line `yes` →
+   `opsx-scaffold`, otherwise `opsx-apply-git` — or that the change needs
+   another round.
 
 ## Called from `debug-loop`
 

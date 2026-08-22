@@ -38,7 +38,7 @@ every commit instead of trusting it.
   automatically at task-group and archive boundaries (its §3/§5.3) —
   without this reference, that override isn't discoverable and shouldn't
   be assumed.
-- @.claude/docs/review-gates.md — the six automated review gates and
+- @.claude/docs/review-gates.md — the seven automated review gates and
   their order.
 - @.claude/docs/laziness-ladder.md — priority order to check before
   writing new code; does not apply to trust-boundary validation,

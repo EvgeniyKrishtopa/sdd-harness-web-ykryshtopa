@@ -346,10 +346,12 @@ calling session.
 
 ### Rules you can name and switch off
 
-Every rule inside `code-reviewer`, `spec-reviewer` and `deep-reviewer`
-carries a permanent code (`CR-01`, `SR-02`, `DR-03`) that never changes even
-when the rule's wording does. A finding names its code, so you can dispute
-one rule rather than a whole gate, and `.claude/harness.json`'s
+Every rule inside `code-reviewer`, `spec-reviewer`, `deep-reviewer`, and
+`architecture-reviewer`'s scaffold-review mode carries a permanent code
+(`CR-01`, `SR-02`, `DR-03`, `SC-1`) that never changes even when the rule's
+wording does — the eight design-review checks Gate 1 runs over `design.md`
+are the one exception and carry no codes. A finding names its code, so you
+can dispute one rule rather than a whole gate, and `.claude/harness.json`'s
 `disabledRules` array switches a single rule off while every other rule in
 the same review keeps running. Without the codes the choice would be binary
 — tolerate a whole gate, or disable a whole gate.
@@ -439,7 +441,7 @@ without an external round-trip per "thought".
 ## Design principle
 
 **AI review is a sensor, not a final verdict — the human owns the merge.**
-Gates 1, 2, 4 and 5 pause only on a CONFIRMED finding, and the deep review
+Gates 1, 2, 2b, 4 and 5 pause only on a CONFIRMED finding, and the deep review
 inside Gate 4/5 pauses on exactly the same terms; PLAUSIBLE-only or clean
 reviews never block. Gates 3 and 6 are must-pass/always-shown by design —
 see `.claude/docs/review-gates.md` (written by `init-harness`) for the full
