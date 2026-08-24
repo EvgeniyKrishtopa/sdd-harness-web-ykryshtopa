@@ -20,3 +20,8 @@ review actually changed.
 This is the pattern every regression case follows — a defect that reached
 production once, planted back into a throwaway repository so the gate that
 missed it has to face it on every model change from now on.
+
+The graders require each filename *next to the count it carries*, not the
+bare filename. A run that reads both files and reports nothing would name
+them both anyway, and a grader that such a run satisfies is a grader that
+cannot fail.

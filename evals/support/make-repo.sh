@@ -35,13 +35,18 @@ while [ "$probe" != "/" ]; do
   probe="$(dirname "$probe")"
 done
 
+# Resolve our own directory before leaving it: $0 is whatever the caller
+# typed, and every documented invocation types it relative to the cwd we
+# are about to leave.
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+
 cd "$target"
 
 # ---------------------------------------------------------------- clean state
 
 mkdir -p .claude/docs src
 
-support_manifest="$(dirname "$0")/harness.json"
+support_manifest="$script_dir/harness.json"
 if [ -f "$support_manifest" ]; then
   cp "$support_manifest" .claude/harness.json
 else

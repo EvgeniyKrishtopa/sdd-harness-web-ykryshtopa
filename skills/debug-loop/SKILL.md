@@ -156,11 +156,11 @@ down somewhere.
 
 ## If the fix landed in the harness, not the project
 
-A fix in the project's files is already pinned by case 1's test. A fix in the
-harness itself — `skills/`, `agents/`, `hooks/`, `.claude/harness.json` — is
-pinned by nothing: the gates do not review themselves. For that kind only, ask
-once (`AskUserQuestion`) whether to keep it as a permanent eval case, then
-follow `references/eval-case.md` — it writes into this repo or into the record.
+A fix in the project's files is pinned by case 1's test and measured by Gate
+5. A fix in the harness itself — `skills/`, `agents/`, `hooks/`,
+`.claude/harness.json` — is pinned by nothing. For that kind only, ask once
+(`AskUserQuestion`) whether to keep it as a permanent eval case, then follow
+`references/eval-case.md` — which never writes outside the project you are in.
 
 ## Escalate once the limit is reached
 

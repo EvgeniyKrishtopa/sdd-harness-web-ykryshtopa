@@ -135,8 +135,26 @@ not PLAUSIBLE.
 Prefer this shape — a code and a verdict — over an LLM judge on the prose.
 Keep in mind which gates it fits: `harness-review` deliberately does not
 follow the CONFIRMED/PLAUSIBLE pause rule (see its SKILL.md), so a case
-about that gate grades on what the finding names instead — the file
-carrying the stale claim and the file carrying the truth.
+about that gate has to grade on the finding's content instead.
+
+When it does, grade on **the claim, not the filename**. A gate that read
+every file and reported nothing still names those files in its answer, so a
+grader matching `CLAUDE\.md` alone passes on the exact silence the case was
+written to catch. Require the two halves that only a real finding puts
+together — the file *and* the wrong value in it:
+
+```markdown
+---
+type: regex
+pattern: 'CLAUDE\.md.{0,300}(\bsix\b|шесть)|(\bsix\b|шесть).{0,300}CLAUDE\.md'
+flags: 'is'
+match: contains
+---
+```
+
+The general test for any grader, of any type: describe the run this case
+exists to catch — the gate staying silent — and check that the grader would
+fail it. If it would pass, the grader measures nothing.
 
 ## The defect goes into make-repo.sh, by name
 
