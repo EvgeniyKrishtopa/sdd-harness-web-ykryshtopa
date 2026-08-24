@@ -81,7 +81,7 @@ adding it and installing from it are two steps against the same name:
 
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`). The quickest check that it loaded is `claude
-plugin details sdd-harness-web-ykryshtopa`: it should list 14 skills,
+plugin details sdd-harness-web-ykryshtopa`: it should list 15 skills,
 7 agents by name, 3 hook events and 2 MCP servers. To install from a local
 checkout, pass the absolute path to `marketplace add`. There is no npm
 package — Claude Code installs plugins from marketplaces, not from the npm
@@ -509,18 +509,51 @@ commit counts as a new one — is deliberately not used: this harness's whole
 argument is that state should be explicit and reviewable, and "which version
 am I running" is exactly that kind of state.
 
+## The eval set
+
+Three things measure this plugin, and the third one is new in 0.8.0:
+
+| Layer | What it answers | Where |
+|---|---|---|
+| Structural tests | Are the files there and the schemas valid? | `tests/*.sh` |
+| Production telemetry | What did the pipeline actually do this month? | `.claude/harness-log.jsonl`, read by `harness-stats` |
+| The eval set | On a fixed list of prompts with a known right answer, did the plugin behave? | `evals/` |
+
+The first two can both look healthy while routing quietly regresses. A
+structural test never reads a skill description; the log only ever records
+the skills that *did* fire, never the one that should have and didn't. And a
+false fire is invisible from either side — something ran, produced output,
+and read as normal.
+
+`evals/routing/` holds 24 cases: one per skill for "this must fire", plus
+eight confusable pairs and one plain question where a fire is the failure.
+`evals/regressions/` holds cases grown from defects that actually shipped —
+`debug-loop` offers to keep one whenever a fix lands in the harness itself
+rather than in project code. Format is Claude Code's own `claude plugin
+eval`; there is no runner here. `evals/README.md` has the rest, including
+how to check whether that command is enabled for your account — it is in
+early access.
+
+It is run by hand at three moments: after editing a skill description,
+before accepting a cheaper model, and when a fixed defect becomes a case.
+Not wired into any hook, and not into CI.
+
 ## Harness diet
 
 The ratchet this plugin applies to what gets *added* — nothing new without a
 real signal — has a symmetric half: checking whether what's already built has
 gone stale.
 
-Once a month, temporarily skip one gate's delegation (no config flag — just
-don't invoke it for the trial window) or downgrade one gate's model via
-`.claude/harness.json`'s `models.*`, run the normal flow of changes, and
-compare `skills/harness-review/references/harness-stats.md`'s output from
-before and after. No measurable difference in verdict distribution,
+A model downgrade starts with the eval set above, not with the month: measure
+both models on it in one sitting, and if the cheaper one loses a case the
+current one passes, the trial never starts. Then, once a month, temporarily
+skip one gate's delegation (no config flag — just don't invoke it for the
+trial window) or downgrade one gate's model via `.claude/harness.json`'s
+`models.*`, run the normal flow of changes, and compare
+`skills/harness-review/references/harness-stats.md`'s output from before and
+after. No measurable difference in verdict distribution,
 escalations, or `reviewConfidence: low` share → consider trimming that gate
 or model for good. A real difference → put it back, and record what was
-tried and found in `docs/decisions/`. This is documented for project
+tried and found in `docs/decisions/`, with both numbers in it: accuracy on
+the eval set and cost on the log. This is documented for project
 consumers too, in `review-gates-template.md`.

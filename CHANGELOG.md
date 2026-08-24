@@ -9,6 +9,59 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.8.0
+
+Nothing in this release changes what the pipeline does to your code. It adds
+the measurement that was missing from the plugin itself.
+
+Until now two things measured this harness: structural tests over its own
+files, and the production log the `harness-stats` procedure reads back.
+Neither can see a routing regression. A structural test never reads a skill
+description, and the log only ever records the skills that *did* fire —
+never the one that should have and didn't. A false fire is invisible from
+either side: something ran, produced output, and read as normal.
+
+**The eval set (`evals/`).** 24 routing cases — one per skill for "this must
+fire", eight pairs whose descriptions sit close enough to steal each other's
+requests, and one plain question where any fire is the failure. Prompts are
+written the way people actually ask, in both languages the plugin is used
+in, rather than as paraphrases of the descriptions being tested. The format
+is Claude Code's own `claude plugin eval`; this plugin ships no runner of
+its own and adds no skill for running it. That command is in early access —
+`evals/README.md` says how to check whether it is enabled for you, and how
+to measure the set by hand until it is.
+
+**Regression cases from real defects.** When `debug-loop` fixes something
+and the fix landed in the harness itself — a gate that stayed silent, the
+wrong skill firing, a verdict that came back too weak — it now offers to
+keep that failure as a permanent case. A defect in your project's code is
+not offered: it already has a test and Gate 5 already measures it. In a
+project that merely installed this plugin, the loop writes the draft into
+its own debug record and tells you where it belongs; it never writes outside
+the project you are in. The first case ships with the release: the
+seven-gates drift 0.7.0 shipped and `60530c6` closed by hand.
+
+**The harness diet now starts with accuracy, not with a month.** Its
+before/after comparison is taken over two different sets of changes with no
+fixed reference between them, so a model that started missing defects and a
+month that simply had fewer of them look identical — fewer CONFIRMED, same
+PLAUSIBLE, less cost, "no measurable difference". Step 0 measures the
+candidate model against the fixed set first; if it loses a case the current
+model passes, the month is not spent. The decision record now carries both
+numbers. `harness-stats.md` states the same limit next to the metrics it
+applies to, and `harness-review` gained a 0-token check that reports a
+baseline taken before the last edit to a skill description.
+
+**Free checks over the set itself.** `tests/smoke-json-schema.sh` validates
+every case structurally on each run: frontmatter, grader types, the cost
+rules that keep the set runnable, and — the one that matters — that every
+skill named by a grader exists. A grader pointing at a skill that doesn't
+passes forever while measuring nothing; so does a check that looks for the
+wrong thing, which is how the first version of this one was written.
+
+**Fixed:** the README told you to expect 14 skills from `claude plugin
+details`; there have been 15 since 0.7.0 added `opsx-scaffold`.
+
 ## 0.7.0
 
 **Run `/init-harness` again, in upgrade mode, after updating this plugin,

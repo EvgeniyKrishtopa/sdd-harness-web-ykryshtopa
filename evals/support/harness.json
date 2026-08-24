@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "harnessVersion": "0.8.0",
+  "forge": "other",
+  "framework": "vite",
+  "packageManager": "npm",
+  "runCmd": "npm run",
+  "testRunner": "vitest",
+  "buildDir": "dist",
+  "lockfile": "package-lock.json",
+  "coverageThreshold": 80,
+  "scripts": { "dev": "dev", "typecheck": "typecheck", "lint": "lint", "testCoverage": "test:coverage" },
+  "devServerUrl": "http://localhost:5173",
+  "trivialDiffThreshold": 10,
+  "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
+  "maxFixAttempts": 2,
+  "disabledRules": [],
+  "models": {}
+}
