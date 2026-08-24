@@ -710,6 +710,114 @@ SECREFEOF
 fi
 echo
 
+# --- Check: the eval set's own structure (0.8.0) ----------------------------
+
+# These files are only ever exercised by `claude plugin eval`, which costs
+# money and is not run on every change -- so a broken case would sit green
+# for months. Everything checkable without a model call is checked here, for
+# free, on every run. The one that matters most is the skill-name check: a
+# grader naming a skill that does not exist passes forever while measuring
+# nothing, which is the same shape of silence the whole set exists to catch.
+
+echo "-- Eval set --"
+
+fm_field() {  # $1 file, $2 key -- first value inside the leading frontmatter
+  awk -v k="^$2:[[:space:]]*" '
+    NR==1 && $0=="---" {inf=1; next}
+    inf && $0=="---" {exit}
+    inf && $0 ~ k {sub(k, ""); print; exit}
+  ' "$1"
+}
+
+GRADER_TYPES="regex tool_used tool_order file_exists llm baseline"
+
+if [ -d evals ]; then
+  eval_cases=0; eval_graders=0; eval_bad=""
+  for case_dir in evals/*/*/; do
+    case "$case_dir" in
+      evals/baseline/*|evals/support/*) continue ;;
+    esac
+    [ -d "$case_dir" ] || continue
+    case_name="$(basename "$case_dir")"
+    set_name="$(basename "$(dirname "$case_dir")")"
+    eval_cases=$((eval_cases + 1))
+
+    # 1. a prompt with frontmatter and something under it
+    prompt="${case_dir}prompt.md"
+    if [ ! -f "$prompt" ]; then
+      eval_bad="$eval_bad [$case_name: no prompt.md]"
+      continue
+    fi
+    [ "$(head -n 1 "$prompt")" = "---" ] \
+      || eval_bad="$eval_bad [$case_name: prompt.md does not open with frontmatter]"
+    body="$(awk 'NR>1 && $0=="---" {f=1; next} f' "$prompt" | tr -d '[:space:]')"
+    [ -n "$body" ] || eval_bad="$eval_bad [$case_name: prompt.md has no prompt under its frontmatter]"
+
+    # 5. the name in the frontmatter is the name of the directory
+    declared="$(fm_field "$prompt" name)"
+    [ "$declared" = "$case_name" ] \
+      || eval_bad="$eval_bad [$case_name: frontmatter name is \"$declared\"]"
+
+    # 3. the cost rules that keep the routing set runnable
+    if [ "$set_name" = "routing" ]; then
+      runs="$(fm_field "$prompt" runs)"; turns="$(fm_field "$prompt" max_turns)"
+      case "$runs" in
+        ''|1) ;;
+        *) eval_bad="$eval_bad [$case_name: runs: $runs, routing cases run once]" ;;
+      esac
+      case "$turns" in
+        ''|1|2) ;;
+        *) eval_bad="$eval_bad [$case_name: max_turns: $turns, routing is decided by turn 2]" ;;
+      esac
+    fi
+
+    # 2. at least one grader, each with a type from the runner's closed list
+    graders="$(find "${case_dir}graders" -name '*.md' 2>/dev/null | sort)"
+    if [ -z "$graders" ]; then
+      eval_bad="$eval_bad [$case_name: no graders/]"
+      continue
+    fi
+    for g in $graders; do
+      eval_graders=$((eval_graders + 1))
+      gtype="$(fm_field "$g" type)"
+      if [ -z "$gtype" ]; then
+        eval_bad="$eval_bad [$g: no type: in frontmatter]"
+        continue
+      fi
+      known=""
+      for t in $GRADER_TYPES; do [ "$gtype" = "$t" ] && { known=1; break; }; done
+      [ -n "$known" ] || eval_bad="$eval_bad [$g: type \"$gtype\" is not one the runner knows]"
+
+      # 4. a Skill grader must name a skill that exists
+      [ "$gtype" = "tool_used" ] || continue
+      [ "$(fm_field "$g" tool)" = "Skill" ] || continue
+      match="$(fm_field "$g" input_match)"
+      # A bare Skill grader ("no skill of this plugin may fire") names none.
+      [ -n "$match" ] || continue
+      # The idiom is `(?:[\w-]+:)?<skill>`, so the name follows `)?`.
+      named="$(printf '%s' "$match" | grep -oE '\)\?[a-z0-9-]+' | sed 's/^)?//')"
+      if [ -z "$named" ]; then
+        # Not readable means not checkable, and an unchecked grader is how a
+        # typo lives forever -- say so instead of passing quietly.
+        eval_bad="$eval_bad [$g: no skill name readable from input_match]"
+      elif [ ! -d "skills/$named" ]; then
+        eval_bad="$eval_bad [$g: names skill \"$named\", which does not exist]"
+      fi
+    done
+  done
+
+  if [ "$eval_cases" -eq 0 ]; then
+    bad "evals/ exists but holds no cases -- did they move?"
+  elif [ -n "$eval_bad" ]; then
+    bad "eval case problem(s):$eval_bad"
+  else
+    ok "all $eval_cases eval cases are well-formed ($eval_graders graders, every named skill exists)"
+  fi
+else
+  note "no evals/ directory -- skipped the eval-set structure checks"
+fi
+echo
+
 # --- Check 4: the official validator, when the CLI is available ------------
 
 echo "-- claude plugin validate --"
