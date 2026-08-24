@@ -721,12 +721,11 @@ echo
 
 echo "-- Eval set --"
 
-fm_field() {  # $1 file, $2 key -- first value inside the leading frontmatter
-  awk -v k="^$2:[[:space:]]*" '
-    NR==1 && $0=="---" {inf=1; next}
-    inf && $0=="---" {exit}
-    inf && $0 ~ k {sub(k, ""); print; exit}
-  ' "$1"
+# First value of a key inside the leading frontmatter, reusing the same
+# extractor Check 3 uses -- which is the stricter one: an unterminated block
+# is not frontmatter and yields nothing.
+fm_field() {  # $1 file, $2 key
+  extract_frontmatter "$1" | sed -n "s/^$2:[[:space:]]*//p" | head -n 1
 }
 
 GRADER_TYPES="regex tool_used tool_order file_exists llm baseline"
@@ -753,7 +752,7 @@ if [ -d evals ]; then
     body="$(awk 'NR>1 && $0=="---" {f=1; next} f' "$prompt" | tr -d '[:space:]')"
     [ -n "$body" ] || eval_bad="$eval_bad [$case_name: prompt.md has no prompt under its frontmatter]"
 
-    # 5. the name in the frontmatter is the name of the directory
+    # 2. the name in the frontmatter is the name of the directory
     declared="$(fm_field "$prompt" name)"
     [ "$declared" = "$case_name" ] \
       || eval_bad="$eval_bad [$case_name: frontmatter name is \"$declared\"]"
@@ -771,7 +770,7 @@ if [ -d evals ]; then
       esac
     fi
 
-    # 2. at least one grader, each with a type from the runner's closed list
+    # 4. at least one grader, each with a type from the runner's closed list
     graders="$(find "${case_dir}graders" -name '*.md' 2>/dev/null | sort)"
     if [ -z "$graders" ]; then
       eval_bad="$eval_bad [$case_name: no graders/]"
@@ -788,7 +787,7 @@ if [ -d evals ]; then
       for t in $GRADER_TYPES; do [ "$gtype" = "$t" ] && { known=1; break; }; done
       [ -n "$known" ] || eval_bad="$eval_bad [$g: type \"$gtype\" is not one the runner knows]"
 
-      # 4. a Skill grader must name a skill that exists
+      # 5. a Skill grader must name a skill that exists
       [ "$gtype" = "tool_used" ] || continue
       [ "$(fm_field "$g" tool)" = "Skill" ] || continue
       match="$(fm_field "$g" input_match)"
