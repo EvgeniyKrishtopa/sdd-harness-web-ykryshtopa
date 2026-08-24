@@ -122,8 +122,10 @@ Two flags worth knowing about either way:
 - The set grows on cause, not on schedule: a new case is written when
   something actually went wrong — a false fire, a miss, a disputed verdict.
 
-`tests/smoke-json-schema.sh` will enforce the first two once that check
-ships. Until then they are convention, not a rule that survives on its own.
+`tests/smoke-json-schema.sh` enforces the first two on every run, so they
+survive as a rule rather than as a good intention. It also checks that every
+skill a grader names exists, that each grader's `type` is one the runner
+knows, and that a case's frontmatter name matches its directory.
 
 ## Taking a baseline
 
