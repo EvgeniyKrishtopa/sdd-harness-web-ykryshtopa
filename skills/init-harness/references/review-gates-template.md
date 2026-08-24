@@ -85,9 +85,19 @@ placeholders in the generated file.)
 
 ## Harness diet
 
-Once a month: temporarily skip one gate's delegation (no config flag for
-this — just don't invoke it for the trial window) or downgrade one gate's
-model via `.claude/harness.json`'s `models.*`, run the normal flow of
+**Step 0, before the month starts.** A model downgrade is checked against a
+fixed set of cases with known right answers *before* it is trusted with a
+month of real work. The plugin's maintainer keeps such a set (`evals/` in
+the plugin repo) and measures both models on it in one sitting; if the
+cheaper model loses a case the current one passes, the trial never starts
+and the reason is a named case, not an impression. A repo that has no such
+set of its own skips this step and says so in the decision record below —
+"not measured against a reference set" is a fact worth recording, because
+the rest of this ritual cannot supply it.
+
+Then, once a month: temporarily skip one gate's delegation (no config flag
+for this — just don't invoke it for the trial window) or downgrade one
+gate's model via `.claude/harness.json`'s `models.*`, run the normal flow of
 changes for that stretch,
 then compare the `harness-review` skill's stats summary (the
 `${CLAUDE_PLUGIN_ROOT}/skills/harness-review/references/harness-stats.md`
@@ -99,7 +109,12 @@ more if it needs several times the steps; `durationMs` alone won't show
 that) — that gate or model was probably doing less than its cost implied;
 consider trimming
 it for good. If something did change, put it back and record what you
-tried and what you found as a new file in `docs/decisions/`. This is the
+tried and what you found as a new file in `docs/decisions/`. That record
+carries **both** numbers: accuracy against the reference set from step 0,
+and cost/verdict distribution from the log. A record with only the second is
+the one this ritual is most likely to get wrong — the production stream has
+no fixed reference, so a model that started missing defects and a month that
+simply had fewer of them read exactly alike. This is the
 same ratchet principle this harness applies to what gets *added* — it's
 also supposed to apply to what's already here.
 

@@ -19,6 +19,21 @@ or as part of the monthly harness-diet ritual (`README.md`'s
   fraction and escalation count every time it runs — see that skill's own
   `## Stats digest` section. This file is the full version of that number.
 
+## What these numbers cannot tell you
+
+Every metric here is computed over whatever changes happened to run — a
+different set of changes before and after any comparison. There is no fixed
+reference in it. So a gate that got worse and a stretch that simply had
+fewer defects in it produce the same picture: fewer CONFIRMED, the same
+PLAUSIBLE, less cost. Read as "no measurable difference", that is how a
+downgrade that lost real accuracy gets kept.
+
+Accuracy against a fixed reference is measured elsewhere — the `evals/` set
+in this plugin's own repo, run on both models in one sitting (see its
+README). This file answers what the harness *did*; that set answers whether
+it was *right*. The harness-diet ritual needs both, and its step 0 exists so
+the cheap one runs first.
+
 ## Why no model calls
 
 Every metric below comes from three deterministic sources: a JSONL log, a

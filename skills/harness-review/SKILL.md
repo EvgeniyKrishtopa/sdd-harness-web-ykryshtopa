@@ -116,6 +116,31 @@ JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic
 aid, not part of the pass/fail logic.
 
+## Baseline staleness — this plugin's own repo only
+
+An eval baseline is a measurement of skill descriptions as they were on one
+commit. Edit a description afterwards and the baseline keeps answering for
+text that no longer exists — silently, since nothing re-runs on its own. This
+gate already fires whenever the harness itself changed, which makes it the
+one place that reliably notices. A plain `git` comparison, no model call:
+
+```bash
+if ls evals/baseline/*.meta >/dev/null 2>&1; then
+  meta="$(ls -t evals/baseline/*.meta | head -n 1)"
+  taken="$(sed -n 's/^commit:[[:space:]]*//p' "$meta")"
+  moved="$(git log -1 --format=%H -- 'skills/*/SKILL.md' 'agents/*.md')"
+  if [ -n "$taken" ] && [ -n "$moved" ] && [ "$taken" != "$moved" ] \
+     && ! git merge-base --is-ancestor "$moved" "$taken" 2>/dev/null; then
+    printf 'eval baseline %s was taken at %s, before the last edit to a skill or agent description (%s) — retake it before comparing anything against it.\n' \
+      "$(basename "$meta")" "$taken" "$moved"
+  fi
+fi
+```
+
+Report it and move on. It blocks nothing, applies nowhere but this plugin's
+own repository (no other repo has an `evals/`), and stays quiet when there is
+no baseline yet.
+
 ## Stats digest
 
 Right after this gate's own log line is written (whether this run actually
