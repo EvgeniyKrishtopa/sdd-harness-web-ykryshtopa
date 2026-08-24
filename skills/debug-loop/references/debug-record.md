@@ -64,6 +64,7 @@ exactly the waste this record was added to stop.
 | 3. Diagnose | `Hypothesis:` and `Expected effect:`, **before the fix is applied**. Writing the expectation after seeing the result is how a guess gets recorded as an attempt. |
 | 4. Fix and reverify | `What actually happened:` and `Verdict:`. Then either the next `## Attempt` block, or `## Outcome`. |
 | After a successful fix | The spec case (1, 2 or 3 from SKILL.md's "three cases"), plus the identifier it touched, into `## Outcome`. |
+| After a successful fix, harness defect only | `## Eval-case candidate`, when the fix landed in the harness itself and this is somebody else's project — see below. Written here because this is the last moment the failure's details are still on hand. |
 | Escalation | `## Outcome` records the attempts spent — written *before* the report, since this branch is where the loop stops — and the human is given this file's path. |
 
 ## The template
@@ -108,6 +109,34 @@ whether the app degrades gracefully under that condition>
   skipped, because <why>>
 - Criterion touched: `<FR-nn / NFR-nn>` — cases 2 and 3 only
 ```
+
+## Eval-case candidate
+
+Only for a defect in the harness's own behaviour — a gate that stayed
+silent, the wrong skill firing, a verdict that came back too weak — and only
+when the user agreed to keep it (SKILL.md's step after the three cases). A
+defect in the project's own code never gets this section; its permanent net
+is the test case 1 already requires.
+
+In this plugin's own repository the case is written straight into
+`evals/regressions/<slug>/` and nothing is added here. Everywhere else —
+which is nearly always — the draft goes into the record instead, because
+writing into the plugin's own checkout from someone else's project is not
+this loop's business:
+
+```markdown
+## Eval-case candidate
+
+- Gate that missed it: `<gate>`
+- Expected: `<rule code>` / `<CONFIRMED | PLAUSIBLE>`, or what the finding
+  must name for a gate with no verdict rule
+- Prompt: <the request the gate was answering, verbatim>
+- Defect to plant: <the smallest diff that reproduces the silence>
+- Move to: `evals/regressions/<this record's slug>/` in the plugin repo
+```
+
+Tell the user in one line that it is there and that it belongs in the plugin
+repo. `eval-case.md` holds the format it turns into.
 
 ## What this record is not
 

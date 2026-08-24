@@ -122,8 +122,8 @@ Two flags worth knowing about either way:
 - The set grows on cause, not on schedule: a new case is written when
   something actually went wrong — a false fire, a miss, a disputed verdict.
 
-`tests/smoke-json-schema.sh` enforces the first two, so they survive as a
-rule rather than as a good intention.
+`tests/smoke-json-schema.sh` will enforce the first two once that check
+ships. Until then they are convention, not a rule that survives on its own.
 
 ## Taking a baseline
 

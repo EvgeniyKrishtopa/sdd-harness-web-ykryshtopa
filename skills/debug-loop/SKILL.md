@@ -154,6 +154,14 @@ lasts one conversation; the three cases are only countable across changes,
 which is what item 10 of this version wanted them for, once they are written
 down somewhere.
 
+## If the fix landed in the harness, not the project
+
+A fix in the project's files is pinned by case 1's test and measured by Gate
+5. A fix in the harness itself — `skills/`, `agents/`, `hooks/`,
+`.claude/harness.json` — is pinned by nothing. For that kind only, ask once
+(`AskUserQuestion`) whether to keep it as a permanent eval case, then follow
+`references/eval-case.md` — which never writes outside the project you are in.
+
 ## Escalate once the limit is reached
 
 - Do not attempt a fix beyond `maxFixAttempts`.
