@@ -178,6 +178,17 @@ It detects your framework, package manager and test runner, then:
   genuinely pass does it write `harnessVersion` and `toolchainVerifiedAt`,
   the two keys that record a repo as fully configured for this plugin
   version;
+- **wires up your integration tests if they live in their own command.**
+  Projects whose integration tests need a database or a running server
+  usually keep them behind a second `package.json` script, and nothing here
+  used to run it: written, committed, never executed. When such a script is
+  found it goes into the manifest as the optional `scripts.testIntegration`,
+  and `.husky/pre-push` becomes coverage → integration → audit. It is run
+  once during setup first: if it fails here — the database isn't on this
+  machine, say — the key is left out and the hook stays two links long,
+  because a push check that can't pass is worse than tests nothing runs.
+  Most projects run their integration tests in the same command as the rest;
+  those get no key, no second link, and no question about it;
 - **reports which linter rule sets you're missing** (`react-hooks`,
   `jsx-a11y`, `@typescript-eslint`, plus `@next/next` on Next.js), naming
   what each one stops catching. A recommendation only: it installs nothing
@@ -355,6 +366,11 @@ can dispute one rule rather than a whole gate, and `.claude/harness.json`'s
 `disabledRules` array switches a single rule off while every other rule in
 the same review keeps running. Without the codes the choice would be binary
 — tolerate a whole gate, or disable a whole gate.
+
+One of those codes, **`CR-13`**, checks something CR-06 doesn't: whether the
+test closing a test-plan row actually reaches the level (`unit`,
+`integration`, `end-to-end`) that row named, not just whether a matching
+test exists.
 
 Three of those rules are frontend-specific: **`CR-10`** (effects that start
 a subscription, timer, listener or request and never tear it down),

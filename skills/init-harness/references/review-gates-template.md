@@ -53,10 +53,13 @@ change as a whole — not any one of them in isolation:
 
 1. **Static** — `.husky/pre-commit` (typecheck + lint + lint-staged). Runs on
    every commit.
-2. **Runtime** — `.husky/pre-push` (the coverage-mode test run, then a
+2. **Runtime** — `.husky/pre-push` (the coverage-mode test run, then this
+   project's separate integration-test command if it has one, then a
    dependency-vulnerability audit — `{{PACKAGE_MANAGER}} audit` or its
    equivalent, blocking on a high-or-above severity finding). Runs on every
-   push. The audit is blocking, not informational: an install command can't
+   push. The integration link exists only when `.claude/harness.json` has an
+   optional `scripts.testIntegration`; a project whose integration tests run
+   in the same command as the rest has no second link and needs none. The audit is blocking, not informational: an install command can't
    add a vulnerable package in the first place (`permissions.deny` blocks
    every package manager's install commands), so this is the check for what
    was already in the lockfile, including transitively.
@@ -68,6 +71,16 @@ change as a whole — not any one of them in isolation:
    behind: a passed flow the human agreed to keep is saved as a
    `@playwright/test` scenario under `webQaScenariosDir`, and every later
    Gate 3 run replays the accumulated set before its own click pass.
+
+**Tests come from a different actor than the code, when this project opts
+in.** With `makerChecker.enabled` in `.claude/harness.json`, a task group's
+tests are written by the `test-author` agent from the test plan *before* the
+group's code exists, and the implementing session may not edit them — a
+mismatch stops the group and asks you, because either the test misreads the
+requirement or the requirement reads two ways, and neither is the
+implementer's call. Off (the default), a group is implemented exactly as
+before: one session, code and tests together. This is not a gate and has no
+number; it is who does what inside the Static layer.
 
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a

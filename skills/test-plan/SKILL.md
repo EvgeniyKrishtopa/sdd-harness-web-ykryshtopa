@@ -27,7 +27,10 @@ to a change that predates this step.
    test file or case doesn't have to exist yet, this plan is written before
    implementation — and a level: **unit**, **integration**, or
    **end-to-end**, never a test-runner name (`vitest`, `playwright`); the
-   plan reads the same on a project using either.
+   plan reads the same on a project using either. This level is binding, not
+   decorative: `code-reviewer`'s CR-13 later checks that the test closing a
+   row actually reaches the level named here, not just that a matching test
+   exists at all.
 4. Every acceptance criterion gets at least one row. A criterion with no
    plan row is either a forgotten test or a criterion that shouldn't have
    been written — name it by identifier in the report, don't skip it

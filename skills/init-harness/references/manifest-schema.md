@@ -20,7 +20,8 @@ Merge into the file Step 2e already started (it may already contain just the
     "dev": "dev",
     "typecheck": "typecheck",
     "lint": "lint",
-    "testCoverage": "test:coverage"
+    "testCoverage": "test:coverage",
+    "testIntegration": "test:integration"
   },
   "devServerUrl": "http://localhost:5173",
   "webQaScenariosDir": "tests/web-qa-scenarios",
@@ -31,6 +32,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "disabledRules": [],
   "sizeRouting": { "enabled": true },
   "scaffold": { "enabled": true },
+  "makerChecker": { "enabled": false },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
@@ -38,6 +40,7 @@ Merge into the file Step 2e already started (it may already contain just the
     "code": "claude-sonnet-5",
     "deep": "claude-opus-5",
     "harness": "claude-haiku-4-5",
+    "testAuthor": "claude-sonnet-5",
     "clarify": "claude-sonnet-5",
     "default": "claude-sonnet-5"
   }
@@ -80,6 +83,27 @@ Merge into the file Step 2e already started (it may already contain just the
   `package.json` for `dev`, `typecheck`, `lint`, and the coverage-mode test
   run — never invented names. Ask the user if a mapping isn't obvious, the
   same rule Step 3's Husky hook already follows.
+- `scripts.testIntegration` (added 0.9.0) — **optional**, and the only
+  optional key in `scripts`. Write it only when this project keeps its
+  integration tests behind a *separate* `package.json` script, the common
+  arrangement when they need a database or a running server and don't
+  belong in the fast unit run. Most projects have no such script: then omit
+  the key entirely — never an empty string, and never a guessed name.
+  Without it everything behaves as it did before this key existed;
+  `.husky/pre-push` chains only the coverage run and the audit
+  (`references/git-hooks.md` step 4), and nothing else in this harness
+  looks for it. The cost of filling it in is a longer push, which is the
+  point: tests nothing runs are tests nobody finds out about.
+- `makerChecker` (added 0.9.0) — `{ "enabled": false }` by default, and
+  seeded that way. When `true`, `opsx-apply-git` has the `test-author` agent
+  write a task group's tests from the test plan **before** the group's
+  implementation exists, and the implementing session writes no tests of its
+  own and may not edit the ones it was given (`skills/opsx-apply-git/
+  SKILL.md` §3). Off, a group is implemented exactly as it was in 0.8.0 —
+  same session, code and tests together. The cost is one extra subagent per
+  group with test-plan rows, which is why a project opts in rather than out.
+  `models.testAuthor` picks that agent's model, like every other `models.*`
+  key.
 - `coverageThreshold` — the number chosen in Step 4.
 - `devServerUrl` — the dev server's root URL: `http://localhost:3000`
   (Next.js default) or `http://localhost:5173` (Vite default), unless an

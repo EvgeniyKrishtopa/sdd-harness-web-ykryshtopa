@@ -9,6 +9,62 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.9.0
+
+Two gaps around integration tests, both at the seams between steps that
+already existed. No new skill, no new gate.
+
+**The level a test plan asks for is now checked (`CR-13`).** `test-plan`
+writes a level in every row — unit, integration, end-to-end — and until now
+nothing read that column back. `CR-06` confirmed a test existed and covered
+what the row described; a row marked `integration` could be closed by a unit
+test with its dependencies stubbed out, and the pipeline reported coverage
+as fine. `CR-13` raises a CONFIRMED finding when a row is satisfied below
+the level it asked for, naming the requirement identifier and what the test
+actually exercises. Higher than asked is never a finding — the plan is a
+floor. No plan for the change, and the rule says so and skips rather than
+guessing a level from a filename. Like every other rule it carries its own
+code, so a project that doesn't write integration tests yet can switch off
+`CR-13` alone and keep `CR-06` running.
+
+**Integration tests that live in their own command are actually run
+(`scripts.testIntegration`).** A project whose integration tests need a
+database or a running server usually keeps them behind a second
+`package.json` script. The manifest tracked one test command and
+`.husky/pre-push` chained only that one, so those tests were written,
+committed, and executed by nothing — the quietest kind of failure, since
+nothing ever turns red. The new manifest key is optional and absent by
+default: a repo without a second script behaves exactly as it did in 0.8.0,
+and `init-harness` doesn't ask about a script most projects don't have.
+Where it is found, `pre-push` becomes coverage → integration → audit, the
+faster check failing first and the audit still last. Setup runs the command
+once before wiring it up: a non-zero exit leaves the key out of the manifest
+and the link out of the hook and says why, because a push check that can't
+pass on this machine is worse than tests nothing runs. There is deliberately
+no flag to skip the run — a project that finds the push too slow leaves the
+key unset, rather than carrying a switch that gets turned off once and never
+back on.
+
+**Tests are written by a different actor than the code
+(`makerChecker.enabled`).** Until now one session wrote a task group's code
+and its tests. A test written by the author of the code proves the code does
+what its author meant — so when the author misread the requirement, the test
+preserves the misreading: it exists, it names the right requirement, it
+passes, and Gate 5 is satisfied. What diverged is the test and the
+requirement, and nothing in the pipeline was looking there. Opt in and a new
+`test-author` agent writes the group's tests from the test plan *before* any
+of that group's code exists — first tests, then code until they pass — and
+the implementing session may not edit them. It doesn't ask it not to: the
+files are hashed before implementation and compared before the commit, and a
+difference stops the group and asks you, since either the test misreads the
+requirement or the requirement reads two ways and neither is the
+implementer's call. Tests come first rather than after because "don't look
+at the implementation" can't be enforced on an agent that can read the
+repository; writing them before it exists is what enforces it. This is the
+plugin's first agent that writes anything — the other seven only read — and
+it is confined to test files. Off by default: it costs one extra subagent
+per group that has test-plan rows.
+
 ## 0.8.0
 
 Nothing in this release changes what the pipeline does to your code. It adds

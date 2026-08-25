@@ -476,6 +476,16 @@ else
   else
     bad "$MANIFEST_REF's manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
   fi
+
+  # scripts.testIntegration (0.9.0) is optional in a project's manifest but
+  # mandatory in the example a run copies from: a key nobody can see in the
+  # example is a key nobody writes, and the pre-push chain that depends on it
+  # then quietly stays two links long forever.
+  if grep -q '"testIntegration"' "$MANIFEST_REF"; then
+    ok "$MANIFEST_REF documents the optional scripts.testIntegration in the manifest example"
+  else
+    bad "$MANIFEST_REF's manifest example is missing scripts.testIntegration"
+  fi
 fi
 
 # Every harness-log.jsonl line literal -- one per gate skill, plus

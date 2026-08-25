@@ -54,3 +54,13 @@ the manifest's `dev`/`typecheck`/`lint`/`testCoverage` roles. Never invent a
 script name that isn't there — if the mapping isn't obvious (e.g. no script
 looks like a typecheck or coverage run), ask the user which script to use,
 or whether one needs to be added first.
+
+One further role is **optional**: `testIntegration`, the separate script
+some projects use for integration tests that need a database or a running
+server. Look for a key like `test:integration`, `test:it`, `integration`, or
+`e2e:integration`. Found one → map it. Found none → write no
+`testIntegration` key at all and **don't ask**: most projects run their
+integration tests in the same command as the rest, and a question about a
+script that shouldn't exist costs the user more than the key is worth. This
+is the opposite of the four roles above, where an unclear mapping is worth a
+question.
