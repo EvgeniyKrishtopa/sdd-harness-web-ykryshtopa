@@ -136,16 +136,17 @@ case it is:
 1. Sync the parent (see above), cut one batch branch off it
    (`<type>/<change>-isolated`, per git-conventions.md naming).
 2. For each isolated group in turn: weigh what to build against
-   `.claude/docs/laziness-ladder.md`, and check
-   `references/context7-lookup.md`'s trigger against the task's own text
-   and acceptance criteria, before writing anything new — a named library
-   or framework-specific API there means looking it up via context7 first
-   and marking the group's commit per that file. Then implement its
-   sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A
-   decision the agent can't confidently make means the classification was
-   wrong — stop, leave it uncommitted, tell the user. One it CAN make
-   confidently: read `references/decision-threshold.md` — it may still
-   need recording (Proposed) without stopping the group.
+   `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
+   trigger against the task's own text and acceptance criteria, before writing
+   anything new — a named library or framework-specific API there means looking
+   it up via context7 first and marking the group's commit per that file. On
+   `makerChecker.enabled`, follow `references/maker-checker.md` first: this
+   group's tests are written by another actor, before its code. Then implement
+   its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A decision the
+   agent can't confidently make means the classification was wrong — stop,
+   leave it uncommitted, tell the user. One it CAN make confidently: read
+   `references/decision-threshold.md` — it may still need recording (Proposed)
+   without stopping the group.
 3. Once green (its own verification + lint), confirm scope (`git status -s`,
    `git diff --stat` — no unrelated files) and commit the group's own
    implementation immediately (Conventional Commits, per
@@ -178,19 +179,18 @@ case it is:
 1. Sync the parent (see above), cut a single group branch off it, named for
    the group.
 2. Announce why it's judgement-heavy. Weigh what to build against
-   `.claude/docs/laziness-ladder.md`, and check
-   `references/context7-lookup.md`'s trigger the same way Case A's step 2
-   does, before writing anything new, then implement with the standard
-   guardrails, but pause and ask on every design
-   decision or ambiguity. If
-   the run ends (report and stop, §4 step 7) before that question is
-   answered, write `<!-- blocked: <reason> -->` on the specific task line
-   waiting on it and commit that one-line edit on its own (see §3's Blocked
-   tasks section) — an ordinary pause answered within the same turn never
-   touches `tasks.md`; only one that outlives the run does. A decision
-   reached this way was already discussed live, so if it crosses
-   `references/decision-threshold.md`'s bar, record it straight as
-   Accepted (never Proposed) — that file has the bar and the routing rule.
+   `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
+   trigger the same way Case A's step 2 does, plus `references/maker-checker.md`
+   if the manifest opts in, before writing anything new. Then implement with the standard guardrails, but
+   pause and ask on every design decision or ambiguity. If the run ends
+   (report and stop, §4 step 7) before that question is answered, write
+   `<!-- blocked: <reason> -->` on the specific task line waiting on it and
+   commit that one-line edit on its own (see §3's Blocked tasks section) —
+   an ordinary pause answered within the same turn never touches
+   `tasks.md`; only one that outlives the run does. A decision reached this
+   way was already discussed live, so if it crosses
+   `references/decision-threshold.md`'s bar, record it straight as Accepted
+   (never Proposed) — that file has the bar and the routing rule.
 3. Once green, confirm scope and — if this is also the *last* group with
    pending tasks in the whole change and it touched user-facing UI — run
    Gate 3 (`web-qa`) first, its fixes folding into the diff. Commit the

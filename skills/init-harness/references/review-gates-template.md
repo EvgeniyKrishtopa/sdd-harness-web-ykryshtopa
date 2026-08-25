@@ -72,6 +72,16 @@ change as a whole — not any one of them in isolation:
    `@playwright/test` scenario under `webQaScenariosDir`, and every later
    Gate 3 run replays the accumulated set before its own click pass.
 
+**Tests come from a different actor than the code, when this project opts
+in.** With `makerChecker.enabled` in `.claude/harness.json`, a task group's
+tests are written by the `test-author` agent from the test plan *before* the
+group's code exists, and the implementing session may not edit them — a
+mismatch stops the group and asks you, because either the test misreads the
+requirement or the requirement reads two ways, and neither is the
+implementer's call. Off (the default), a group is implemented exactly as
+before: one session, code and tests together. This is not a gate and has no
+number; it is who does what inside the Static layer.
+
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a
 tidier version of code that isn't yet Static/Runtime/System-green isn't

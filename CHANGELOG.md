@@ -45,6 +45,26 @@ no flag to skip the run — a project that finds the push too slow leaves the
 key unset, rather than carrying a switch that gets turned off once and never
 back on.
 
+**Tests are written by a different actor than the code
+(`makerChecker.enabled`).** Until now one session wrote a task group's code
+and its tests. A test written by the author of the code proves the code does
+what its author meant — so when the author misread the requirement, the test
+preserves the misreading: it exists, it names the right requirement, it
+passes, and Gate 5 is satisfied. What diverged is the test and the
+requirement, and nothing in the pipeline was looking there. Opt in and a new
+`test-author` agent writes the group's tests from the test plan *before* any
+of that group's code exists — first tests, then code until they pass — and
+the implementing session may not edit them. It doesn't ask it not to: the
+files are hashed before implementation and compared before the commit, and a
+difference stops the group and asks you, since either the test misreads the
+requirement or the requirement reads two ways and neither is the
+implementer's call. Tests come first rather than after because "don't look
+at the implementation" can't be enforced on an agent that can read the
+repository; writing them before it exists is what enforces it. This is the
+plugin's first agent that writes anything — the other seven only read — and
+it is confined to test files. Off by default: it costs one extra subagent
+per group that has test-plan rows.
+
 ## 0.8.0
 
 Nothing in this release changes what the pipeline does to your code. It adds
