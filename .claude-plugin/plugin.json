@@ -1,6 +1,6 @@
 {
   "name": "sdd-harness-web-ykryshtopa",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "mcpServers": "./mcp-config.json",
   "description": "Spec-driven OpenSpec harness for web projects (Vite or Next.js): 7 automated review gates (architecture, spec, scaffold, web-qa, code+coverage merged, harness) plus a risk-triggered security/architecture deep review, an ambiguity sweep and test plan before implementation starts, architecture decision records that the architecture gate actually reads back, size-based routing, per-rule codes you can switch off individually, branch-per-group git workflow, and a scaffolder that detects your framework and package manager.",
   "author": {

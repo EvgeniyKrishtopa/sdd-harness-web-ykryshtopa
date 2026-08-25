@@ -9,6 +9,42 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.9.0
+
+Two gaps around integration tests, both at the seams between steps that
+already existed. No new skill, no new gate.
+
+**The level a test plan asks for is now checked (`CR-13`).** `test-plan`
+writes a level in every row — unit, integration, end-to-end — and until now
+nothing read that column back. `CR-06` confirmed a test existed and covered
+what the row described; a row marked `integration` could be closed by a unit
+test with its dependencies stubbed out, and the pipeline reported coverage
+as fine. `CR-13` raises a CONFIRMED finding when a row is satisfied below
+the level it asked for, naming the requirement identifier and what the test
+actually exercises. Higher than asked is never a finding — the plan is a
+floor. No plan for the change, and the rule says so and skips rather than
+guessing a level from a filename. Like every other rule it carries its own
+code, so a project that doesn't write integration tests yet can switch off
+`CR-13` alone and keep `CR-06` running.
+
+**Integration tests that live in their own command are actually run
+(`scripts.testIntegration`).** A project whose integration tests need a
+database or a running server usually keeps them behind a second
+`package.json` script. The manifest tracked one test command and
+`.husky/pre-push` chained only that one, so those tests were written,
+committed, and executed by nothing — the quietest kind of failure, since
+nothing ever turns red. The new manifest key is optional and absent by
+default: a repo without a second script behaves exactly as it did in 0.8.0,
+and `init-harness` doesn't ask about a script most projects don't have.
+Where it is found, `pre-push` becomes coverage → integration → audit, the
+faster check failing first and the audit still last. Setup runs the command
+once before wiring it up: a non-zero exit leaves the key out of the manifest
+and the link out of the hook and says why, because a push check that can't
+pass on this machine is worse than tests nothing runs. There is deliberately
+no flag to skip the run — a project that finds the push too slow leaves the
+key unset, rather than carrying a switch that gets turned off once and never
+back on.
+
 ## 0.8.0
 
 Nothing in this release changes what the pipeline does to your code. It adds
