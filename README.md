@@ -171,8 +171,9 @@ It detects your framework, package manager and test runner, then:
 - **writes `.claude/harness.json`**, the single machine-readable manifest
   every other skill and hook reads instead of re-detecting your stack: the
   detected stack, the coverage threshold, the forge, per-gate model
-  overrides, `disabledRules`, and `maxFixAttempts` (the `debug-loop` skill's
-  fix-attempt cap before it escalates to you);
+  overrides, `disabledRules`, `maxFixAttempts` (the `debug-loop` skill's
+  fix-attempt cap before it escalates to you), and `makerChecker` (off by
+  default — see step 3 of the workflow below);
 - **proves the detected toolchain actually runs** — typecheck, lint and
   coverage are executed for real, not just detected. Only once all three
   genuinely pass does it write `harnessVersion` and `toolchainVerifiedAt`,
@@ -275,6 +276,17 @@ group's commit accordingly. A decision that crosses the recording threshold
 group, `Accepted` when you were in the loop — and Gate 1 reads the accepted
 ones back on every later change.
 
+Optionally, the tests for a group come from a different actor than its
+code. With `makerChecker.enabled` in the manifest, the `test-author` agent
+writes the group's tests from the test plan before any of its code exists,
+and the implementing session then writes code until they pass and may not
+edit them — the test files are hashed before implementation and compared
+before the commit, and a difference stops the group and asks you. The
+failure this catches is the one the coverage gate cannot see: when the
+author of the code misread the requirement, a test written by that same
+author preserves the misreading and passes. Off by default; it costs one
+extra subagent per group that has test-plan rows.
+
 **4. Gates 3-6 run once per run**, after every group in it is committed and
 before push — not once per group — per `.claude/docs/review-gates.md`:
 `web-qa` → `code-review` (Gates 4 + 5 in one delegation) → `harness-review`.
@@ -334,10 +346,11 @@ PR.
 | `debug-loop` | — (not a gate) | Bounded four-phase fix loop for a Gate 3 FAIL or a CONFIRMED finding; caps at `maxFixAttempts`, then escalates to you |
 | `dead-code-report` | — (not a gate) | Finds unused files/exports/deps via knip plus the project's lint rules, sorted into three confidence groups, ending in a change-proposal draft; deletes nothing. Run manually, roughly monthly |
 
-### The seven subagents
+### The eight subagents
 
 They live in `agents/`, are invoked by the skills above rather than
-directly, and **none of them can write to your source**. `debug-loop`,
+directly, and **none of them can write to your production code** — seven
+cannot write at all, and the eighth writes only tests. `debug-loop`,
 `test-plan` and `record-decision` have no subagent — they run inline in the
 calling session.
 
@@ -350,6 +363,11 @@ calling session.
 - `web-qa-manual-tester` — no `Bash` either; `Read`/`Grep`/`Glob` plus a
   fixed list of Playwright MCP browser tools, so it is read-only on code
   while driving a real browser.
+- `test-author` — the one exception, and only when you opt in
+  (`makerChecker.enabled`): it has `Write`/`Edit` because writing tests is
+  its whole job. It writes a task group's tests from the test plan *before*
+  that group's code exists, and its own prompt confines it to test files and
+  forbids it from reading the implementation it is testing.
 - `spec-reviewer` — additionally carries `Edit`, limited by its prompt to
   one job: writing the `<!-- isolated -->` / `<!-- judgement-heavy -->`
   marker onto a `tasks.md` heading, which is what `opsx-apply-git` reads to
