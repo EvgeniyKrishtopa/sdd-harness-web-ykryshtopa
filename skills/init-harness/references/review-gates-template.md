@@ -53,10 +53,13 @@ change as a whole — not any one of them in isolation:
 
 1. **Static** — `.husky/pre-commit` (typecheck + lint + lint-staged). Runs on
    every commit.
-2. **Runtime** — `.husky/pre-push` (the coverage-mode test run, then a
+2. **Runtime** — `.husky/pre-push` (the coverage-mode test run, then this
+   project's separate integration-test command if it has one, then a
    dependency-vulnerability audit — `{{PACKAGE_MANAGER}} audit` or its
    equivalent, blocking on a high-or-above severity finding). Runs on every
-   push. The audit is blocking, not informational: an install command can't
+   push. The integration link exists only when `.claude/harness.json` has an
+   optional `scripts.testIntegration`; a project whose integration tests run
+   in the same command as the rest has no second link and needs none. The audit is blocking, not informational: an install command can't
    add a vulnerable package in the first place (`permissions.deny` blocks
    every package manager's install commands), so this is the check for what
    was already in the lockfile, including transitively.
