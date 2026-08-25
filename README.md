@@ -356,6 +356,11 @@ can dispute one rule rather than a whole gate, and `.claude/harness.json`'s
 the same review keeps running. Without the codes the choice would be binary
 — tolerate a whole gate, or disable a whole gate.
 
+One of those codes, **`CR-13`**, checks something CR-06 doesn't: whether the
+test closing a test-plan row actually reaches the level (`unit`,
+`integration`, `end-to-end`) that row named, not just whether a matching
+test exists.
+
 Three of those rules are frontend-specific: **`CR-10`** (effects that start
 a subscription, timer, listener or request and never tear it down),
 **`CR-11`** (objects, arrays or functions rebuilt every render and handed to

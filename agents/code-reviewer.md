@@ -176,6 +176,18 @@ files changed anywhere in it. Otherwise check:
    for either. In that case, check not the number but whether the deleted
    code is genuinely unused anywhere — including references by string
    name, config-driven wiring, and dynamic calls.
+5. **CR-13 — Test level** — a plan row names a level as well as a test.
+   A row whose test closes it at a lower level than the plan asked for
+   — an `integration` row satisfied only by a unit test with its
+   dependencies stubbed out, an `end-to-end` row satisfied only by an
+   integration test — is a **CONFIRMED** finding. Name the requirement
+   identifier, the level the plan asked for, and what the test actually
+   exercises. A test at a *higher* level than the row asked for is
+   never a finding: the plan is a floor, not a ceiling, the same rule
+   CR-06 already follows. This rule needs a plan to check against —
+   when the calling skill reports no test plan for this change, say so
+   and skip the rule rather than guessing a level from the test's
+   filename.
 
 ## Output
 
