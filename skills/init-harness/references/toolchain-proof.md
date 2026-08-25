@@ -24,11 +24,15 @@ from the user's own uncommitted work would be blamed on the harness).
 ## 1. The keys exist
 
 For each of `scripts.typecheck`, `scripts.lint`, and `scripts.testCoverage`,
-confirm the name in the manifest is a real key in `package.json`:
+confirm the name in the manifest is a real key in `package.json` — plus
+`scripts.testIntegration` when the manifest has it, since it is optional and
+most manifests won't (`references/manifest-schema.md`). The loop skips a key
+that isn't there rather than reporting it missing:
 
 ```bash
-for key in typecheck lint testCoverage; do
-  name="$(jq -r --arg k "$key" '.scripts[$k]' .claude/harness.json)"
+for key in typecheck lint testCoverage testIntegration; do
+  name="$(jq -r --arg k "$key" '.scripts[$k] // empty' .claude/harness.json)"
+  [ -n "$name" ] || continue   # testIntegration is optional; absent is fine
   jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
     || echo "MISSING: harness.json scripts.$key = \"$name\" is not in package.json"
 done
@@ -64,6 +68,22 @@ and "No test files found" / "0 total" is a failure of this step. Report it as
 such and stop — a project with no tests can still use the rest of the
 harness, but the user should decide that knowingly rather than discover it
 when Gate 5 reviews coverage that was never collected.
+
+**If the manifest has `scripts.testIntegration`, run it too**, once, and
+read its result the same way. This step is what stands between a mapped
+script and a `.husky/pre-push` that blocks every push from day one: the
+whole reason a project keeps integration tests in a second command is that
+they need something — a database, a running server — which may simply not be
+there on this machine.
+
+A non-zero exit here is **not** a reason to stop the setup, unlike the three
+scripts above. Instead: leave `scripts.testIntegration` out of the manifest,
+leave the middle link out of `.husky/pre-push` (`references/git-hooks.md`
+step 4), and tell the user plainly what happened — the script exists, it
+doesn't pass in this environment, so the harness didn't wire it up. Wiring a
+command that fails here into the push check would hand them a repository
+they can't push from, which is worse than not running those tests
+automatically at all.
 
 ## 4. Any of the three not satisfied → stop the whole run
 

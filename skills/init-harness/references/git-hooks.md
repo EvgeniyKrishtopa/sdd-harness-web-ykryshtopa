@@ -45,6 +45,22 @@ of once per commit.
    ```
    <pm> test:coverage && <audit command>
    ```
+   **If — and only if — the manifest has a `scripts.testIntegration`**
+   (optional, see `references/manifest-schema.md`), chain that project's
+   integration-test command as a middle link:
+   ```
+   <pm> test:coverage && <pm> test:integration && <audit command>
+   ```
+   Order matters and this is the order: coverage, integration, audit. The
+   integration run is the slow one — a project puts its tests behind a
+   second script precisely because they need a database or a running
+   server — so the faster check gets to fail first, and the audit stays
+   last where it already was. No `scripts.testIntegration` in the manifest
+   (the common case) → write the two-link chain above and nothing else;
+   this whole paragraph doesn't apply. There is no "skip the integration
+   run" flag: a project that finds the push too slow leaves the key unset,
+   rather than carrying a switch that gets turned off once and never back
+   on.
    The audit command's spelling depends on the detected package manager —
    and, for yarn, on its major version, since the command changed between
    yarn 1 (Classic) and yarn 2+ (Berry):
