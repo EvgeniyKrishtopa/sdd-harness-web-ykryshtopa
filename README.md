@@ -569,8 +569,8 @@ the skills that *did* fire, never the one that should have and didn't. And a
 false fire is invisible from either side — something ran, produced output,
 and read as normal.
 
-`evals/routing/` holds 24 cases: one per skill for "this must fire", plus
-eight confusable pairs and one plain question where a fire is the failure.
+`evals/routing/` holds 27 cases: one per skill for "this must fire", plus
+eight confusable pairs and two cases where any fire is the failure.
 `evals/regressions/` holds cases grown from defects that actually shipped —
 `debug-loop` offers to keep one whenever a fix lands in the harness itself
 rather than in project code. Format is Claude Code's own `claude plugin
