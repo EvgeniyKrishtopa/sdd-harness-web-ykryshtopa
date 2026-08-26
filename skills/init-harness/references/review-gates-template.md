@@ -87,7 +87,8 @@ are.** When `designSystem.enabled` is on, a change touching the interface
 gets its `ui-plan.md` from the `ui-plan` skill before `opsx-scaffold` or
 `opsx-apply-git` write any component code. Like the test-plan ordering
 above, this is not a gate and has no number; a change with no user-facing
-surface, or a repo that hasn't opted in, skips it silently.
+surface, or a repo that hasn't opted in, reports one line and moves on
+without blocking the flow.
 
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a
