@@ -45,9 +45,12 @@ neighboring step, that step is scoped wrong.
    what "a typical page" looks like and must not guess. First check for
    `openspec/changes/<change>/ui-plan.md` — present → read its
    screen/components table before drawing the map, so a screen that reuses
-   an existing component doesn't get scaffolded a new file for it, and only
-   the components the table actually marks as new get one. Missing → draw
-   the map as before, with no UI-plan input.
+   an existing component doesn't get scaffolded a new file for it, and a
+   component the table marks as new is a candidate for one. `tasks.md`'s
+   scope from step 3 still governs: a ui-plan.md component marked new that
+   `tasks.md` doesn't also cover gets no file here, and a `tasks.md` file
+   with no matching ui-plan.md row is drawn as before. Missing `ui-plan.md`
+   → draw the map as before, with no ui-plan.md input.
 5. Show the map to the human and ask exactly **one** `AskUserQuestion`:
    approve it, or fix it. A fix is discussed in conversation, and the map is
    shown again after each change. Ask nothing about the architecture here —
