@@ -122,10 +122,11 @@ incident this closes.
    `sequenceDiagram` covering that flow; found → pass the subagent that
    flow's actual states (error branches plus happy path), overriding its
    own default for that surface. None found → check
-   `openspec/changes/<change>/ui-plan.md` for that surface's screen row;
-   found → pass the subagent the states named in its states column,
-   overriding its own default the same way. Neither found → use its default
-   matrix.
+   `openspec/changes/<change>/ui-plan.md` for the screen row the surface's
+   flow navigates to (a flow crossing more than one screen consults each
+   row it crosses); a row matches by screen name → pass the subagent the
+   states named in its states column, overriding its own default the same
+   way. No matching row, or no `ui-plan.md` → use its default matrix.
 2. The subagent relays a per-flow PASS/FAIL report, the per-surface UI
    States Matrix (loading/error/empty/offline, syncing/conflict only with
    background sync, each PASS/FAIL or not-applicable-with-reason, never
