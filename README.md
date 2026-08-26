@@ -81,7 +81,7 @@ adding it and installing from it are two steps against the same name:
 
 The same commands work from a shell (`claude plugin marketplace add ...`,
 `claude plugin install ...`). The quickest check that it loaded is `claude
-plugin details sdd-harness-web-ykryshtopa`: it should list 15 skills,
+plugin details sdd-harness-web-ykryshtopa`: it should list 17 skills,
 7 agents by name, 3 hook events and 2 MCP servers. To install from a local
 checkout, pass the absolute path to `marketplace add`. There is no npm
 package — Claude Code installs plugins from marketplaces, not from the npm
@@ -331,7 +331,8 @@ PR.
 | Skill | Gate | Purpose |
 |---|---|---|
 | `init-harness` | — | Scaffolder: detects stack, installs OpenSpec, writes docs/hooks; re-run after a plugin update to upgrade the repo |
-| `opsx-propose-review` | 1-2 | Size the change, propose it, run architecture + clarify + spec review, then build its test plan |
+| `design-system` | — (not a gate) | Writes `docs/design-system.md` — the project's one design record (tokens, primitives, state names, source) that `ui-plan` and the scaffold stage read instead of guessing UI details. Off by default (`designSystem.enabled`); manual, once per project |
+| `opsx-propose-review` | 1-2 | Size the change, propose it, run architecture + clarify + spec review, build its test plan, then its UI plan if the change touches the interface |
 | `opsx-scaffold` | 2b | On a change that needs one: turn `design.md`'s approved boundaries into typed stub files, confirmed with you, then reviewed |
 | `opsx-apply-git` | 3-6 | Implement a run inside the branch-per-group workflow |
 | `opsx-update-review` | 1-2 | Revise an existing change's plan and re-run what the revision touched |
@@ -339,12 +340,21 @@ PR.
 | `spec-clarify` | — (before 2) | Ambiguity sweep via `devils-advocate`, resolved with you one finding at a time — edit in place, or defer with an owner and a due date |
 | `spec-review` | 2 | Artifact consistency + isolated/judgement-heavy classification + the printed five-condition readiness checklist |
 | `test-plan` | — (before 3) | One row per acceptance criterion: which tests close it, at which level. Gate 5's floor |
+| `ui-plan` | — (not a gate) | Builds `ui-plan.md` — the screen/states/components/value-source table for a change that touches the interface, read by the scaffold stage and `opsx-apply-git` before either writes component code. Off by default, same key as `design-system` |
 | `web-qa` | 3 | Real-browser QA via Playwright MCP, must-pass with a fix loop |
 | `code-review` | 4-5 | Correctness + simplification, plus coverage against your test plan and configured threshold — one delegation, two labeled sections; spawns the deep review when its risk prefilter fires |
 | `harness-review` | 6 | Drift/staleness in the harness config itself |
 | `record-decision` | — (not a gate) | Records a decision made outside the pipeline — in chat, on a whiteboard, straight in the code — or promotes a `Proposed` record to `Accepted` |
 | `debug-loop` | — (not a gate) | Bounded four-phase fix loop for a Gate 3 FAIL or a CONFIRMED finding; caps at `maxFixAttempts`, then escalates to you |
 | `dead-code-report` | — (not a gate) | Finds unused files/exports/deps via knip plus the project's lint rules, sorted into three confidence groups, ending in a change-proposal draft; deletes nothing. Run manually, roughly monthly |
+
+**`design-system` and `ui-plan` don't draw anything.** Making the mockup —
+in Figma, Pencil, or on paper — stays an external tool's job; these two
+skills only read it (or a text description, absent one) and write down
+what already exists: tokens, primitives, screens, states, and which
+components to reuse or add. Neither compares the built result against the
+mockup pixel-for-pixel — that check is deliberately out of scope, caught
+instead by Gate 3's real-browser QA and by human review.
 
 ### The eight subagents
 
