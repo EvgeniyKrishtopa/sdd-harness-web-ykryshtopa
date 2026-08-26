@@ -118,7 +118,7 @@ incident this closes.
    the UI States Matrix `agents/web-qa-manual-tester.md` requires for each
    touched surface. An unaddressed state reads the same as an unexercised
    flow: incomplete, not a pass by default. **States, per surface, first
-   match wins:** `design.md`'s Mermaid `sequenceDiagram` for that flow (error branches plus happy path); else `ui-plan.md`'s screen row matching the flow's destination screen (a multi-screen flow consults each row crossed) — its states column; else the default matrix, overridden by whichever matched.
+   match wins:** `design.md`'s Mermaid `sequenceDiagram` for that flow, if found (error branches plus happy path) → those states, overriding the subagent's default; else `ui-plan.md`'s screen row matching the flow's destination screen by screen name (a multi-screen flow consults each row crossed), if found → its states column, overriding the default the same way; else the subagent's own default matrix.
 2. The subagent relays a per-flow PASS/FAIL report, the per-surface UI
    States Matrix (loading/error/empty/offline, syncing/conflict only with
    background sync, each PASS/FAIL or not-applicable-with-reason, never
