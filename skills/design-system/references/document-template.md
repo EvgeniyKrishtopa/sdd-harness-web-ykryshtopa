@@ -53,8 +53,13 @@ in the document instead of inventing one.
 ## 5. Source
 
 <!-- Machine source: which tool (Figma / Pencil) and, ideally, the file or
-     project it read from. Non-machine source: say plainly that this was
-     written from description, not read from a design file.
+     project it read from.
+     Non-machine because no tool is connected and the user chose to skip:
+     write the Source line exactly as `non-machine — skipped connecting a
+     tool` — this exact string is the marker a later run checks for, to
+     avoid asking the same connect/skip question again.
+     Non-machine for any other reason: say plainly that this was written
+     from description, not read from a design file, in your own words.
      Either way: the commit this document was taken at — the fact ui-plan
      needs to tell a current document from a stale one. -->
 

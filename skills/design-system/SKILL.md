@@ -6,11 +6,8 @@ description: Writes docs/design-system.md — the project's one design record (b
 Write the one document later UI-aware steps (`ui-plan`, once it exists; the
 scaffold stage) read instead of guessing UI details per feature — they stop
 and point here when it's missing rather than doing this work themselves.
-
-## Gate
-
-Read `designSystem` in `.claude/harness.json` first. Manifest missing, key
-missing, or `enabled: false` → one line saying so, then stop.
+Gate: read `designSystem` in `.claude/harness.json` first — manifest
+missing, key missing, or `enabled: false` → one line saying so, then stop.
 
 ## Pick the entry mode
 
@@ -19,10 +16,12 @@ Look for a components folder, style files, or markup already in the repo.
 - **Almost none of that** → from scratch. Ask, one at a time via
   `AskUserQuestion`, at most these four, each with a default:
   1. Ready-made primitive library as the base, or build our own? Default:
-     ready-made — a homegrown one in week one is a separate project.
-  2. Which four colors carry meaning: primary, danger, success, muted?
+     ready-made (a homegrown one in week one is a separate project).
+  2. Four meaningful colors — primary, danger, success, muted? Default: the
+     chosen library's own theme role for each.
   3. Spacing step and text-size step? Default: whatever the library ships.
-  4. Where do primitives and styling values live in this codebase?
+  4. Where should primitives/styling values live? Default: alongside other
+     shared UI code (e.g. `src/components`).
 - **UI already written** → extract from code. Record what's actually there:
   existing components (name, what it is), repeated colors/spacing and
   whether they're named, and every place the same thing is done two ways
@@ -33,17 +32,18 @@ Look for a components folder, style files, or markup already in the repo.
 
 ## External design tool
 
-Free check, no side effects: `claude mcp list`, look for a connected server named like Figma or Pencil.
+Free check: `claude mcp list`, look for a connected server named like Figma or Pencil.
 
-- **Connected** → use its values silently, no questions; name the tool in
-  the document's source section.
-- **Not connected, no prior "skip" on record** → one `AskUserQuestion`:
-  connect Figma / connect Pencil / skip and write from description. A tool
-  choice gets connection steps *shown*, never run — then check again. Still
-  not visible → say a new server usually needs a session restart, and offer
-  continue now from description, or stop and return after restarting.
-- **Skip, or "skip" already on record** → write from description, mark the
-  source non-machine, and don't ask again — one report line instead, that
+- **Connected** → use its values silently, no questions; name the tool in the document's source section.
+- **Not connected, existing doc's Source line not already marked "skipped"**
+  → one `AskUserQuestion`: connect Figma / connect Pencil / skip and write
+  from description. A tool choice gets connection steps *shown*, never run
+  — then check again. Still not visible → say a new server usually needs a
+  restart, and offer continue now from description, or stop and return
+  after restarting.
+- **Skip, or already marked "skipped"** → write from description; Source
+  line reads exactly `non-machine — skipped connecting a tool` (the marker
+  the check above looks for), plus one report line on a fresh skip that
   connecting a server lets the next run pull real values.
 
 ## Never
