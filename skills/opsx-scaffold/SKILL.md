@@ -42,7 +42,12 @@ neighboring step, that step is scoped wrong.
 4. Draw the file map: path, responsibility, export. Take paths from this
    project's own conventions — how its existing modules are actually laid
    out — never from a generic framework template; this stage does not know
-   what "a typical page" looks like and must not guess.
+   what "a typical page" looks like and must not guess. First check for
+   `openspec/changes/<change>/ui-plan.md` — present → read its
+   screen/components table before drawing the map, so a screen that reuses
+   an existing component doesn't get scaffolded a new file for it, and only
+   the components the table actually marks as new get one. Missing → draw
+   the map as before, with no UI-plan input.
 5. Show the map to the human and ask exactly **one** `AskUserQuestion`:
    approve it, or fix it. A fix is discussed in conversation, and the map is
    shown again after each change. Ask nothing about the architecture here —
