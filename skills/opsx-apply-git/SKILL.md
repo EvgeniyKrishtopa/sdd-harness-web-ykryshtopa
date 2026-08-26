@@ -48,14 +48,13 @@ are the source of truth for branch naming, commit format, and gate order.
    - `tasks.md` itself — always; §3 depends on it to determine groups, read
      the isolated/judgement-heavy marks, and read any `blocked` task marks.
    - `proposal.md` / `design.md` — only on this change's very first run (no
-     group anywhere in `tasks.md` is committed yet), or later if a group's
-     own ambiguity genuinely requires re-checking the original intent. Not
-     by default on every subsequent run of an already-in-progress change.
+     group anywhere in `tasks.md` is committed yet), or later if a group's own ambiguity genuinely requires re-checking the original intent — not by default on every subsequent run of an already-in-progress change.
    - The spec file(s) under `contextFiles` that cover the group(s) this run
-     is about to implement (§3 determines which) — not the full spec set
-     for a change that spans capabilities this run isn't touching.
+     is about to implement (§3 determines which) — not the full spec set for
+     a change that spans capabilities this run isn't touching.
    - Anything else under `contextFiles` — read on demand only if a specific
      question comes up mid-run, not upfront.
+   - `ui-plan.md`, before writing component code — **read `references/ui-plan-read.md` now and follow it.**
 
 ## 3. Work the next run: isolated batch, or one judgement-heavy group
 

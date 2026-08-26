@@ -96,7 +96,7 @@ it ready to implement.
    Write the scaffold verdict the same way, at the same moment, into its own
    `openspec/changes/<change>/.scaffold` (`yes` or `no`, then a `# ` comment
    with the two scaffold answers) — a separate file because it drives a
-   separate decision (step 9 below), not a variant of the route. A user can
+   separate decision (step 10 below), not a variant of the route. A user can
    override a misjudged verdict later by editing either file's first line
    directly — both are a starting point, not a verdict.
 4. Once `design.md` exists, invoke the **`architecture-review`** skill
@@ -122,9 +122,16 @@ it ready to implement.
    plan. Skip it only if the change already carries one — re-running
    `test-plan` for a revised change is `opsx-update-review`'s job, not this
    skill's.
-9. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
-   summary, the route this change took (`short`/`full`), task-group
-   classification table, where the test plan was written, and the next
-   skill to run — read `openspec/changes/<change>/.scaffold`'s first line:
-   `yes` → `opsx-scaffold`; `no` (or the file is missing) → `opsx-apply-git`,
-   as before.
+9. Once the test plan is written, invoke the **`ui-plan`** skill against the
+   change. It gates and scopes itself — reads `designSystem` in
+   `.claude/harness.json` and stops with one line when disabled, and reports
+   one line and creates nothing when the change has no user-facing surface. A
+   change that touches the interface gets
+   `openspec/changes/<change>/ui-plan.md`; nothing here pauses this flow.
+10. On a clean pass (or PLAUSIBLE-only), report: change name, artifact
+    summary, the route this change took (`short`/`full`), task-group
+    classification table, where the test plan was written, whether
+    `ui-plan.md` was written, and the next skill to run — read
+    `openspec/changes/<change>/.scaffold`'s first line: `yes` →
+    `opsx-scaffold`; `no` (or the file is missing) → `opsx-apply-git`, as
+    before.

@@ -11,9 +11,9 @@ duplicate.
 ## Trigger
 
 By change name, once its proposal (and `test-plan`, if it already has one)
-are settled. Not yet called automatically by `opsx-propose-review` — that
-wiring is separate work; until then, run this standalone for a change that
-predates it.
+are settled. Called automatically by `opsx-propose-review` right after its
+test-plan step; run this standalone only for a change that predates that
+wiring.
 
 ## Action
 
