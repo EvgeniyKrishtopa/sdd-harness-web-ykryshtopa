@@ -55,26 +55,7 @@ are the source of truth for branch naming, commit format, and gate order.
      is about to implement (§3 determines which) — not the full spec set
      for a change that spans capabilities this run isn't touching.
    - Anything else under `contextFiles` — read on demand only if a specific
-     question comes up mid-run, not upfront.
-   - `openspec/changes/<change>/ui-plan.md` — if this run's group(s) touch
-     the interface — judged from `tasks.md`'s own description of the group:
-     it builds or edits a screen, page, or UI component file, or one of its
-     sub-tasks names a screen ui-plan.md's table also names — read it before
-     writing any component's code, not after. Take each screen's existing
-     components by the names ui-plan.md gives them from
-     `docs/design-system.md`; write a new component only where its row
-     explicitly names one as new — never invent a new component ui-plan.md's
-     table doesn't call for.
-
-     For a **new** component whose row's value-source column names a
-     machine source (a Figma/Pencil node): before writing its code, read
-     that node's variables from the connected server (color, spacing, font)
-     — not only the system tokens in `docs/design-system.md`. No node, or no
-     connected server → as before: system tokens plus the row's text
-     description.
-
-     Missing `ui-plan.md`, or a group that doesn't touch the interface → as
-     before, no UI-plan input.
+     question comes up mid-run, not upfront. Before writing component code, also **read `references/ui-plan-read.md` now and follow it.**
 
 ## 3. Work the next run: isolated batch, or one judgement-heavy group
 

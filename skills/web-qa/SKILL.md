@@ -111,22 +111,14 @@ incident this closes.
    Playwright MCP the project or the user supplies at some other version;
    the reasoning is in `agents/web-qa-manual-tester.md`. Disabled via `/mcp`
    → the agent refuses to launch, which is the intended loud failure. Scope
-   its flows to the *whole change's* diff against the
-   parent branch, not just the last group, so the final pass covers
-   everything the change touched — the replay above already re-verified
-   whatever earlier changes recorded, so this pass is what covers what's
-   actually new — including the UI States Matrix
-   `agents/web-qa-manual-tester.md` requires for each touched surface. An
-   unaddressed state reads the same as an unexercised flow: incomplete, not a
-   pass by default. **States, per surface:** check `design.md` for a Mermaid
-   `sequenceDiagram` covering that flow; found → pass the subagent that
-   flow's actual states (error branches plus happy path), overriding its
-   own default for that surface. None found → check
-   `openspec/changes/<change>/ui-plan.md` for the screen row the surface's
-   flow navigates to (a flow crossing more than one screen consults each
-   row it crosses); a row matches by screen name → pass the subagent the
-   states named in its states column, overriding its own default the same
-   way. No matching row, or no `ui-plan.md` → use its default matrix.
+   its flows to the *whole change's* diff against the parent branch, not
+   just the last group, so the final pass covers everything the change
+   touched — the replay above already re-verified whatever earlier changes
+   recorded, so this pass is what covers what's actually new — including
+   the UI States Matrix `agents/web-qa-manual-tester.md` requires for each
+   touched surface. An unaddressed state reads the same as an unexercised
+   flow: incomplete, not a pass by default. **States, per surface, first
+   match wins:** `design.md`'s Mermaid `sequenceDiagram` for that flow (error branches plus happy path); else `ui-plan.md`'s screen row matching the flow's destination screen (a multi-screen flow consults each row crossed) — its states column; else the default matrix, overridden by whichever matched.
 2. The subagent relays a per-flow PASS/FAIL report, the per-surface UI
    States Matrix (loading/error/empty/offline, syncing/conflict only with
    background sync, each PASS/FAIL or not-applicable-with-reason, never
