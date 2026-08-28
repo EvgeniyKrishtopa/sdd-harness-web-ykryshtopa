@@ -82,6 +82,14 @@ implementer's call. Off (the default), a group is implemented exactly as
 before: one session, code and tests together. This is not a gate and has no
 number; it is who does what inside the Static layer.
 
+**The interface plan is written before implementation, the same way tests
+are.** When `designSystem.enabled` is on, a change touching the interface
+gets its `ui-plan.md` from the `ui-plan` skill before `opsx-scaffold` or
+`opsx-apply-git` write any component code. Like the test-plan ordering
+above, this is not a gate and has no number; a change with no user-facing
+surface, or a repo that hasn't opted in, reports one line and moves on
+without blocking the flow.
+
 **No refactor before green.** Don't clean up, simplify, or restructure code
 in a change until all three layers pass for that change as a whole — a
 tidier version of code that isn't yet Static/Runtime/System-green isn't

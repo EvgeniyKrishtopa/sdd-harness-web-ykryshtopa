@@ -33,6 +33,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "sizeRouting": { "enabled": true },
   "scaffold": { "enabled": true },
   "makerChecker": { "enabled": false },
+  "designSystem": { "enabled": false },
   "models": {
     "architecture": "claude-opus-5",
     "spec": "claude-sonnet-5",
@@ -164,6 +165,19 @@ Merge into the file Step 2e already started (it may already contain just the
   per-change verdict itself is computed and recorded separately, in
   `openspec/changes/<change>/.scaffold` — this key only turns the stage on
   or off.
+- `designSystem` (added 0.10.0) — a single `enabled` toggle for the
+  `design-system` skill: writing `docs/design-system.md`, the project-level
+  design record `ui-plan` and the scaffold stage are meant to read instead of
+  each guessing UI details on their own. Unlike `scaffold` above, seed this
+  `{"enabled": false}` on every `init-harness` run, first-time or upgrade
+  alike — never `true` — and leave it `false` until the user turns it on
+  themselves. The reason this one stays off even on a fresh install where
+  `scaffold` doesn't: `scaffold` reshapes a workflow step every change
+  already goes through, so a repo opts out of it; this stage is a document a
+  project may not want written at all (a project with no UI, or one that
+  already keeps this knowledge somewhere else), so a repo opts into it
+  instead. The key missing entirely (an older manifest) means the same thing
+  as `false` — off.
 - `models` — one entry per model-backed subagent this plugin delegates to,
   plus a `default` fallback. Seed it with the values shown above, not with
   whatever each `agents/*.md` currently declares in its own frontmatter —

@@ -9,6 +9,52 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.0
+
+Two new skills, off by default, closing the gap between a UI mockup and the
+component code a change actually ships: nothing in the pipeline used to read
+one.
+
+**`design-system` writes the project's one design record
+(`docs/design-system.md`).** Tokens, primitives, state names, and where they
+came from — a short Q&A on a project with no UI yet, or extraction from
+already-written code on one that has it. Manual, run once per project and
+again after a notable UI change; it never runs on its own from a feature
+flow. Gated on `designSystem.enabled` in `.claude/harness.json`, absent by
+default, so a project that hasn't opted in behaves exactly as it did before
+this version.
+
+**`ui-plan` builds the per-change screen/states/components/value-source
+table (`ui-plan.md`).** Reads `docs/design-system.md` instead of inventing
+component names or state names — an existing component gets reused by name,
+a genuinely new one gets at most one per screen with a one-phrase reason.
+Where a screen's mockup carries a connected Figma/Pencil node, a new
+component's variables come from that node; without a connection or a link,
+from the table's text description alone. Gated on the same `designSystem`
+key as `design-system` — one is meaningless without the other.
+
+**Wired into the existing flow, not a parallel path.** `opsx-propose-review`
+calls `ui-plan` as a step right after the test plan; `opsx-scaffold` reads
+it when drawing the file map, reusing named components instead of
+scaffolding duplicates; `web-qa` falls back to its states column for a
+surface with no `design.md` sequence diagram; `opsx-apply-git` reads it
+before writing any component's code — the step that actually closes the
+gap, since a plan the implementation step never reads doesn't change what
+ships. A change with no `ui-plan.md`, or a repo that hasn't opted in, runs
+exactly as before this version at every one of those points.
+
+**Two new routing eval cases, plus a negative one.** `design-system-fires`
+and `ui-plan-fires` follow the existing positive cases' pattern;
+`no-skill-color-tweak` checks that a trivial one-property style edit — the
+kind of request both new skills' UI/design wording could plausibly, and
+wrongly, claim — triggers neither.
+
+**What this version deliberately doesn't do.** Neither skill draws a
+mockup — that stays an external tool's job, read from a connection or a
+text description, never generated here. Neither compares the built result
+against the mockup pixel-for-pixel; that's Gate 3's real-browser QA and
+human review's job, not a new automated check.
+
 ## 0.9.0
 
 Two gaps around integration tests, both at the seams between steps that
