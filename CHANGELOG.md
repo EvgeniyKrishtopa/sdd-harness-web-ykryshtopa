@@ -9,6 +9,65 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.1
+
+The commit, merge and push guards stop asking about commands that don't
+commit, merge or push. In one real project they paused autonomous runs about
+twenty times over two changes, and all but one or two of those asks were
+wrong. Wrong asks teach the person to click "Yes" without reading, which
+defeats the right ones.
+
+### Fixed — the guards decide on the git command, not the whole text
+
+- **Each guard now reads the command and finds the parts that really run its
+  git subcommand.** Claude Code's `if` filter is best-effort: a guard also
+  runs when only one part of a compound command matches, and on any command
+  with `$(...)`, a heredoc, a loop or several lines. The push guard used to
+  search the whole text, so `main..HEAD`, "Re**main**ing" in a commit
+  message, `rm -f` and `gh api -f` all triggered it. The commit and merge
+  guards didn't read the command at all, so any such command run on `main`
+  was asked about as a commit or a merge. Heredoc bodies and quoted strings
+  are now set aside, the rest is split into separate commands, and a guard
+  decides only from `git [global options] <its subcommand>` parts. A command
+  with no such part gets no decision from the guard, and Claude Code's normal
+  permission rules apply to it.
+- **Push: branch names are compared as whole refspec destinations.**
+  `main`, `HEAD:main`, `HEAD:refs/heads/main`, `+main` and `:main` are asked
+  about; `feature/maintenance`, `main-feature` and `origin/main` in a log
+  range are not. Force flags (`-f`, `--force`, `--force-with-lease`,
+  `+refspec`, combined short flags such as `-uf`) count only inside a push.
+- **Commit: size measures what the commit will contain.** The staged diff,
+  or `git diff HEAD` only for `-a`/`--all`/`-am`. When the same command runs
+  `git add <paths>` before `git commit`, the hook replays those adds on a
+  temporary copy of the index and measures that, because the hook runs
+  before the command. Every count uses rename detection, so a moved folder
+  counts as zero lines. It never falls back to the whole dirty tree any more,
+  which is what produced "Large commit (3068 changed lines)" for a command
+  that committed nothing.
+- **Commit: the manifest's lockfile is left out of the 500-line count.** A
+  generated lockfile diff isn't reviewed line by line. Two new
+  devDependencies used to read as a 929-line commit. The lockfile is still
+  scanned for secrets.
+- **The shared logic lives in `hooks/git-guard.sh`.** Doing this parsing
+  three times inside one-line JSON strings would have made them unreadable.
+  If the script can't run, the commit, merge and push hooks ask, as they did
+  before.
+- **The `.claudeignore` hook no longer approves the reads it doesn't block.**
+  For every `Read`/`Grep`/`Glob` call outside `.claudeignore` it answered
+  `allow`, and a hook's `allow` skips the permission prompt. That included
+  reading files outside the project, such as `~/.ssh`, which Claude Code
+  normally asks about. It now gives no decision for those calls, so the
+  normal permission rules apply. Matching paths are still denied.
+
+### Added
+
+- **A guard for commits and refs written through the GitHub API.**
+  `gh api` writes to `git/refs` or `git/commits` create history that no local
+  git hook ever sees. Agents used this on purpose to get deliberately failing
+  code past pre-commit and pre-push for "CI must go red" tasks. The old push
+  guard caught it only by accident, through `-f`. It is now asked about
+  explicitly; read-only `gh api` calls are not.
+
 ## 0.10.0
 
 Two new skills, off by default, closing the gap between a UI mockup and the

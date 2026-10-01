@@ -15,6 +15,9 @@ set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 HOOKS="$ROOT/hooks/hooks.json"
+# The git guards call hooks/git-guard.sh through this variable, exactly as
+# Claude Code sets it for an installed plugin.
+export CLAUDE_PLUGIN_ROOT="$ROOT"
 
 if ! command -v jq >/dev/null 2>&1; then
   echo "jq is required for this test (the hook commands live inside JSON)." >&2
@@ -29,6 +32,7 @@ mkdir -p "$CMD" "$REPO"
 jq -r '.hooks.PreToolUse[0].hooks[0].command'   "$HOOKS" > "$CMD/commit.sh"
 jq -r '.hooks.PreToolUse[0].hooks[1].command'   "$HOOKS" > "$CMD/merge.sh"
 jq -r '.hooks.PreToolUse[0].hooks[2].command'   "$HOOKS" > "$CMD/push.sh"
+jq -r '.hooks.PreToolUse[0].hooks[3].command'   "$HOOKS" > "$CMD/ghapi.sh"
 jq -r '.hooks.PreToolUse[1].hooks[0].command'   "$HOOKS" > "$CMD/ignore.sh"
 jq -r '.hooks.Stop[0].hooks[0].command'         "$HOOKS" > "$CMD/stop.sh"
 jq -r '.hooks.SessionStart[0].hooks[0].command' "$HOOKS" > "$CMD/session.sh"
@@ -67,7 +71,23 @@ verdict_absent() { # verdict_absent <name> <unwanted-substring> <actual>
     printf '  [PASS] %s\n' "$1"; pass=$((pass + 1))
   fi
 }
+verdict_silent() { # verdict_silent <name> <actual>: the hook made no decision
+  if [ -z "$2" ]; then
+    printf '  [PASS] %s\n' "$1"; pass=$((pass + 1))
+  else
+    printf '  [FAIL] %s\n         got: %s\n' "$1" "$(printf '%s' "$2" | head -c 300)"
+    fail=$((fail + 1))
+  fi
+}
 bash_in() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1"; }
+# bash_in breaks on newlines and quotes; multi-line and quoted commands go
+# through jq instead.
+bash_json() { jq -cn --arg c "$1" '{tool_name:"Bash",tool_input:{command:$c}}'; }
+# lines <file> [n]: write an n-line (default 600) TypeScript file.
+lines() { awk -v n="${2:-600}" 'BEGIN { for (i = 0; i < n; i++) printf "export const v%d = %d;\n", i, i }' > "$1"; }
+# Throw away everything since the last commit, keeping what init-harness wrote.
+# A mixed reset first, so files staged by a case are unstaged rather than deleted.
+clean_tree() { git reset -q; git checkout -q -- .; git clean -qfd -e .claude -e .claudeignore; }
 
 echo "== sdd-harness-web-ykryshtopa :: hook behaviour =="
 echo "Throwaway repo: $REPO"
@@ -202,16 +222,204 @@ verdict "push naming the protected branch -> ask" 'protected branch by name' \
   "$(bash_in "git push origin main" | sh "$CMD/push.sh")"
 echo
 
+echo "-- PreToolUse: guards read the command, not just the branch --"
+# Claude Code's `if` filter is best-effort: a guard also runs when only one
+# part of a compound command matches, and on any command with $(...), a
+# heredoc, a loop or several lines. Each case below is a command that
+# reached a guard in a real project and was wrongly asked about.
+clean_tree
+git checkout -q feature/test
+
+c1='git checkout -b scratch && git show $(git log --format=%H main..HEAD | head -1)'
+verdict_absent "incident 1: main..HEAD in a log range is not a push target" '"ask"' \
+  "$(bash_json "$c1" | sh "$CMD/push.sh")"
+
+c2=$(cat <<'CMD'
+git add src && git commit -F - <<'EOF'
+fix: tighten the parser
+
+Remaining risk: none known.
+EOF
+CMD
+)
+verdict_absent "incident 2: 'Remaining' in a heredoc message is not a push" '"ask"' \
+  "$(bash_json "$c2" | sh "$CMD/push.sh")"
+
+c3=$(cat <<'CMD'
+ids_file=$(mktemp)
+for f in src/*.ts; do grep -l sum "$f" >> "$ids_file"; done
+rm -f "$ids_file"
+CMD
+)
+verdict_absent "incident 3: rm -f is not a force-push" '"ask"' \
+  "$(bash_json "$c3" | sh "$CMD/push.sh")"
+
+c4=$(cat <<'CMD'
+git add -A && git commit -q -F - <<'EOF' && git push -q
+chore: wire the parser
+
+What remains: push to `main` after review.
+EOF
+gh pr create --base feature/base --title x --body "$(cat <<'BODY'
+Merges into main once the remaining work lands.
+BODY
+)"
+CMD
+)
+verdict "incident 4: push to own upstream, 'main' only in message bodies -> allow" \
+  '"permissionDecision":"allow"' "$(bash_json "$c4" | sh "$CMD/push.sh")"
+
+lines src/utils/sum.ts
+c5='cd . && jq --arg v "$(date)" ".x = \$v" .claude/h.json > tmp && mv tmp .claude/h.json'
+verdict_absent "incident 5: jq/mv with a dirty tree is not a commit" '"ask"' \
+  "$(bash_json "$c5" | sh "$CMD/commit.sh")"
+clean_tree
+
+c9a='gh api repos/o/r/git/refs -f ref=refs/heads/x -f sha=abc'
+c9b='gh api -X PATCH repos/o/r/git/refs/heads/x -f sha=abc'
+verdict_absent "incident 9: gh api -f field is not a force-push (create ref)" '"ask"' \
+  "$(bash_json "$c9a" | sh "$CMD/push.sh")"
+verdict_absent "incident 9: gh api -f field is not a force-push (move ref)" '"ask"' \
+  "$(bash_json "$c9b" | sh "$CMD/push.sh")"
+c10='gh api repos/o/r/branches/main/protection'
+verdict_absent "incident 10: main in an API path is not a push target" '"ask"' \
+  "$(bash_json "$c10" | sh "$CMD/push.sh")"
+
+git checkout -q main
+c7='cd . && for p in react vite; do npm view $p version | head -20; done'
+verdict_absent "incident 7: read-only loop on main is not a merge" '"ask"' \
+  "$(bash_json "$c7" | sh "$CMD/merge.sh")"
+c8=$(cat <<'CMD'
+for f in a b; do printf '%s\n' "$(jq -nc --arg f "$f" '{f:$f}')" >> .claude/harness-log.jsonl; done
+CMD
+)
+verdict_absent "incident 8: appending to a log on main is not a commit" '"ask"' \
+  "$(bash_json "$c8" | sh "$CMD/commit.sh")"
+echo
+
+echo "-- PreToolUse: push guard, real pushes --"
+verdict "push while on the protected branch -> ask" 'Pushing while on main' \
+  "$(bash_json 'git push' | sh "$CMD/push.sh")"
+git checkout -q --detach
+verdict "push from detached HEAD -> ask" 'Detached HEAD' \
+  "$(bash_json 'git push origin HEAD:feature/x' | sh "$CMD/push.sh")"
+git checkout -q feature/test
+for c in 'git push origin main' 'git push origin HEAD:main' \
+         'git push origin HEAD:refs/heads/main' 'git push origin :main' \
+         'npm test && git push origin main' 'git -C . push origin main' \
+         'git push origin "main"'; do
+  verdict "$c -> ask" 'protected branch by name' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+for c in 'git push origin +main' 'git push -f origin feature/x' \
+         'git push --force-with-lease=feature/x:abc origin feature/x' \
+         'rm -f a && git push --force-with-lease' 'git push -uf origin feature/x'; do
+  verdict "$c -> ask" 'Force-push' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+for c in 'git push -u origin feature/x' 'git push origin feature/domain-fix' \
+         'git push origin feature/maintenance' 'git push origin main-feature' \
+         'git push origin chore/domain-main-x' \
+         'git branch -f tmp HEAD && git push -u origin feature/x' \
+         'git log origin/main..HEAD && git push -u origin feature/x'; do
+  verdict "$c -> allow" '"permissionDecision":"allow"' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+for c in 'echo "git push origin main"' 'git commit -m "merge main into feature"'; do
+  verdict_absent "$c -> no push decision" '"ask"' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+echo
+
+echo "-- PreToolUse: commit guard, size and scope --"
+lines src/big.ts && git add src/big.ts
+verdict_absent "staged 600 lines + jq/mv, no commit -> no Large commit" '"ask"' \
+  "$(bash_json 'jq ".a" package.json > f && mv f g' | sh "$CMD/commit.sh")"
+verdict "staged 600 lines + cd && git commit -> ask" 'Large commit' \
+  "$(bash_json 'cd . && git commit -m x' | sh "$CMD/commit.sh")"
+clean_tree
+
+lines src/utils/sum.ts
+verdict "unstaged 600 lines + git commit -m -> allow (nothing staged)" \
+  '"permissionDecision":"allow"' "$(bash_json 'git commit -m x' | sh "$CMD/commit.sh")"
+verdict "unstaged 600 lines + git commit -am -> ask" 'Large commit' \
+  "$(bash_json 'git commit -am x' | sh "$CMD/commit.sh")"
+verdict "unstaged 600 lines + git add <path> && git commit -> ask" 'Large commit' \
+  "$(bash_json 'git add src/utils/sum.ts && git commit -m x' | sh "$CMD/commit.sh")"
+clean_tree
+
+echo "// one more line" >> src/App.tsx && git add src
+c=$(cat <<'CMD'
+git commit -F - <<'EOF'
+feat: merge the main parser into the feature
+
+Remaining: nothing.
+EOF
+CMD
+)
+verdict "heredoc message mentioning main, feature branch -> allow" \
+  '"permissionDecision":"allow"' "$(bash_json "$c" | sh "$CMD/commit.sh")"
+clean_tree
+
+# What `openspec archive` does: a plain filesystem move the index hasn't seen.
+mkdir -p openspec/changes/demo && lines openspec/changes/demo/tasks.md
+git add openspec && git -c user.email=t@example.com -c user.name=test commit -qm "add demo change"
+mkdir -p openspec/changes/archive && mv openspec/changes/demo openspec/changes/archive/demo
+verdict_absent "moved 600-line folder, git add -A dir && git commit -> no Large commit" \
+  'Large commit' "$(bash_json 'git add -A openspec && git commit -m x' | sh "$CMD/commit.sh")"
+clean_tree
+git reset -q --keep HEAD~1
+
+mkdir -p .claude && printf '{ "lockfile": "yarn.lock" }\n' > .claude/harness.json
+lines lock.tmp && cat lock.tmp >> yarn.lock && rm lock.tmp
+printf 'a\nb\nc\n' >> src/App.tsx && git add src yarn.lock
+verdict "600-line lockfile change + 3 source lines -> allow" '"permissionDecision":"allow"' \
+  "$(bash_json 'git commit -m x' | sh "$CMD/commit.sh")"
+rm -f .claude/harness.json; clean_tree
+echo
+
+echo "-- PreToolUse: commits and refs through the GitHub API --"
+for c in 'gh api repos/o/r/git/refs -f ref=refs/heads/x -f sha=abc' \
+         'gh api -X PATCH repos/o/r/git/refs/heads/x -f sha=abc' \
+         'gh api repos/o/r/git/commits -f message=x -f tree=abc'; do
+  verdict "$c -> ask" 'bypasses local git hooks' "$(bash_json "$c" | sh "$CMD/ghapi.sh")"
+done
+for c in 'gh api repos/o/r/git/ref/heads/main --jq .object.sha' \
+         'gh api repos/o/r/branches/main/protection' 'gh api repos/o/r/rulesets' \
+         'gh api -X GET repos/o/r/git/refs -f per_page=100'; do
+  verdict_absent "$c -> no ask" '"ask"' "$(bash_json "$c" | sh "$CMD/ghapi.sh")"
+done
+echo
+
+echo "-- PreToolUse: unreadable command keeps the old, cautious behaviour --"
+git checkout -q main
+for g in commit merge push; do
+  verdict "empty payload on main -> $g asks" '"permissionDecision":"ask"' \
+    "$(echo '{}' | sh "$CMD/$g.sh")"
+done
+git checkout -q feature/test
+echo
+
 echo "-- PreToolUse: .claudeignore guard --"
 mkdir -p coverage && echo "<html>" > coverage/index.html
 verdict "covered path -> deny" '"permissionDecision":"deny"' \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/coverage/index.html"}}' "$REPO" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
-verdict "ordinary source file -> allow" '"permissionDecision":"allow"' \
+# Paths it doesn't block get no decision, not "allow": "allow" would skip
+# the permission prompt, e.g. for a Read outside the project.
+verdict_silent "ordinary source file -> no decision" \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/src/App.tsx"}}' "$REPO" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 verdict "covered path while cwd is a subdirectory -> still deny" '"permissionDecision":"deny"' \
   "$(cd src && printf '{"tool_name":"Grep","tool_input":{"path":"%s/coverage"}}' "$REPO" \
+     | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
+# `coverage` must not catch a sibling that merely starts with the same word.
+mkdir -p coverage-report && echo "<html>" > coverage-report/index.html
+verdict_silent "pattern is not a prefix match (coverage vs coverage-report/) -> no decision" \
+  "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/coverage-report/index.html"}}' "$REPO" \
+     | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
+rm -rf coverage-report
+verdict_silent "Grep with no path -> no decision" \
+  "$(printf '{"tool_name":"Grep","tool_input":{"pattern":"x"}}' \
+     | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
+verdict_silent "absolute path outside the project -> no decision, normal prompt applies" \
+  "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/elsewhere/src/x.ts"}}' "$WORK" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 echo
 
