@@ -192,7 +192,7 @@ printf '%s\n' "$(jq -nc \
   --arg group "<same group-number-or-range>" \
   --arg gate "test-coverage" \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
-  --arg skipReason "<только документация, when verdict is skipped; empty otherwise>" \
+  --arg skipReason "<docs only, when verdict is skipped; empty otherwise>" \
   --argjson durationMs 0 \
   --argjson tokensTotal 0 \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
@@ -207,7 +207,7 @@ printf '%s\n' "$(jq -nc \
   --arg group "<same group-number-or-range>" \
   --arg gate "deep-review" \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
-  --arg skipReason "<нет признаков риска, when verdict is skipped; empty otherwise>" \
+  --arg skipReason "<no risk signals, when verdict is skipped; empty otherwise>" \
   --argjson durationMs <elapsed-ms for the deep-reviewer delegation, 0 if skipped> \
   --argjson tokensTotal <subagent_tokens from deep-reviewer's own <usage> block, 0 if skipped> \
   --arg model "<model deep-reviewer ran on, or empty if skipped>" \
@@ -221,7 +221,7 @@ printf '%s\n' "$(jq -nc \
 The `deep-review` line is written on **every** run, including the far more
 common one where the risk prefilter found nothing — a gate that logs only
 when it fires is indistinguishable from one that silently stopped running.
-`нет признаков риска` is its one closed-list skip reason.
+`no risk signals` is its one closed-list skip reason.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` on it, for the same
 reason the `test-coverage` line carries zeros: a CONFIRMED `DR-` finding is
 fixed through the same single `debug-loop` invocation already counted on the
@@ -235,7 +235,7 @@ the wall-clock time spent from delegating to `code-reviewer` to receiving
 its response — attribute it to whichever line represents the section that
 actually did the work; a skipped section logs `0`. `skipReason` follows the
 same rule: only the `test-coverage` line ever carries a value, and only
-`только документация` — the one closed-list reason that matches "Gate 5
+`docs only` — the one closed-list reason that matches "Gate 5
 section was docs/config-only" — filled in exactly when that line's own
 `verdict` is `skipped`, empty otherwise; the `code-review` line's
 `skipReason` is always empty, since that line never logs `skipped` itself.

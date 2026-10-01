@@ -19,6 +19,8 @@ first (see below).
 Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in
 the target repo (written by `init-harness`) before touching any code — they
 are the source of truth for branch naming, commit format, and gate order.
+Then **read `references/command-hygiene.md`**, before the first Bash call;
+read `references/ci-probes.md` before any task that must push failing code.
 
 ## 1. Determine the parent branch and read the stack manifest
 
@@ -245,7 +247,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
-       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",skipReason:"мелкое изменение",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
+       '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",skipReason:"small change",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
        >> .claude/harness-log.jsonl
    done
    ```
@@ -265,9 +267,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    diff_size=$(git diff <parent>..HEAD | wc -c)
    diff_file=""
    if [ "$diff_size" -gt 51200 ]; then
-     diff_file=$(mktemp)   # $TMPDIR/tmp.XXXX by default — outside this repo's
-                            # working tree in any standard setup, never at risk
-                            # of a stray `git add .` picking it up
+     diff_file=$(mktemp)   # in $TMPDIR, outside the repo: `git add .` can't pick it up
      git diff <parent>..HEAD > "$diff_file"
    fi
    ```
@@ -346,7 +346,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    mkdir -p .claude
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
-     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",skipReason:"настройки плагина не менялись",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
+     '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",skipReason:"harness config unchanged",durationMs:0,tokensTotal:0,model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
      >> .claude/harness-log.jsonl
    ```
    If `jq` isn't available, construct the equivalent line with `printf`
@@ -369,7 +369,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
    CONFIRMED finding, print the reviewer's stated reason to the chat now
    — this is the surfacing that step 2 deferred to here. Then push the run's
-   branch (`git push -u origin <branch>`).
+   branch (`git push -u origin <branch>`, on its own: never piped, see `references/command-hygiene.md`).
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
 6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain

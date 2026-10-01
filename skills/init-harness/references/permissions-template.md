@@ -8,9 +8,11 @@ array entries, de-duplicating.
 Substitute `{{PACKAGE_MANAGER}}` with the detected command (`yarn`/`npm run`/
 `pnpm`), `{{BUILD_DIR}}` with `dist` (Vite) or `.next` (Next.js),
 `{{SERVE_SCRIPT}}` with the framework's serve-the-build script (`preview` for
-Vite, `start` for Next.js), and `{{LOCKFILE}}` with the detected lockfile
-(`yarn.lock`/`package-lock.json`/`pnpm-lock.yaml`). Do not leave literal
-placeholders in the written file.
+Vite, `start` for Next.js), `{{LOCKFILE}}` with the detected lockfile
+(`yarn.lock`/`package-lock.json`/`pnpm-lock.yaml`), and `{{TEST_RUNNER_CMD}}`
+with the detected `testRunner`'s single-run command (`vitest run` for vitest,
+`jest` for jest). For any other runner, drop that line rather than guessing a
+command. Do not leave literal placeholders in the written file.
 
 ```json
 {
@@ -24,6 +26,7 @@ placeholders in the written file.
       "Bash({{PACKAGE_MANAGER}} test:*)",
       "Bash({{PACKAGE_MANAGER}} test:run:*)",
       "Bash({{PACKAGE_MANAGER}} test:coverage:*)",
+      "Bash(npx {{TEST_RUNNER_CMD}}:*)",
       "Bash(npm info *)",
       "Bash(npx openspec:*)",
       "Bash(openspec:*)",
@@ -128,6 +131,25 @@ placeholders in the written file.
   the project has no such script (a library, an app that's never served from
   its own build), drop the line rather than writing a name that resolves to
   nothing.
+- `{{TEST_RUNNER_CMD}}` exists because agents run a single test file
+  directly (`npx vitest run src/foo.test.ts`) far more often than the whole
+  suite, and the `test:*` script entries above don't match that spelling, so
+  every such run used to prompt. It is written with `npx` whatever the
+  package manager: `npx` runs the locally installed binary the same way under
+  yarn, npm and pnpm, and one spelling keeps the list narrow. Only the
+  runner's own single-run form is allowed, never `npx:*`, which would allow
+  any package on the registry. An unknown runner gets no line, by the same
+  "never invent a script name" rule as `{{SERVE_SCRIPT}}`.
+- `Bash(cd:*)` does not make `cd <repo> && <write>` run without a prompt.
+  Claude Code checks a compound command that combines `cd` with a write
+  operation itself, before any allow rule, and always asks ("Compound command
+  contains cd with write operation - manual approval required to prevent path
+  resolution bypass"). No allow entry changes that. The fix is not to write
+  the `cd` at all: the session already starts in the repo root, which the
+  pointer block's Shell line (Step 9) tells the agent. Don't respond to these
+  prompts with broader allows such as `Bash(printf:*)`, `Bash(tee:*)`,
+  `Bash(sh -c:*)` or `Bash(python3:*)`. Each one can write any file, so each
+  one routes around the `deny` list below.
 - This `permissions.deny` list is only as strong as `allow` is narrow: a
   broad `allow` entry defeats every `deny` rule it overlaps with, since
   Claude Code doesn't enforce `deny` against a tool call that `allow`

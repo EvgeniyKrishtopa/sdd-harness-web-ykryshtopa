@@ -403,6 +403,21 @@ Precondition (#35):
 3. Repeat the default-branch and detached-HEAD checks from section 2
    specifically through `opsx-apply-git`'s own git operations, not just the
    raw hook.
+4. In a target project, run a task that needs a probe test. Confirm there is
+   no "cd with write operation" prompt, no Python/`sed` file edits (Edit and
+   Write only), the probe lives in the scratchpad or is gone before the
+   commit, and `git push` runs on its own, not piped.
+5. Fresh `init-harness`: the pointer block has the two-line Shell bullet and
+   no more; `settings.json` has `Bash(npx vitest run:*)` on the vite fixture
+   and `Bash(npx jest:*)` on the next fixture, with no literal `{{...}}`
+   left. Change a fixture's runner to something else (e.g. `mocha`) and
+   confirm no runner line is written.
+6. Upgrade mode on a repo set up by 0.10.0: both the Shell bullet and the
+   runner line are added once; a second run changes nothing. Put a
+   hand-written `## Shell` section ("don't `cd` into the repo") in its
+   `CLAUDE.md` first and confirm the bullet is skipped.
+7. Make a run log a skip (a `.md`-only diff): the PR body's Review trail and
+   `.claude/harness-log.jsonl` show the reason in English (`small change`).
 
 ---
 

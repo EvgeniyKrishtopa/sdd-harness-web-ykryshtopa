@@ -109,8 +109,8 @@ A fourth verdict value,
 `skipped`, also appears under `"gate":"harness-review"` in this log — but
 is written by `opsx-apply-git` itself, not by this agent, when its Gate 6
 precondition finds nothing to review and this delegation never runs at all
-(cost-optimization #35); that line carries `skipReason:"настройки плагина
-не менялись"`, `durationMs:0`, and `tokensTotal:0`, since nothing ran. If
+(cost-optimization #35); that line carries `skipReason:"harness config
+unchanged"`, `durationMs:0`, and `tokensTotal:0`, since nothing ran. If
 `jq` isn't available, construct the equivalent
 JSON line with `printf` instead. A failed log write never
 blocks the gate — note it in the report and move on; this is a diagnostic

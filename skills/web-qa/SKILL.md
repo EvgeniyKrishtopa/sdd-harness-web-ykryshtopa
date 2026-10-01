@@ -212,7 +212,7 @@ printf '%s\n' "$(jq -nc \
   --arg group "-" \
   --arg gate "web-qa" \
   --arg verdict "<clean|confirmed|skipped>" \
-  --arg skipReason "<интерфейс не затронут, when verdict is skipped; empty otherwise>" \
+  --arg skipReason "<UI not touched, when verdict is skipped; empty otherwise>" \
   --argjson durationMs <elapsed-ms> \
   --argjson tokensTotal <subagent_tokens from the <usage> block, 0 when skipped> \
   --arg model "<model web-qa-manual-tester actually ran on>" \
@@ -229,7 +229,7 @@ any FAIL found along the way (even if later fixed and re-passed), or
 whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
 this gate covers the whole change, triggered on the last group). `skipReason`
 is the closed-list reason matching this gate's own applicability check —
-`интерфейс не затронут` exactly when `verdict` is `skipped`, empty
+`UI not touched` exactly when `verdict` is `skipped`, empty
 otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
 `tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
 environment appends after the `web-qa-manual-tester` delegation returns

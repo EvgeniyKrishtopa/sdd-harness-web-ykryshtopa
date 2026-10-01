@@ -28,6 +28,21 @@ every commit instead of trusting it.
    root instruction file stays under roughly 200 lines — this step should
    never be the reason that budget gets exceeded.
 
+## Why the block carries a Shell line
+
+Everything else in the block points at a file. The Shell line is the one
+rule that has to be in the root file itself, because it is about every Bash
+call in every session, including subagents', and no skill is loaded for
+most of them. Agents tend to start commands with `cd "<absolute repo path>"
+&& ...` even though the session already runs in the repo root. Claude Code
+stops any compound command that pairs `cd` with a write and asks for manual
+approval, before allow rules are checked, so an autonomous run stalls on
+every one of them (`references/permissions-template.md` has the detail).
+One-off probe tests and scripts written into the repo get picked up by the
+test runner, lint and `git add`, and someone has to remember to delete them;
+the session scratchpad is thrown away on its own. Keep it to these two
+lines: they cost context in every session.
+
 ## The block
 
 ```markdown
@@ -43,6 +58,8 @@ every commit instead of trusting it.
 - @.claude/docs/laziness-ladder.md — priority order to check before
   writing new code; does not apply to trust-boundary validation,
   data loss, security, or accessibility.
+- Shell: the cwd is already the repo root. Use relative paths, never a `cd <repo> &&`
+  prefix (with a write it always forces a prompt); one-off probes go in the session scratchpad.
 - @CONTEXT.md — this project's glossary of domain terms. `spec-reviewer`
   checks every spec against it; without this reference it never loads into
   a session and the check has nothing to read.

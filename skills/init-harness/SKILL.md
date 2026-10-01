@@ -285,9 +285,9 @@ What the target repo's own `.claude/settings.json` **does** need is a
 `"permissions"` key — that's a project-level setting, not something a plugin
 can ship on the project's behalf. Merge `references/permissions-template.md`'s
 `allow`/`deny` arrays into the target repo's `.claude/settings.json`,
-substituting all four of its placeholders — `{{PACKAGE_MANAGER}}`,
-`{{BUILD_DIR}}` (`dist` for Vite, `.next` for Next.js), `{{SERVE_SCRIPT}}`
-(`preview` for Vite, `start` for Next.js), and `{{LOCKFILE}}` — and never
+substituting all five of its placeholders (`{{PACKAGE_MANAGER}}`,
+`{{BUILD_DIR}}`, `{{SERVE_SCRIPT}}`, `{{LOCKFILE}}`, `{{TEST_RUNNER_CMD}}`;
+values and the drop-the-line cases are in that file's header) — and never
 overwrite an existing `permissions` block: merge and de-duplicate entries
 into it instead. This is the actually-enforced mechanism for hard blocks
 (secrets, destructive commands) — see that file's notes on why the three
