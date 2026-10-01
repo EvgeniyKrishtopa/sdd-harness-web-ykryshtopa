@@ -50,9 +50,10 @@ minute, not a dump of the log.
      .claude/harness-log.jsonl | tail -n 1
    ```
    A `skipped` verdict always carries one of the closed-list reasons already
-   written elsewhere in this pipeline — `интерфейс не затронут`, `только
-   документация`, `мелкое изменение`, or `настройки плагина не менялись` —
-   print it verbatim next to the verdict. No matching line for a gate → say
+   written elsewhere in this pipeline — `UI not touched`, `docs only`,
+   `small change`, `harness config unchanged`, or `no risk signals` — print
+   it verbatim next to the verdict. A log written before 0.10.2 carries the
+   same reasons in Russian; print those verbatim too. No matching line for a gate → say
    so on that gate's line rather than omitting it.
 3. **Findings** — this run's CONFIRMED findings from the tracked list above:
    rule number, one-line description, outcome. PLAUSIBLE notes never appear

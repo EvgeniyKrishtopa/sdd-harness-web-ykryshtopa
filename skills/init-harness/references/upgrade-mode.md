@@ -21,10 +21,10 @@ exists to prevent.
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
-| `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries |
+| `.claude/settings.json` (`permissions` only) | Step 6 | merge and de-duplicate entries. This includes the test-runner line `Bash(npx {{TEST_RUNNER_CMD}}:*)` (0.10.2), substituted from the manifest's `testRunner`; a runner other than vitest/jest gets no line |
 | `.claudeignore` | Step 7 | append missing lines |
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (including `webQaScenariosDir`, added 0.4.0; `disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; the optional `scripts.testIntegration` and `makerChecker` with `models.testAuthor`, all added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8); never drop keys already there. `scripts.testIntegration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
-| `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only |
+| `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only, inside the existing `## Harness (...)` block. The two-line Shell bullet (0.10.2) is skipped when the file already says the same thing in the user's own words anywhere: a `## Shell` section or any line telling the agent not to prefix commands with `cd` into the repo counts. Two versions of one rule are a maintenance problem, and the user's version is the one they chose |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |

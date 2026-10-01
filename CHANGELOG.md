@@ -9,6 +9,62 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.2
+
+Agents in harness-initialized projects stop causing permission prompts
+through their own command style, and stop hiding failed pushes. Everything
+here was seen in one real project on 0.10.0.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository. Upgrade mode adds the new `CLAUDE.md` line and the new allow
+entry; the skill changes need nothing else.
+
+### Fixed — prompts the agent caused itself
+
+- **A Shell line in the `CLAUDE.md` pointer block.** Agents started
+  commands with `cd "<repo>" && ...` although the session already runs in
+  the repo root. Claude Code asks for manual approval on every compound
+  command that pairs `cd` with a write, before allow rules are checked, so
+  `Bash(cd:*)` never helped. The new two-line bullet says to use relative
+  paths and to put one-off probes in the session scratchpad instead of
+  `src/`. Upgrade mode skips it when `CLAUDE.md` already has an equivalent
+  rule in the user's own words.
+- **Direct test-runner runs are allowed.** `Bash(npx vitest run:*)` or
+  `Bash(npx jest:*)`, from the detected `testRunner`, through the new
+  `{{TEST_RUNNER_CMD}}` placeholder. Running one test file used to prompt
+  every time. An unknown runner gets no line. The permissions notes also
+  explain why the answer to these prompts is never a broad allow such as
+  `Bash(python3:*)`: each would route around the deny list.
+- **`opsx-apply-git` has command-hygiene rules**
+  (`references/command-hygiene.md`): edit files with Edit/Write, never
+  `python3 - <<EOF` or `sed -i` (each needs a prompt, shows no diff, and a
+  missed anchor fails silently); never pipe `git push` (the pipeline's
+  status hides a failed pre-push, so the push silently didn't happen);
+  claim "pre-push passed" in a PR body only after the push returned 0;
+  prefer several short Bash calls to one long chain.
+
+### Fixed — skip reasons in English
+
+The five closed-list `skipReason` values were Russian and landed in English
+PR bodies and in `.claude/harness-log.jsonl`. They are now `UI not touched`,
+`docs only`, `small change`, `harness config unchanged` and
+`no risk signals`. `harness-stats` groups reasons by exact text, so a log
+spanning this upgrade shows each reason twice (old and new spelling) until
+the old lines leave the window.
+
+### Added — a sanctioned path for intentional-red CI probes
+
+Tasks like "CI goes red on a lint warning" or "branch protection blocks the
+merge" must push code the local hooks refuse. Agents improvised with the
+GitHub Git Data API, opened the first probe PR as a normal mergeable PR, and
+cleaned up only if they remembered. `opsx-apply-git` now follows
+`references/ci-probes.md`: ask the human once, a `chore/<...>-throwaway`
+branch off the branch under test, commits through the GitHub API (why that
+doesn't contradict the `--no-verify` ban is explained there), a draft PR
+for CI-result probes but a normal PR for merge-blocking probes (a draft
+would hide whether the ruleset blocked it), never merged, and done only when
+the PR is closed and the branch deleted, both verified.
+
 ## 0.10.1
 
 The commit, merge and push guards stop asking about commands that don't
