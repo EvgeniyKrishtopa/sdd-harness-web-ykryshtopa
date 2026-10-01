@@ -52,6 +52,12 @@ defeats the right ones.
   three times inside one-line JSON strings would have made them unreadable.
   If the script can't run, the commit, merge and push hooks ask, as they did
   before.
+- **The `.claudeignore` hook no longer approves the reads it doesn't block.**
+  For every `Read`/`Grep`/`Glob` call outside `.claudeignore` it answered
+  `allow`, and a hook's `allow` skips the permission prompt. That included
+  reading files outside the project, such as `~/.ssh`, which Claude Code
+  normally asks about. It now gives no decision for those calls, so the
+  normal permission rules apply. Matching paths are still denied.
 
 ### Added
 

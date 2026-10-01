@@ -71,6 +71,14 @@ verdict_absent() { # verdict_absent <name> <unwanted-substring> <actual>
     printf '  [PASS] %s\n' "$1"; pass=$((pass + 1))
   fi
 }
+verdict_silent() { # verdict_silent <name> <actual>: the hook made no decision
+  if [ -z "$2" ]; then
+    printf '  [PASS] %s\n' "$1"; pass=$((pass + 1))
+  else
+    printf '  [FAIL] %s\n         got: %s\n' "$1" "$(printf '%s' "$2" | head -c 300)"
+    fail=$((fail + 1))
+  fi
+}
 bash_in() { printf '{"tool_name":"Bash","tool_input":{"command":"%s"}}' "$1"; }
 # bash_in breaks on newlines and quotes; multi-line and quoted commands go
 # through jq instead.
@@ -393,7 +401,9 @@ mkdir -p coverage && echo "<html>" > coverage/index.html
 verdict "covered path -> deny" '"permissionDecision":"deny"' \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/coverage/index.html"}}' "$REPO" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
-verdict "ordinary source file -> allow" '"permissionDecision":"allow"' \
+# Paths it doesn't block get no decision, not "allow": "allow" would skip
+# the permission prompt, e.g. for a Read outside the project.
+verdict_silent "ordinary source file -> no decision" \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/src/App.tsx"}}' "$REPO" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 verdict "covered path while cwd is a subdirectory -> still deny" '"permissionDecision":"deny"' \
@@ -401,16 +411,14 @@ verdict "covered path while cwd is a subdirectory -> still deny" '"permissionDec
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 # `coverage` must not catch a sibling that merely starts with the same word.
 mkdir -p coverage-report && echo "<html>" > coverage-report/index.html
-verdict "pattern is not a prefix match (coverage vs coverage-report/) -> allow" \
-  '"permissionDecision":"allow"' \
+verdict_silent "pattern is not a prefix match (coverage vs coverage-report/) -> no decision" \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/coverage-report/index.html"}}' "$REPO" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 rm -rf coverage-report
-verdict "Grep with no path -> allow" '"permissionDecision":"allow"' \
+verdict_silent "Grep with no path -> no decision" \
   "$(printf '{"tool_name":"Grep","tool_input":{"pattern":"x"}}' \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
-verdict "absolute path outside the project, no matching part -> allow" \
-  '"permissionDecision":"allow"' \
+verdict_silent "absolute path outside the project -> no decision, normal prompt applies" \
   "$(printf '{"tool_name":"Read","tool_input":{"file_path":"%s/elsewhere/src/x.ts"}}' "$WORK" \
      | CLAUDE_PROJECT_DIR="$REPO" sh "$CMD/ignore.sh")"
 echo
