@@ -11,7 +11,7 @@ onto without a real run.
 
 Run this checklist:
 - before merging a release's integration branch into `main`,
-- after any change that touches `hooks/hooks.json`, an `agents/*.md`
+- after any change that touches `hooks/hooks.json` or `hooks/git-guard.sh`, an `agents/*.md`
   frontmatter block, `skills/init-harness/**`, or the manifest schema.
 
 Use both fixtures in `tests/fixtures/` — they deliberately differ on every
