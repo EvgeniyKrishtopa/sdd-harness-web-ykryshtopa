@@ -26,8 +26,13 @@ below) — never applied by you.
 
 1. **Stale claims** — does `CLAUDE.md`/`AGENTS.md` describe a command, file,
    or convention that no longer exists or changed shape?
-2. **CLAUDE.md/AGENTS.md hygiene** — is the root instruction file staying
-   under roughly 200 lines? Apply the **Deletion Test** to any rule that
+2. **CLAUDE.md/AGENTS.md hygiene** — is the root instruction file within
+   the line budget? Read
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/claude-md-budget.md`
+   and count with `bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`.
+   State both numbers it prints (root and effective with `@`-imports). Root
+   over budget is a **CONFIRMED** finding (a count, no judgement) whose
+   suggested fix is that file's split proposal. Apply the **Deletion Test** to any rule that
    looks like a candidate, not just ones near the limit: *if this line were
    deleted, would Claude actually start erring in THIS project?* A rule that
    traces to a real past incident or a hard constraint passes. Not sure →

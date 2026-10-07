@@ -368,25 +368,24 @@ line saying so.
 
 ## Step 9 — create or append CLAUDE.md's harness pointer block
 
-`.claude/docs/*.md` (Step 5) is **not** auto-loaded like `CLAUDE.md`/
-`AGENTS.md`. Without this pointer, Step 5's docs are undiscoverable, and the
-auto-commit override `opsx-apply-git` §3/§5.3 relies on is recognized only
-when referenced from CLAUDE.md — skipping this step withdraws that override.
+Without this pointer, Step 5's docs (not auto-loaded) and the auto-commit
+override `opsx-apply-git` §3/§5.3 relies on are undiscoverable.
 
 **Read `references/claude-md-pointer-template.md` now and follow it** — it
 holds the block to write and the create-vs-append rule. Never overwrite or
 reorder existing content in a file that already exists, and keep the block
-short: Gate 6 checks the root instruction file stays near 200 lines.
+short (the line budget is in `references/claude-md-budget.md`).
 
 ## Step 10 — report
 
 In upgrade mode, report the shorter form Step 0 describes — version
-transition, files created, files appended to, files left alone — not the
-full first-install summary below, which mostly restates what the user has.
+transition, files created, appended to, left alone — not the full summary below.
 Either mode: state that the three scripts were run and passed (Step 8b),
 naming them — the one thing in the report the user can't infer from the file
 list, and the difference between "the harness found these names" and "the
-harness ran these commands".
+harness ran these commands". Also report both counts from
+`bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`;
+over budget → `references/claude-md-budget.md`'s split proposal, never applied unasked.
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether
