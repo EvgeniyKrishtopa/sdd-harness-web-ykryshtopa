@@ -34,8 +34,11 @@ a change that was never actually accepted (#19).
      ask the human what to do with the change instead (re-open, rework, or
      abandon the archive entirely).
 2. Run `openspec archive <change-name>` (or the vendored
-   `openspec-archive-change` skill if present).
-3. Commit the archive move (`chore: archive <change-name>`) — this is a
+   `openspec-archive-change` skill if present). If `docs/deferred.md` has a
+   `## <change-name>` heading, add the "Archived at" line under it now
+   (`deferred-log.md`, write 3). Open entries stay open.
+3. Commit the archive move (`chore: archive <change-name>`), including
+   `docs/deferred.md` when step 2 changed it — this is a
    second, narrower override of "never commit without being asked," same
    justification as §3's per-group commit override.
 4. Push the archive branch. Same `forge` branch as §4 step 6.3: `"other"` →

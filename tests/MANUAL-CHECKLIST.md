@@ -419,6 +419,37 @@ Precondition (#35):
 7. Make a run log a skip (a `.md`-only diff): the PR body's Review trail and
    `.claude/harness-log.jsonl` show the reason in English (`small change`).
 
+Steps 8-13 check `docs/deferred.md` (0.10.5). They are manual: the eval set
+under `evals/` covers skill routing and review misses, not a multi-step
+`opsx-apply-git` run. Start from a test project with no `docs/deferred.md`
+and a change with at least two groups.
+
+8. Make a group stop on one task (an unanswerable question in a
+   judgement-heavy group). `docs/deferred.md` is created from
+   `skills/opsx-apply-git/references/deferred-log-template.md`'s header,
+   with one `## <change-slug>` heading and one entry, State `blocked`,
+   Status `open`. The task line keeps its `- [ ]` and its
+   `<!-- blocked: … -->` marker unchanged and gains
+   `<!-- deferred: docs/deferred.md -->`. The file is in the same commit as
+   the marker.
+9. Finish a group with nothing blocked or waived, in a project with no
+   `docs/deferred.md`: the file is not created. With the file present: the
+   group's commit doesn't touch it (`git show --stat`).
+10. Remove the marker from step 8, run the group again and tick the task.
+    The entry's Status becomes `resolved (<change-slug>, group N)`; the
+    entry and the pointer are still there.
+11. Waive one check by your own decision in a group ("skip the live check,
+    I'll do it on deploy"), let the run finish, and archive the change. The
+    `skipped` entry is still `open`, and the line
+    ``Archived at `openspec/changes/archive/<date>-<change-slug>/`.`` sits
+    under the change's heading, in the `chore: archive` commit.
+12. In the run that leaves step 11's entry open, the PR body's Deferred part
+    lists it on one line with a working link to the entry's heading, after
+    `proposal.md`'s Open Questions.
+13. Copy Poetry-Hub's `docs/deferred.md` into the test project and repeat
+    step 8 there. The new entry is appended under a new `## <change-slug>`
+    heading at the end; `git diff` shows no other line changed.
+
 ---
 
 ## Sign-off

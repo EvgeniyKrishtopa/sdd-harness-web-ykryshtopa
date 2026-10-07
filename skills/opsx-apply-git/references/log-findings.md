@@ -62,12 +62,15 @@ minute, not a dump of the log.
    one explicit line saying so; never omit this part.
 4. **Deferred** — one line per entry currently under `proposal.md`'s
    `## Open Questions` heading, verbatim (owner and due date are already
-   part of that line's format — see `spec-clarify`). No such heading, or
-   it's empty → one explicit line saying so.
+   part of that line's format — see `spec-clarify`), then one line per
+   open entry under this change's `## <change-slug>` heading in
+   `docs/deferred.md`, linking to that entry (`deferred-log.md`, "Reading it
+   for the PR body"). Neither source has anything → one explicit line
+   saying so.
 
 This section is assembled entirely from data this pipeline already writes
-elsewhere — this run's own gate verdicts, the findings list above, and
-`proposal.md`'s Open Questions. It never introduces a new
+elsewhere — this run's own gate verdicts, the findings list above,
+`proposal.md`'s Open Questions, and `docs/deferred.md`. It never introduces a new
 `.claude/harness-log.jsonl` field to answer a question the log doesn't
 already record.
 

@@ -96,7 +96,8 @@ reference:
 When about to write a marker, or when a scan finds one, **read
 `references/blocked-tasks.md` and follow it** — it covers the standalone
 commit the marker gets, why a block holds back the whole group, and what Case
-B may still do deliberately.
+B may still do deliberately. Before any commit that leaves a task blocked,
+skipped or obsolete, or ticks one with a `deferred` pointer, **read `references/deferred-log.md`**.
 
 ### Syncing the parent (used by both cases below)
 
@@ -434,7 +435,7 @@ numbered as below; other skills cite these numbers, so they stay listed here:
    off its now-current tip. `OPEN` (or the human says not yet) → stop and
    report; archiving waits on the human's merge. `CLOSED` and not merged (or
    the human says it was rejected) → stop and ask, the merge isn't coming.
-2. Run `openspec archive <change-name>`.
+2. Run `openspec archive <change-name>`, then `deferred-log.md`'s write 3.
 3. **Commit the archive move** (`chore: archive <change-name>`) — the second,
    narrower override of "never commit without being asked", same
    justification as §3's per-group commit override.

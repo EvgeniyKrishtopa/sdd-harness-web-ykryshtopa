@@ -76,4 +76,5 @@ lines: they cost context in every session.
   outlives a single change; see `docs/decisions/NNNN-*.md` if the
   directory exists yet. Not auto-loaded — read the relevant file when a
   past decision might be in play.
+- docs/deferred.md — spec points a group left blocked/skipped/obsolete; absent until the first one.
 ```
