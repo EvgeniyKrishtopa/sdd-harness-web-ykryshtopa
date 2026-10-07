@@ -1,0 +1,148 @@
+#!/usr/bin/env bash
+# Behaviour test for the deep-review risk prefilter in
+# skills/code-review/references/deep-review.md.
+#
+# The prefilter is a shell block inside a Markdown reference, so nothing ran
+# it until a real project did: in 0.10.3 a diff adding
+# .github/workflows/ci.yml (token permissions, pull_request trigger) logged
+# "no risk signals" and skipped the only security review in the plugin. This
+# file extracts the block verbatim, points its range at a throwaway repo, and
+# checks the verdict per diff -- so a signal that silently stops firing, or
+# one that starts firing on every run, fails here instead of in a project.
+#
+# Run from anywhere:
+#   bash tests/risk-prefilter.sh
+set -u
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+DOC="$ROOT/skills/code-review/references/deep-review.md"
+
+pass_count=0
+fail_count=0
+
+ok()  { printf '  [OK]   %s\n' "$1"; pass_count=$((pass_count + 1)); }
+bad() { printf '  [FAIL] %s\n' "$1"; fail_count=$((fail_count + 1)); }
+
+TMP="$(mktemp -d)"
+trap 'rm -rf "$TMP"' EXIT
+
+echo "== deep-review risk prefilter :: behaviour test =="
+echo "Doc: $DOC"
+echo
+
+# The first ```bash block after "## The prefilter", with its placeholder
+# range replaced by the base commit each case creates.
+awk '/^## The prefilter/ {s=1} s && /^```bash/ {f=1; next} f && /^```/ {exit} f' "$DOC" \
+  | sed 's|^range="<parent>\.\.HEAD".*|range="base..HEAD"|' > "$TMP/prefilter.sh"
+
+if grep -q '^range="base\.\.HEAD"$' "$TMP/prefilter.sh"; then
+  ok "extracted the prefilter block and its range line"
+else
+  bad "could not find the prefilter block or its range=\"<parent>..HEAD\" line in $DOC"
+  echo; echo "Passed: $pass_count  Failed: $fail_count"; exit 1
+fi
+
+# new_repo -- a repo with one base commit, tagged `base`.
+new_repo() {
+  repo="$TMP/repo-$1"
+  mkdir -p "$repo"
+  git -C "$repo" init -q
+  git -C "$repo" config user.email t@example.com
+  git -C "$repo" config user.name t
+  echo base > "$repo/base.txt"
+  git -C "$repo" add -A && git -C "$repo" commit -qm base && git -C "$repo" tag base
+}
+
+# add_file <path> <content> -- adds and commits one file in the current repo.
+add_file() {
+  mkdir -p "$repo/$(dirname "$1")"
+  printf '%s\n' "$2" > "$repo/$1"
+  git -C "$repo" add -A && git -C "$repo" commit -qm "add $1"
+}
+
+run_prefilter() { (cd "$repo" && bash "$TMP/prefilter.sh"); }
+
+# expect <case name> <expected first line> [expected filename]
+expect() {
+  out="$(run_prefilter)"
+  first="$(printf '%s\n' "$out" | head -n 1)"
+  if [ "$first" != "$2" ]; then
+    bad "$1: expected '$2', got: $(printf '%s' "$out" | tr '\n' ' ')"
+  elif [ -n "${3:-}" ] && ! printf '%s\n' "$out" | grep -qxF "$3"; then
+    bad "$1: verdict '$2' but '$3' not listed: $(printf '%s' "$out" | tr '\n' ' ')"
+  else
+    ok "$1 -> $2"
+  fi
+}
+
+echo "-- CI/CD paths fire --"
+
+new_repo workflow
+add_file .github/workflows/ci.yml 'on: pull_request
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567'
+expect "workflow-only diff" "risk=path" ".github/workflows/ci.yml"
+
+new_repo local-action
+add_file .github/actions/setup/action.yml 'runs:
+  using: composite'
+expect "local action" "risk=path" ".github/actions/setup/action.yml"
+
+new_repo gitlab
+add_file .gitlab-ci.yml 'test:
+  script: npm test'
+expect "GitLab CI config" "risk=path" ".gitlab-ci.yml"
+
+new_repo dockerfile
+add_file Dockerfile.prod 'FROM node:22-alpine'
+expect "Dockerfile variant" "risk=path" "Dockerfile.prod"
+
+new_repo vercel
+add_file vercel.json '{ "headers": [] }'
+expect "vercel.json" "risk=path" "vercel.json"
+
+echo
+echo "-- CI/CD content fires outside Markdown --"
+
+new_repo script-token
+add_file scripts/release.sh 'gh release create "$TAG" --repo "$REPO" # uses GITHUB_TOKEN'
+expect "GITHUB_TOKEN in a script" "risk=content" "scripts/release.sh"
+
+new_repo mdx
+add_file src/pages/intro.mdx '<div dangerouslySetInnerHTML={{ __html: html }} />'
+expect "risky JSX in .mdx (still scanned)" "risk=content" "src/pages/intro.mdx"
+
+echo
+echo "-- does not fire --"
+
+new_repo docs
+add_file docs/guide.md '# Guide
+
+How to run the app locally.'
+expect "docs-only diff" "risk=none"
+
+new_repo readme-prose
+add_file README.md 'The release job reads GITHUB_TOKEN; set permissions: contents: write
+and never use pull_request_target with secrets. on innerHTML too.'
+expect "README prose naming CI signals (Markdown is not content-scanned)" "risk=none"
+
+new_repo component
+add_file src/components/Button.tsx 'export function Button({ label }: { label: string }) {
+  return <button type="button">{label}</button>;
+}'
+expect "ordinary component diff" "risk=none"
+
+echo
+echo "-- fails open --"
+
+new_repo empty-range
+expect "range with no changed files" "prefilter unavailable: git diff --name-only base..HEAD listed no files"
+
+echo
+echo "Passed: $pass_count  Failed: $fail_count"
+[ "$fail_count" -eq 0 ]

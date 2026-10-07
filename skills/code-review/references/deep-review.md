@@ -3,7 +3,7 @@
 `code-reviewer` has no security rules at all, and reads architecture only as
 local reuse and simplification within the diff's neighbourhood. On a diff
 that carries real risk that is not enough, so a second reviewer —
-`deep-reviewer` (`agents/deep-reviewer.md`, rule codes `DR-01`…`DR-11`) —
+`deep-reviewer` (`agents/deep-reviewer.md`, rule codes `DR-01`…`DR-12`) —
 runs on top of it.
 
 It is a full extra delegation, usually on a larger model, so it only runs
@@ -15,8 +15,8 @@ this check exists to save.
 
 ```bash
 range="<parent>..HEAD"   # the same range Action step 1 resolves
-path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment|billing|checkout|invoice|migrat|schema|\.env|secret|credential|upload'
-content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM'
+path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment|billing|checkout|invoice|migrat|schema|\.env|secret|credential|upload|\.github/(workflows|actions)/|\.gitlab-ci\.ya?ml$|\.circleci/|(^|/)dockerfile[^/]*$|(^|/)vercel\.json$|(^|/)netlify\.toml$'
+content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM|permissions:|secrets\.|pull_request_target|workflow_run|GITHUB_TOKEN|id-token: *write'
 
 paths=$(git diff --name-only "$range")
 if [ -z "$paths" ]; then
@@ -26,7 +26,7 @@ else
   hits=$(printf '%s\n' "$paths" | grep -iE "$path_re")
   if [ -z "$hits" ]; then
     signal="content"
-    hits=$(printf '%s\n' "$paths" | while IFS= read -r f; do
+    hits=$(printf '%s\n' "$paths" | grep -viE '\.(md|markdown)$' | while IFS= read -r f; do
       git diff "$range" -- "$f" | grep '^+' | grep -v '^+++' \
         | grep -qiE "$content_re" && printf '%s\n' "$f"
     done)
@@ -48,6 +48,35 @@ Path signals are checked before content signals. The content grep excludes
 *filename* cannot masquerade as added content (without that `grep -v`, a
 comment tweak in `jwt-utils.ts` reports `risk=content`), and it looks only at
 added lines — a risky pattern this diff *removes* is not worth a review.
+
+Content signals skip Markdown files (`.md`, `.markdown`). A README that
+explains `GITHUB_TOKEN` or warns against `innerHTML` in prose executes
+nothing, and these words are exactly what documentation mentions. `.mdx` is
+still scanned: it compiles to components and can carry real JSX. Path
+signals still apply to Markdown — a file named `auth.md` is still a hint.
+
+## CI/CD signals (added 0.10.4)
+
+A workflow file runs with the repository's token and secrets, so it is
+production configuration. Before 0.10.4 a diff that added
+`.github/workflows/ci.yml` with `permissions:` and a `pull_request` trigger
+logged "no risk signals". Each signal below is a file most runs never touch,
+or a word that appears almost only in such files:
+
+| Signal | Why |
+|---|---|
+| `.github/workflows/`, `.github/actions/` | Workflows and local actions run with the repo token and secrets. |
+| `.gitlab-ci.yml`, `.circleci/` | The same for GitLab and CircleCI. |
+| `Dockerfile*` | Base image, runtime user, and build-time secrets of what ships. |
+| `vercel.json`, `netlify.toml` | Production headers, redirects, rewrites, and function config. |
+| `permissions:` | Token scope of a workflow or job. |
+| `secrets.` | A secret read into a step — `${{ secrets.X }}`. |
+| `pull_request_target`, `workflow_run` | Triggers that run with write access and secrets on fork-supplied input. |
+| `GITHUB_TOKEN` | The token used directly, including from a script outside `.github/`. |
+| `id-token: write` | OIDC — the job can obtain cloud credentials. |
+
+Not added: `on: push`, `uses:`, `runs-on:`. They appear in every workflow
+and add nothing the path signal does not already catch.
 
 ## Reading the three outcomes
 
