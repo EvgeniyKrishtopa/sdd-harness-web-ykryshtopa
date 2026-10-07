@@ -81,6 +81,11 @@ uses for JSON parsing.
    `durationMs`, next to it in the same per-gate line (#U17 point 5). A
    cheap-per-second model that needs three times the steps can still be the
    more expensive one; `durationMs` alone can't show that, this can.
+   Only runs that actually ran count: `skipped` lines (whose `0` is true but
+   says nothing about cost) and lines whose `tokensTotal` is `null` are left
+   out of both sum and median. `n=` is how many runs were counted, `null=`
+   how many ran but have no figure — their `tokensNote` says why. A `null=`
+   above zero means the sum understates the gate's real cost.
 9. **`skipReason` breakdown per gate** — for every skipped run, which of the
    five closed-list reasons it was (#U17 point 6, plus `no risk signals`
    on the `deep-review` line, added 0.5.0). Before 0.10.2 the reasons were
@@ -166,12 +171,13 @@ if command -v jq >/dev/null 2>&1; then
       durSumMs: ([.[] | (.durationMs // 0)] | add),
       durMedianMs: ([.[] | (.durationMs // 0)] | sort |
         (if (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end)),
-      tokSumTotal: ([.[] | (.tokensTotal // 0)] | add),
-      tokMedianTotal: ([.[] | (.tokensTotal // 0)] | sort |
-        (if (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end))
-    } | "  \(.gate): \(.runs) runs (\(.verdicts)) — \(.skippedPct)% skipped" +
+      tok: [.[] | select(.verdict != "skipped" and (.tokensTotal | type) == "number") | .tokensTotal],
+      tokNull: ([.[] | select(.verdict != "skipped" and (.tokensTotal | type) != "number")] | length)
+    } | .tokSumTotal = (.tok | add // 0) |
+      .tokMedianTotal = (.tok | sort |
+        (if length == 0 then 0 elif (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end)) | "  \(.gate): \(.runs) runs (\(.verdicts)) — \(.skippedPct)% skipped" +
         (if (.skipReasons | length) > 0 then " [\(.skipReasons)]" else "" end) +
-        ", durationMs sum=\(.durSumMs) median=\(.durMedianMs), tokensTotal sum=\(.tokSumTotal) median=\(.tokMedianTotal)"),
+        ", durationMs sum=\(.durSumMs) median=\(.durMedianMs), tokensTotal sum=\(.tokSumTotal) median=\(.tokMedianTotal) (n=\(.tok | length), null=\(.tokNull))"),
     "",
     (($runs | group_by(.fixIterations // 0) | map("\(.[0].fixIterations // 0) attempt(s): \(length) run(s)") | join("; ")) as $dist |
       (($runs | [.[] | select(.escalatedToHuman == true)]) | length) as $esc |
@@ -234,10 +240,14 @@ for gate in sorted(by_gate):
             skip_reasons[e["skipReason"]] += 1
     skip_str = f" [{', '.join(f'{k}={v}' for k, v in sorted(skip_reasons.items()))}]" if skip_reasons else ""
     durations = [e.get("durationMs", 0) or 0 for e in entries]
-    tokens = [e.get("tokensTotal", 0) or 0 for e in entries]
+    ran = [e for e in entries if e.get("verdict") != "skipped"]
+    tokens = [e["tokensTotal"] for e in ran
+              if isinstance(e.get("tokensTotal"), (int, float)) and not isinstance(e.get("tokensTotal"), bool)]
+    tok_null = len(ran) - len(tokens)
     print(f"  {gate}: {len(entries)} runs ({verdict_str}) — {skipped_pct}% skipped{skip_str}, "
           f"durationMs sum={sum(durations)} median={statistics.median(durations) if durations else 0}, "
-          f"tokensTotal sum={sum(tokens)} median={statistics.median(tokens) if tokens else 0}")
+          f"tokensTotal sum={sum(tokens)} median={statistics.median(tokens) if tokens else 0} "
+          f"(n={len(tokens)}, null={tok_null})")
 
 print()
 fix_dist = defaultdict(int)
@@ -314,10 +324,12 @@ for (const gate of Object.keys(byGate).sort()) {
     return s.length === 0 ? 0 : (s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2);
   };
   const durations = entries.map(e => e.durationMs || 0);
-  const tokens = entries.map(e => e.tokensTotal || 0);
+  const ran = entries.filter(e => e.verdict !== 'skipped');
+  const tokens = ran.filter(e => typeof e.tokensTotal === 'number').map(e => e.tokensTotal);
+  const tokNull = ran.length - tokens.length;
   console.log(`  ${gate}: ${entries.length} runs (${verdictStr}) — ${skippedPct}% skipped${skipStr}, ` +
     `durationMs sum=${durations.reduce((a, b) => a + b, 0)} median=${median(durations)}, ` +
-    `tokensTotal sum=${tokens.reduce((a, b) => a + b, 0)} median=${median(tokens)}`);
+    `tokensTotal sum=${tokens.reduce((a, b) => a + b, 0)} median=${median(tokens)} (n=${tokens.length}, null=${tokNull})`);
 }
 
 console.log();

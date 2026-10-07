@@ -81,12 +81,12 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --arg skipReason "" \
   --argjson durationMs <elapsed-ms> \
-  --argjson tokensTotal <subagent_tokens from the <usage> block> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block> --arg tokensNote "<empty when tokensTotal is a real figure; why it is null otherwise>" \
   --arg model "<model harness-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from harness-reviewer's own Output>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -99,9 +99,10 @@ logs `verdict: "skipped"` (see the fourth-value note below for the line
 that does). `tokensTotal` is the `subagent_tokens` figure from the
 `<usage>` block the environment appends after the `harness-reviewer`
 delegation returns (see `harness-audit/v0.4.0-implemented/03-log-fields.txt`
-point 5) — never estimate this from `durationMs` or any other proxy; if
-that block is absent, write `0` and say so in the report rather than
-guessing.
+point 5) — never estimate this from `durationMs` or any other proxy.
+Write the line only once `<usage>` has arrived — a background delegation
+reports first. If it never arrives, `tokensTotal` is `null` and
+`tokensNote` says why; never `0`, which `harness-stats` reads as a free run.
 `fixIterations`/`escalatedToHuman` are always `0`/`false` here, literally —
 never computed — because an approved finding here is applied directly and
 committed (see above), not run through `debug-loop`'s bounded retry cycle.

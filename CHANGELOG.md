@@ -30,6 +30,29 @@ repository, so its `.claude/docs/review-gates.md` picks up the new line.
 - **`init-harness/references/manifest-schema.md`** refers to the Step 0
   command in `SKILL.md` for the plugin version instead of repeating the path.
 
+### Fixed — `tokensTotal: 0` for runs that cost tokens
+
+A background delegation hands back its report before the notification that
+carries `<usage>`. The skills said "no `<usage>` block — write `0`", so a
+line written on the report alone logged `0`; this happened four times in one
+real project before the agent patched each line by hand. `harness-stats`
+then averaged those zeros, and the skipped runs' zeros, into each gate's
+median.
+
+- **Five gate skills** (`architecture-review`, `spec-review`,
+  `harness-review`, `code-review`, `web-qa`) now write the line only after
+  the `<usage>` block arrives. If it never does, `tokensTotal` is `null`
+  and the new `tokensNote` field says why — never `0`.
+- **New `tokensNote` field** on every gate-run line, empty unless
+  `tokensTotal` is `null`. The `opsx-apply-git` skip lines carry it too.
+- **`test-coverage`** logs `null` with `tokensNote: "counted on the
+  code-review line"` instead of `0` when its section ran; skipped stays `0`.
+- **`harness-stats`** (jq, Python and Node variants) leaves skipped runs and
+  `null` values out of the token sum and median, and prints `n=` (runs
+  counted) and `null=` (runs with no figure) beside them. Older
+  `test-coverage` lines logged before this release still count as `0` until
+  they leave the window.
+
 ## 0.10.2
 
 Agents in harness-initialized projects stop causing permission prompts

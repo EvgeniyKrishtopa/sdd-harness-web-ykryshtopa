@@ -214,12 +214,12 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|confirmed|skipped>" \
   --arg skipReason "<UI not touched, when verdict is skipped; empty otherwise>" \
   --argjson durationMs <elapsed-ms> \
-  --argjson tokensTotal <subagent_tokens from the <usage> block, 0 when skipped> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block, 0 when skipped> --arg tokensNote "<empty when tokensTotal is a real figure; why it is null otherwise>" \
   --arg model "<model web-qa-manual-tester actually ran on>" \
   --arg reviewConfidence "<high|low, from web-qa-manual-tester's own Output; empty when skipped>" \
   --argjson fixIterations <total debug-loop attempts across every FAIL this run, 0 if none> \
   --argjson escalatedToHuman <true iff any debug-loop invocation this run hit maxFixAttempts> \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -234,7 +234,10 @@ otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
 `tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
 environment appends after the `web-qa-manual-tester` delegation returns
 (point 5, `harness-audit/v0.4.0-implemented/03-log-fields.txt`), `0` when
-skipped or when that block is absent — never estimate it from a proxy.
+skipped — never estimate it from a proxy.
+Write the line only once `<usage>` has arrived — a background delegation
+reports first. If it never arrives, `tokensTotal` is `null` and
+`tokensNote` says why; never `0`, which `harness-stats` reads as a free run.
 `fixIterations` is the attempt count `debug-loop` itself reports back (phase
 4's "report success and the number of attempts it took"), summed if more
 than one flow needed its own invocation this run; `0` when every flow
