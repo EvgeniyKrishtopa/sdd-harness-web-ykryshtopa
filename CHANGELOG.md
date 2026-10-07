@@ -9,6 +9,40 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.5
+
+A point a task group didn't fully deliver (blocked, verification waived by
+the human, or obsolete) lived only in a `<!-- blocked: … -->` marker or a
+note in `tasks.md`. `openspec archive` moves that file out of sight, so the
+open point was lost after the archive. One real project kept a
+`docs/deferred.md` log by hand to work around this; the plugin now writes
+the same log itself.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository, so its `CLAUDE.md` pointer block gets the `docs/deferred.md`
+line. No file is created up front.
+
+### Added
+
+- **`opsx-apply-git/references/deferred-log-template.md`** — the header and
+  entry format of `docs/deferred.md` (states, when to add an entry, how to
+  resolve one). The path is fixed; there is no `.claude/harness.json` key.
+- **`opsx-apply-git/references/deferred-log.md`** — when the log is
+  written: before the commit that leaves a task blocked, skipped or
+  obsolete (the file is created on first need, and the task line gets a
+  `<!-- deferred: docs/deferred.md -->` pointer; checkbox and `blocked`
+  marker stay as they are); when a blocked task is ticked (Status becomes
+  `resolved (…)`, the entry stays); and at archive (an "Archived at" line,
+  open entries stay open). An existing hand-written file is appended to,
+  never reformatted.
+- **PR body "Deferred" line** (`log-findings.md`) lists the change's open
+  `docs/deferred.md` entries after `proposal.md`'s Open Questions, one
+  linked line each.
+- **`init-harness`** — one pointer bullet for `docs/deferred.md`, and an
+  `upgrade-mode.md` row saying the file is never created by `init-harness`.
+- **`tests/MANUAL-CHECKLIST.md` §9 steps 8-13** — manual checks for the
+  above.
+
 ## 0.10.4
 
 The deep-review risk prefilter had no CI/CD signals. In a real project a

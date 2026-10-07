@@ -23,6 +23,12 @@ this marker: a reason for stopping that survives only in an uncommitted diff
 is exactly as fragile as one that survives only in chat, the failure #U3
 already fixed for `PROGRESS.md`.
 
+The same commit adds or updates the task's entry in `docs/deferred.md` and
+the ` <!-- deferred: docs/deferred.md -->` pointer on the task line
+(`deferred-log.md`, write 1). The marker stays exactly as written above;
+the pointer only says where the reasoning lives once `openspec archive`
+has moved `tasks.md` away.
+
 Like any other commit made mid-batch before this run reaches §4, it isn't
 pushed to `origin` until the run reaches (or, on resume, re-reaches) §4's
 push step — that's an existing property of this whole flow, not something new

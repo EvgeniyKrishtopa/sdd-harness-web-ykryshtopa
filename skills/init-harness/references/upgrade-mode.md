@@ -30,6 +30,7 @@ exists to prevent.
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
 | `.gitattributes` (`.claude/harness-log.jsonl merge=union`) | Step 5 | append the line if missing; never touch other lines (0.6.0) |
 | `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case A or B, or `record-decision`, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead (0.5.0: Case A and `record-decision` both added as writers alongside Case B) |
+| `docs/deferred.md` | `opsx-apply-git` §3 and §5, on demand | never created here, on first install or on upgrade: `opsx-apply-git` creates it the first time a group leaves something blocked, skipped or obsolete, so a project with nothing deferred has no empty file. Upgrade only appends the pointer bullet (0.10.5) |
 | *(none — reads only, writes nothing)* linter ruleset check | Step 8b | recommendation, not a merge target: compares the project's linter config against `references/linter-ruleset.md`, reported every upgrade run, never installs or edits config (0.6.0) |
 
 ## How upgrade mode runs
