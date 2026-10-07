@@ -46,8 +46,8 @@ front of it, not a replacement:
   change.
 - Outlives the change (a convention, a tool choice, a stance the *next*
   change will also need) → write it as a new `docs/decisions/NNNN-<slug>.md`
-  per
-  `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/decision-template.md`,
+  per `../../init-harness/references/decision-template.md` (relative to this
+  file — a reference file gets no `${CLAUDE_PLUGIN_ROOT}` substitution),
   including its required `Alternatives Considered` section. Check for an
   existing `docs/adr/` first — if the project already has one, use that
   instead of creating `docs/decisions/` alongside it, and say so.

@@ -179,12 +179,12 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed>" \
   --arg skipReason "" \
   --argjson durationMs <elapsed-ms> \
-  --argjson tokensTotal <subagent_tokens from the <usage> block> \
+  --argjson tokensTotal <subagent_tokens from the <usage> block> --arg tokensNote "<empty when tokensTotal is a real figure; why it is null otherwise>" \
   --arg model "<model code-reviewer actually ran on>" \
   --arg reviewConfidence "<high|low, from code-reviewer's own Output>" \
   --argjson fixIterations <total debug-loop attempts across every CONFIRMED finding fixed this run, 0 if none> \
   --argjson escalatedToHuman <true iff debug-loop hit maxFixAttempts on this run> \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -194,12 +194,12 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
   --arg skipReason "<docs only, when verdict is skipped; empty otherwise>" \
   --argjson durationMs 0 \
-  --argjson tokensTotal 0 \
+  --argjson tokensTotal <null, or 0 when verdict is skipped> --arg tokensNote "<counted on the code-review line, or empty when verdict is skipped>" \
   --arg model "<same model, or empty if the Gate 5 section was skipped>" \
   --arg reviewConfidence "<same reviewConfidence, or empty if the Gate 5 section was skipped>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
@@ -209,12 +209,12 @@ printf '%s\n' "$(jq -nc \
   --arg verdict "<clean|plausible|confirmed|skipped>" \
   --arg skipReason "<no risk signals, when verdict is skipped; empty otherwise>" \
   --argjson durationMs <elapsed-ms for the deep-reviewer delegation, 0 if skipped> \
-  --argjson tokensTotal <subagent_tokens from deep-reviewer's own <usage> block, 0 if skipped> \
+  --argjson tokensTotal <subagent_tokens from deep-reviewer's own <usage> block, 0 if skipped> --arg tokensNote "<empty when tokensTotal is a real figure; why it is null otherwise>" \
   --arg model "<model deep-reviewer ran on, or empty if skipped>" \
   --arg reviewConfidence "<high|low, from deep-reviewer's Output, or empty if skipped>" \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
-  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
   >> .claude/harness-log.jsonl
 ```
 
@@ -239,14 +239,13 @@ same rule: only the `test-coverage` line ever carries a value, and only
 section was docs/config-only" — filled in exactly when that line's own
 `verdict` is `skipped`, empty otherwise; the `code-review` line's
 `skipReason` is always empty, since that line never logs `skipped` itself.
-`tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
-environment appends after the `code-reviewer` delegation returns (see
-`harness-audit/v0.4.0-implemented/03-log-fields.txt` point 5) — attributed
-entirely to the `code-review` line, the same way `durationMs` is, since one
-delegation produces one `<usage>` block covering both sections; the
-`test-coverage` line always logs `0` here too. Never estimate either figure
-from a proxy; if the `<usage>` block is absent, write `0` and say so in the
-report. `reviewConfidence` is the
+`tokensTotal` is `subagent_tokens` from `code-reviewer`'s `<usage>` block,
+all on the `code-review` line; `test-coverage` logs `null`, `tokensNote`
+"counted on the code-review line" (`0` and empty when skipped). Write the
+lines only once `<usage>` has arrived — a background delegation reports
+first. If it never arrives, `tokensTotal` is `null` and `tokensNote` says
+why; never `0`, which `harness-stats` reads as a free run. Never estimate
+from a proxy. `reviewConfidence` is the
 single `high`/`low` value `code-reviewer` stated for the whole review
 (§4 step 2 of `opsx-apply-git` reads this same value for its own
 low-without-CONFIRMED surfacing) — the `code-review` line always carries it,

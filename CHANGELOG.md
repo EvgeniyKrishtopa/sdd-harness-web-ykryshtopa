@@ -9,6 +9,56 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.3
+
+Three reference files pointed at plugin files through `${CLAUDE_PLUGIN_ROOT}`.
+Claude Code substitutes that variable only in the body of a `SKILL.md`, an
+agent, or a command — not in a file the agent opens itself, and not in the
+Bash environment. In these files the agent saw the literal text.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository, so its `.claude/docs/review-gates.md` picks up the new line.
+
+### Fixed
+
+- **`opsx-apply-git/references/decision-threshold.md`** now points at the
+  decision template by a path relative to itself,
+  `../../init-harness/references/decision-template.md`.
+- **`init-harness/references/review-gates-template.md`** names the
+  `harness-review` skill's `references/harness-stats.md` instead of a plugin
+  path. This text is copied into the project, where no plugin path resolves.
+- **`init-harness/references/manifest-schema.md`** refers to the Step 0
+  command in `SKILL.md` for the plugin version instead of repeating the path.
+
+### Fixed — `tokensTotal: 0` for runs that cost tokens
+
+A background delegation hands back its report before the notification that
+carries `<usage>`. The skills said "no `<usage>` block — write `0`", so a
+line written on the report alone logged `0`; this happened four times in one
+real project before the agent patched each line by hand. `harness-stats`
+then averaged those zeros, and the skipped runs' zeros, into each gate's
+median.
+
+- **Five gate skills** (`architecture-review`, `spec-review`,
+  `harness-review`, `code-review`, `web-qa`) now write the line only after
+  the `<usage>` block arrives. If it never does, `tokensTotal` is `null`
+  and the new `tokensNote` field says why — never `0`.
+- **New `tokensNote` field** on every gate-run line, empty unless
+  `tokensTotal` is `null`. The `opsx-apply-git` skip lines carry it too.
+- **`test-coverage`** logs `null` with `tokensNote: "counted on the
+  code-review line"` instead of `0` when its section ran; skipped stays `0`.
+- **`harness-stats`** (jq, Python and Node variants) leaves skipped runs and
+  `null` values out of the token sum and median, and prints `n=` (runs
+  counted) and `null=` (runs with no figure) beside them. Older
+  `test-coverage` lines logged before this release still count as `0` until
+  they leave the window.
+- **`harness-stats` `durationMs`** sum and median also leave out skipped
+  runs. Before, a gate skipped half the time showed a median of `0`.
+- **`init-harness` Step 0** stops when `plugin_version` is empty or not
+  `X.Y.Z`, and says never to hand-assemble a `plugins/cache/...` path;
+  `toolchain-proof.md` checks the value again before writing
+  `harnessVersion`.
+
 ## 0.10.2
 
 Agents in harness-initialized projects stop causing permission prompts
