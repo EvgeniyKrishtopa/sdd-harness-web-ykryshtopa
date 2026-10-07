@@ -9,6 +9,42 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.4
+
+The deep-review risk prefilter had no CI/CD signals. In a real project a
+diff adding `.github/workflows/ci.yml` (token `permissions:`, a
+`pull_request` trigger) and later a scheduled workflow logged "no risk
+signals" and skipped `deep-reviewer`, although `review-gates.md` promises a
+deep review for config and secrets.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository, so its `.claude/docs/review-gates.md` lists CI/CD configuration
+among the risk signals.
+
+### Fixed
+
+- **`code-review/references/deep-review.md`** — the prefilter now fires on
+  CI/CD paths (`.github/workflows/`, `.github/actions/`, `.gitlab-ci.yml`,
+  `.circleci/`, `Dockerfile*`, `vercel.json`, `netlify.toml`) and content
+  (`permissions:`, `secrets.`, `pull_request_target`, `workflow_run`,
+  `GITHUB_TOKEN`, `id-token: write`). Each signal is justified in the file.
+- **Content signals skip `.md`/`.markdown` files.** A README that mentions
+  `GITHUB_TOKEN` or `innerHTML` in prose no longer triggers a deep review.
+  `.mdx` is still scanned; path signals still apply to Markdown.
+- **`agents/deep-reviewer.md`** — new rule **`DR-12` — CI/CD workflows**:
+  `pull_request_target`/`workflow_run` running PR code, `${{ github.event.* }}`
+  inside `run:`, `uses:` not pinned to a SHA, missing or over-wide
+  `permissions:`, `persist-credentials`, secrets reachable from forks.
+- **`init-harness/references/review-gates-template.md`** and the README list
+  CI/CD configuration among the risk signals, matching the prefilter.
+
+### Added
+
+- **`tests/risk-prefilter.sh`** runs the prefilter block from
+  `deep-review.md` as written against throwaway repos: CI/CD paths and a
+  script using `GITHUB_TOKEN` fire; a docs-only diff, README prose naming
+  CI signals, and an ordinary component do not; an empty range fails open.
+
 ## 0.10.3
 
 Three reference files pointed at plugin files through `${CLAUDE_PLUGIN_ROOT}`.

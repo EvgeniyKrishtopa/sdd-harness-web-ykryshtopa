@@ -306,7 +306,7 @@ before push — not once per group — per `.claude/docs/review-gates.md`:
   an uncovered ID surfaces by name before `code-reviewer` even runs.
 - **Inside the same step**, a 0-token prefilter greps the diff for risk
   signals (auth, permissions, payments, migrations, config, secrets,
-  uploads) and spawns `deep-reviewer` for a security and
+  uploads, CI/CD configuration) and spawns `deep-reviewer` for a security and
   architecture-as-built pass only when one fires. Most runs skip it, and the
   skip is logged.
 - **A `web-qa` FAIL or a CONFIRMED finding you choose to fix** runs through
@@ -543,8 +543,8 @@ stylistic:
 1. bump `version` in `.claude-plugin/plugin.json` — every release, however
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
-3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh` and
-   `tests/dead-code-scripts.sh`) — the first fails if the version isn't
+3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh`,
+   `tests/dead-code-scripts.sh`, and `tests/risk-prefilter.sh`) — the first fails if the version isn't
    semver, if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push`, **after** the release branch is merged —

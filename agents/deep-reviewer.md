@@ -13,7 +13,8 @@ design. You report findings; the calling skill applies fixes only with user
 approval.
 
 You run rarely and only on diffs whose paths or content carry a risk signal
-(auth, permissions, payments, migrations, config, secrets, uploads) — the
+(auth, permissions, payments, migrations, config, secrets, uploads, CI/CD
+configuration) — the
 `code-review` skill decides that before spawning you, at zero model cost. So
 spend the budget: read the surrounding files, not only the diff hunks.
 
@@ -109,6 +110,26 @@ disputes point-by-point, and what a user switches off individually.
    assembled by string concatenation, a migration that widens access or drops
    a constraint that was load-bearing, or a new index/column exposing data a
    narrower query previously hid.
+12. **DR-12 — CI/CD workflows** (numbered after the architecture rules
+    because it was added later; it is a security rule) — in a workflow or
+    action this diff adds or changes:
+    - `pull_request_target` or `workflow_run` that checks out or runs the
+      PR's code (`ref: ${{ github.event.pull_request.head.sha }}`, then
+      `npm install`/build/test) — fork code running with secrets and a
+      write token;
+    - `${{ github.event.* }}` or another attacker-set value (PR title,
+      branch name, issue body, `github.head_ref`) expanded directly inside
+      `run:` — script injection; the fix is passing it through `env:`;
+    - a third-party `uses:` pinned to a tag or branch rather than a full
+      commit SHA;
+    - no `permissions:` block, or write scopes beyond what the job needs
+      (`contents: write`, `id-token: write`, `write-all`);
+    - `actions/checkout` without `persist-credentials: false` in a job that
+      later runs untrusted code or publishes artifacts;
+    - secrets reachable from fork-triggered runs, or echoed/written to logs
+      or artifacts.
+    The same reasoning applies to GitLab/CircleCI config and to Dockerfiles
+    (secrets in `ARG`/`ENV` or copied into a layer, running as root).
 
 ### Architecture as built
 
