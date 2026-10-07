@@ -9,6 +9,27 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.3
+
+Three reference files pointed at plugin files through `${CLAUDE_PLUGIN_ROOT}`.
+Claude Code substitutes that variable only in the body of a `SKILL.md`, an
+agent, or a command — not in a file the agent opens itself, and not in the
+Bash environment. In these files the agent saw the literal text.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository, so its `.claude/docs/review-gates.md` picks up the new line.
+
+### Fixed
+
+- **`opsx-apply-git/references/decision-threshold.md`** now points at the
+  decision template by a path relative to itself,
+  `../../init-harness/references/decision-template.md`.
+- **`init-harness/references/review-gates-template.md`** names the
+  `harness-review` skill's `references/harness-stats.md` instead of a plugin
+  path. This text is copied into the project, where no plugin path resolves.
+- **`init-harness/references/manifest-schema.md`** refers to the Step 0
+  command in `SKILL.md` for the plugin version instead of repeating the path.
+
 ## 0.10.2
 
 Agents in harness-initialized projects stop causing permission prompts

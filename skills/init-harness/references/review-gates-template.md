@@ -121,8 +121,7 @@ for this — just don't invoke it for the trial window) or downgrade one
 gate's model via `.claude/harness.json`'s `models.*`, run the normal flow of
 changes for that stretch,
 then compare the `harness-review` skill's stats summary (the
-`${CLAUDE_PLUGIN_ROOT}/skills/harness-review/references/harness-stats.md`
-procedure, reading this repo's own
+`references/harness-stats.md` procedure inside that skill, reading this repo's own
 `.claude/harness-log.jsonl`) from before and after. If nothing measurable
 changed — verdict distribution, escalation count, `reviewConfidence: low`
 share, `tokensTotal` sum/median (a cheaper-per-step model can still cost

@@ -54,8 +54,8 @@ Merge into the file Step 2e already started (it may already contain just the
   shape of this file changes in a way readers have to know about. It is not
   the plugin's version and never stands in for it.
 - `harnessVersion` — the version of *the plugin* that last configured this
-  repository, read at run time from
-  `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json` (Step 0). Write the value
+  repository, read at run time by the `plugin_version` command in Step 0 of
+  `SKILL.md` (the only place the plugin path is substituted). Write the value
   that command returns; the `"0.3.0"` above is the shape, not a constant to
   copy. Step 8b writes it, not this step, and only once every step of this
   run has succeeded — it is the claim "this repo is fully configured for
