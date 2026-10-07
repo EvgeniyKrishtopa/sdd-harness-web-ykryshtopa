@@ -81,7 +81,8 @@ uses for JSON parsing.
    `durationMs`, next to it in the same per-gate line (#U17 point 5). A
    cheap-per-second model that needs three times the steps can still be the
    more expensive one; `durationMs` alone can't show that, this can.
-   Only runs that actually ran count: `skipped` lines (whose `0` is true but
+   `durationMs` sum and median likewise skip `skipped` lines. Only runs
+   that actually ran count: `skipped` lines (whose `0` is true but
    says nothing about cost) and lines whose `tokensTotal` is `null` are left
    out of both sum and median. `n=` is how many runs were counted, `null=`
    how many ran but have no figure — their `tokensNote` says why. A `null=`
@@ -168,9 +169,9 @@ if command -v jq >/dev/null 2>&1; then
       skippedPct: ((([.[] | select(.verdict=="skipped")] | length) / length * 100 * 10 | round) / 10),
       skipReasons: ([.[] | select(.verdict=="skipped") | (.skipReason // "")] | map(select(length > 0)) |
         group_by(.) | map("\(.[0])=\(length)") | join(", ")),
-      durSumMs: ([.[] | (.durationMs // 0)] | add),
-      durMedianMs: ([.[] | (.durationMs // 0)] | sort |
-        (if (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end)),
+      durSumMs: ([.[] | select(.verdict != "skipped") | (.durationMs // 0)] | add // 0),
+      durMedianMs: ([.[] | select(.verdict != "skipped") | (.durationMs // 0)] | sort |
+        (if length == 0 then 0 elif (length % 2) == 1 then .[(length-1)/2] else (.[length/2 - 1] + .[length/2]) / 2 end)),
       tok: [.[] | select(.verdict != "skipped" and (.tokensTotal | type) == "number") | .tokensTotal],
       tokNull: ([.[] | select(.verdict != "skipped" and (.tokensTotal | type) != "number")] | length)
     } | .tokSumTotal = (.tok | add // 0) |
@@ -239,8 +240,8 @@ for gate in sorted(by_gate):
         if e.get("verdict") == "skipped" and e.get("skipReason"):
             skip_reasons[e["skipReason"]] += 1
     skip_str = f" [{', '.join(f'{k}={v}' for k, v in sorted(skip_reasons.items()))}]" if skip_reasons else ""
-    durations = [e.get("durationMs", 0) or 0 for e in entries]
     ran = [e for e in entries if e.get("verdict") != "skipped"]
+    durations = [e.get("durationMs", 0) or 0 for e in ran]
     tokens = [e["tokensTotal"] for e in ran
               if isinstance(e.get("tokensTotal"), (int, float)) and not isinstance(e.get("tokensTotal"), bool)]
     tok_null = len(ran) - len(tokens)
@@ -323,8 +324,8 @@ for (const gate of Object.keys(byGate).sort()) {
     const mid = Math.floor(s.length / 2);
     return s.length === 0 ? 0 : (s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2);
   };
-  const durations = entries.map(e => e.durationMs || 0);
   const ran = entries.filter(e => e.verdict !== 'skipped');
+  const durations = ran.map(e => e.durationMs || 0);
   const tokens = ran.filter(e => typeof e.tokensTotal === 'number').map(e => e.tokensTotal);
   const tokNull = ran.length - tokens.length;
   console.log(`  ${gate}: ${entries.length} runs (${verdictStr}) — ${skippedPct}% skipped${skipStr}, ` +

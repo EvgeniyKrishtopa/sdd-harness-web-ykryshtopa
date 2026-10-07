@@ -107,6 +107,9 @@ it.
 { "harnessVersion": "<plugin version from Step 0>", "toolchainVerifiedAt": "2026-08-01T12:00:00Z" }
 ```
 
+`harnessVersion` is exactly Step 0's `plugin_version`. Check it matches
+`^[0-9]+\.[0-9]+\.[0-9]+` before writing; if it doesn't, write neither key
+and stop.
 `toolchainVerifiedAt` is an ISO-8601 UTC timestamp (`date -u
 +%Y-%m-%dT%H:%M:%SZ`) — the shape above is not a value to copy. It is what
 lets a later upgrade run, and Gate 6, tell "these commands were proven to

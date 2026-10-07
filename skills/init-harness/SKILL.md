@@ -30,9 +30,9 @@ plugin_version="$(jq -r '.version' "${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.
 repo_version="$(jq -r '.harnessVersion // empty' .claude/harness.json 2>/dev/null)"
 ```
 
-Never hardcode the plugin version in this skill's text — reading it from
-`.claude-plugin/plugin.json` through `${CLAUDE_PLUGIN_ROOT}` every time is
-what stops it drifting from the manifest at the next bump.
+Never hardcode the version or hand-assemble a `plugins/cache/...` path; read
+it through `${CLAUDE_PLUGIN_ROOT}` as above. If `plugin_version` is empty or
+not `X.Y.Z`, stop the run and say so — `harnessVersion` is never written.
 `.claude/harness.json`'s `"version": 1` is a *different* number — the
 manifest's own schema version, never compared against the plugin's or
 collapsed into one field with it.

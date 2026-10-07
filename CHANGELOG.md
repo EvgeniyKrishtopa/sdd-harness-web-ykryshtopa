@@ -52,6 +52,12 @@ median.
   counted) and `null=` (runs with no figure) beside them. Older
   `test-coverage` lines logged before this release still count as `0` until
   they leave the window.
+- **`harness-stats` `durationMs`** sum and median also leave out skipped
+  runs. Before, a gate skipped half the time showed a median of `0`.
+- **`init-harness` Step 0** stops when `plugin_version` is empty or not
+  `X.Y.Z`, and says never to hand-assemble a `plugins/cache/...` path;
+  `toolchain-proof.md` checks the value again before writing
+  `harnessVersion`.
 
 ## 0.10.2
 
