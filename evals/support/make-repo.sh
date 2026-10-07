@@ -5,8 +5,9 @@
 #
 # Usage:  EVAL_DEFECT=<name> bash make-repo.sh [target-dir]
 #
-# The case picks the defect through EVAL_DEFECT in its prompt.md frontmatter.
-# An unknown or empty name is a hard error: a case that quietly received a
+# A case picks the defect in its own scaffold.sh, which sets EVAL_DEFECT and
+# calls this file: the runner accepts a scaffold_script only inside the case
+# directory, and it does not pass prompt.md's env to the scaffold. An unknown or empty name is a hard error: a case that quietly received a
 # clean repository would pass forever while measuring nothing.
 #
 # Registered defects:
@@ -90,14 +91,16 @@ JSON
 cat > .claude/docs/review-gates.md <<'DOC'
 # Automated Review Gates
 
+This project runs seven automated review gates.
+
 - **Gate 1 — architecture-review**, after `design.md` is drafted.
 - **Gate 2 — spec-review**, after the full artifact set is done.
 - **Gate 2b — scaffold-review**, inside `opsx-scaffold`, on a change whose
   proposal step judged it needs a scaffold.
 - **Gate 3 — web-qa**, on the last group only, if the change touched
   user-facing UI.
-- **Gate 4 + Gate 5 — code-review**, once per run: correctness/
-  simplification and test-coverage gaps in one delegation.
+- **Gate 4 — code-review**, once per run: correctness and simplification.
+- **Gate 5 — test coverage**, in the same delegation as Gate 4.
 - **Gate 6 — harness-review**, on the run's last group with pending tasks,
   when the run touched something it could review.
 DOC
