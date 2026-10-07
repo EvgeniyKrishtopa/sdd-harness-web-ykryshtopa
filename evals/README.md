@@ -95,7 +95,9 @@ claude plugin eval . --eval-dir evals --case 'routing/*' \
 
 **Regressions** (`evals/regressions/`) need a repository with a defect
 planted in it, which a case builds through `context.scaffold_script` in its
-`case.yaml`. A scaffold runs author-written bash as you, so the runner
+`case.yaml`. The runner accepts only a script inside the case directory, so
+each case has a short `scaffold.sh` that names its defect and calls the
+shared `support/make-repo.sh`. A scaffold runs author-written bash as you, so the runner
 demands it be asked for explicitly:
 
 ```bash

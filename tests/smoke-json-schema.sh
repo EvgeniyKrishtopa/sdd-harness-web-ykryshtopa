@@ -744,7 +744,7 @@ if [ -d evals ]; then
   eval_cases=0; eval_graders=0; eval_bad=""
   for case_dir in evals/*/*/; do
     case "$case_dir" in
-      evals/baseline/*|evals/support/*) continue ;;
+      evals/baseline/*|evals/support/*|evals/results/*) continue ;; # results/: ignored run output, not cases
     esac
     [ -d "$case_dir" ] || continue
     case_name="$(basename "$case_dir")"
