@@ -390,6 +390,21 @@ Precondition (#35):
    the edited context against `.claude/harness.json` rather than accepting
    it. This is the path most likely to go stale unnoticed, since nothing
    breaks when it's wrong.
+7. Line budget (0.10.6). The count itself is checked by
+   `tests/claude-md-budget.sh`; these steps check what the agents do with
+   it. In a test project, make `CLAUDE.md` 130 lines: Stack, Commands, a
+   long `## Styling` and a long `## Testing` section, and the harness block.
+   Run a change that edits `CLAUDE.md`. Gate 6 reports a CONFIRMED size
+   finding with both numbers (root 130, effective with `@`-imports), the
+   Deletion Test candidates first, which sections stay, which move to which
+   `docs/<topic>.md`, `Doc | Read before…` rows with specific triggers, and
+   the line count after the split. Nothing is changed until you approve.
+8. Cut that `CLAUDE.md` to 90 lines and repeat: no size finding, one line
+   with both numbers.
+9. Run `/init-harness` (first install and upgrade mode) on a test project
+   whose `CLAUDE.md` is 130 lines before the harness block. The final report
+   carries both numbers and the same split proposal, and `git diff
+   CLAUDE.md` shows only the appended pointer block.
 
 ---
 

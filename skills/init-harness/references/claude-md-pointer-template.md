@@ -24,9 +24,11 @@ every commit instead of trusting it.
 3. Prefer `@`-imports if the target Claude Code version supports them;
    otherwise plain links, one line of explanation each. Do not leave literal
    placeholder text.
-4. Keep the block short. Gate 6 (`harness-review`) already checks that the
-   root instruction file stays under roughly 200 lines — this step should
-   never be the reason that budget gets exceeded.
+4. Keep the block short. Gate 6 (`harness-review`) checks the root
+   instruction file against the line budget in `claude-md-budget.md` —
+   this step should never be the reason that budget gets exceeded. If the
+   file was already over it, Step 10 reports the split proposal; never
+   split the user's file here.
 
 ## Why the block carries a Shell line
 

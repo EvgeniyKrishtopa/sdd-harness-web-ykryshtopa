@@ -9,6 +9,45 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.10.6
+
+The budget for a project's root `CLAUDE.md`/`AGENTS.md` was "roughly 200
+lines". That is too loose: the file loads into every session, and past
+about 100 lines rules for one kind of work (styling, tests, environment
+variables) crowd out the ones that always matter. One real project split
+its file by hand into an always-loaded root plus a "Read when relevant"
+table of `docs/*.md` files; the plugin now proposes that split itself.
+
+**Upgrade:** `/plugin update`. Nothing new is written into a configured
+repository; the next `/init-harness` or Gate 6 run reports the count.
+
+### Changed
+
+- **Budget is 100 lines**, stated once in the new
+  `init-harness/references/claude-md-budget.md`. `harness-reviewer` check 2,
+  `init-harness` Step 9 and `claude-md-pointer-template.md` point there
+  instead of repeating a number.
+- **Gate 6 (`harness-reviewer`)**: a root file over budget is a CONFIRMED
+  finding whose fix is a split proposal — Deletion Test first, then what
+  stays in the root, which section moves to which `docs/<topic>.md`, and
+  `Doc | Read before…` rows with a specific trigger each. Content with no
+  specific trigger is proposed for deletion, not moved.
+- **`init-harness` Step 10** reports the same count and, when over budget,
+  the same proposal. The user's file is never split without approval.
+
+### Added
+
+- **`init-harness/scripts/claude-md-lines.sh`** counts the root file
+  against the budget and, separately, the effective total with every
+  `@`-import loaded (up to five hops, each file once, skipping code blocks
+  and paths that don't exist). `@`-imports load in full, so they are not
+  progressive disclosure; the effective total is reported as information.
+- **`tests/claude-md-budget.sh`** checks the counter (edges, imports,
+  cycles, fenced references), that the doc and the script state the same
+  budget, and that no 200-line budget is left in `skills/` or `agents/`.
+- **`tests/MANUAL-CHECKLIST.md` §8 steps 7-9** for the agents' side: the
+  split proposal from Gate 6 and from `init-harness`.
+
 ## 0.10.5
 
 A point a task group didn't fully deliver (blocked, verification waived by
