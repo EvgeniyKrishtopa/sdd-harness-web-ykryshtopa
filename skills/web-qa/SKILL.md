@@ -40,11 +40,9 @@ Gate 4.
    test/browser-automation package, if the project also has that as a test
    dependency) stays resident for the whole session per `mcp-config.json`,
    regardless of whether this gate ever runs — there's no supported
-   per-gate MCP toggle in this Claude Code version. If this project runs
-   this gate often, install `@playwright/mcp` as a devDependency so `npx`
-   resolves it locally instead of doing a registry check on every session
-   start; if it rarely touches user-facing UI, the README recommends
-   disabling the server via `/mcp` for sessions that won't use it.
+   per-gate MCP toggle in this Claude Code version. Run often → install
+   `@playwright/mcp` as a devDependency so `npx` skips a registry check each
+   session; rarely → the README recommends disabling it via `/mcp`.
 3. Start the dev server **in the background** (`run_in_background` on the
    Bash tool, or the run harness's background-job equivalent) — never
    foreground, since `<runCmd> <scripts.dev>` (e.g. `yarn dev`, `npm run
@@ -74,8 +72,9 @@ first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
 `jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'
 .claude/harness.json` (call the result `<scenariosDir>`). If the
 directory exists and holds at least one recorded scenario file, run the
-accumulated suite first: `npx playwright test <scenariosDir>`. Zero
-model tokens, seconds instead of a click pass.
+accumulated suite first: `npx playwright test <scenariosDir>`, plus
+`--grep-invert @local-stack` unless `tests.integration.healthCheck` passes
+(those scenarios need the local stack up). Zero model tokens.
 
 This is the only part of this gate that checks flows the *current* diff
 didn't touch: cart changing what it hands off to checkout doesn't necessarily

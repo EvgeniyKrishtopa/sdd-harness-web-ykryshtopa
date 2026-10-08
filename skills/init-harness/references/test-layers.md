@@ -59,7 +59,7 @@ Then, by what the project already has:
 - **No script, no sign** → ask nothing, write nothing.
 
 The integration tests themselves take the service's address and keys from
-the local stack's own output (`supabase status -o env`), never from the
+the local stack's own output (`supabase status -o json`, `references/local-stack-profile.md` section 1), never from the
 project's `.env*` files or the app's `process.env`.
 
 ## End-to-end layer
