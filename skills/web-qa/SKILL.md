@@ -68,10 +68,10 @@ Gate 4.
 ## Check the environment before anything runs against it
 
 Once the dev server answers, read `tests.e2e.preflight` from
-`.claude/harness.json`. Absent → say one line, "no environment check
-configured", and go on — that is not a failure. Present → run
-`<runCmd> <preflight>` (the project's own script: it reaches each external
-service the way the app is configured to and checks the answer's shape —
+`.claude/harness.json`. Absent → one line, "no environment check — a wrong
+service address will read as an app failure; init-harness can add one", and
+go on — not a failure. Present → run `<runCmd> <preflight>` (the project's
+own script: it reaches each external service as the app is configured to —
 `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
 section 3). Exit 0 → go on as before. Non-zero → an **environment
 failure**, kept apart from an app FAIL: report `Environment: <its output>`
@@ -92,7 +92,7 @@ first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
 directory holds a recorded scenario file, run them first (0 tokens): `npx playwright test
 <scenariosDir> --grep-invert "(<externalTag>|@local-stack)(?![\w-])"` —
 `tests.e2e.externalTag` (default `@external`), the config may lack its own
-filter; drop `|@local-stack` when `tests.integration.healthCheck` passes.
+filter; drop `|@local-stack` when `tests.integration.healthCheck` passes (its exit code only, output to `/dev/null`).
 
 This is the only part of this gate that checks flows the *current* diff
 didn't touch: cart changing what it hands off to checkout needn't show up
@@ -177,8 +177,8 @@ maintenance debt, not a safety net — see
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
    reasonable one to keep. A flow whose requests reached a non-local host
-   says so in the question: "this flow calls `<host>`; it will be recorded
-   as `@external` and left out of the replay before push."
+   names it in the question, and the human picks `@external`, untagged (an
+   incidental host) or not recorded — `references/recording-rules.md` rule 3.
 2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (kebab-case flow
    name) against `@playwright/test`'s own API (`page.goto`,
    `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —

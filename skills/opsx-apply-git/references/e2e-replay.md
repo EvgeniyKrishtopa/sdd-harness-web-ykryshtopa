@@ -21,7 +21,8 @@ From `.claude/harness.json`: `tests.e2e.command` (default
 `npx playwright test`), `tests.e2e.dir` (then the pre-0.11.0
 `webQaScenariosDir`, then `tests/web-qa-scenarios` — call it `<dir>`),
 `tests.e2e.externalTag` (default `@external`), `tests.e2e.replayBeforePush`,
-`tests.e2e.preflight`, `tests.integration.healthCheck`.
+`tests.e2e.preflight`, `tests.integration.healthCheck`, and `framework` for
+the script below.
 
 ## Two sizes of run
 
@@ -36,14 +37,30 @@ From `.claude/harness.json`: `tests.e2e.command` (default
   ```bash
   main=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
   node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/affected-scenarios.mjs" \
-    --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>"
+    --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>" \
+    --framework "$(jq -r '.framework // empty' .claude/harness.json)"
   ```
-  It prints `{scope, scopeReason, files}`. `scope` `affected` → run `files`.
-  `scope` `full` → run the whole `<dir>`; `scopeReason` says why
-  (`shared file changed`, `import map failed`, `no route structure`). A
-  scenario without a `// pages:` list is always in `files`. TypeScript 7
-  dropped the JS API the script uses, so such a project always gets
-  `import map failed` — that is the safe direction, not an error.
+  It prints `{scope, scopeReason, trigger, files}`. `scope` `affected` →
+  run `files`. `scope` `full` → run the whole `<dir>`; the report names
+  `scopeReason` and `trigger`, the changed file that decided it
+  (`<file> -> <the file it reaches>` when that is an import away). When a
+  guess would be needed, the script runs everything:
+  - `no route structure` — not Next.js (a Vite app keeps its routes in
+    code, even with a `src/pages/` or `app/` folder), or no `app/`/`pages/`;
+  - `shared file changed` — a file every page depends on (root layout,
+    middleware, `next.config.*`, a global stylesheet, `package.json`, a
+    lockfile), or a file one of them imports;
+  - `route handler changed` — a `route.*` handler or `pages/api/**`, or a
+    file one imports: pages call it by URL, which no import shows;
+  - `unmapped file changed` — a changed file that reaches no page
+    (`tailwind.config.*`, a `public/` asset, a file nothing imports);
+  - `import map failed` — no `typescript` package, or TypeScript 7, which
+    dropped the JS API the script uses. The safe direction, not an error.
+
+  Docs, `*.d.ts`, tests and files only tests import, and `.claude/`,
+  `.husky/`, `.github/`, `openspec/` decide nothing. A scenario without a
+  `// pages:` list, or with an empty one, is always in `files`; so is one
+  that imports a changed file, such as a shared helper.
 
 On early runs this change has no scenarios of its own yet (`web-qa` records
 on the last group), so the ordinary run is skipped; old flows those runs
@@ -57,18 +74,24 @@ change.
 2. `<dir>` missing or holds no scenario file → `no recorded scenarios`.
 3. An ordinary run and no file in `<dir>` carries `@<change-slug>` →
    `no scenarios for this change`. Never on the last run.
-4. Every path in `git diff --name-only <parent>..HEAD` ends in `.md` →
-   `docs only`. Do **not** use step 1's `trivialDiffPaths`: it holds `*.css`,
-   `*.svg` and `public/**`, and a style change breaks flows (a button under a
-   transparent layer, `display: none`). No line-count threshold either: one
-   line in a component can break a flow.
-5. `web-qa` ran in this run and ended passed (`clean`, or `confirmed` with
-   its fix loop ending green), and every path in
+4. Every path in the diff ends in `.md` → `docs only`. The diff is the
+   run's own, `git diff --name-only <parent>..HEAD`, except on the last run:
+   there it is the whole change's, from the same `merge-base` the script
+   above uses — earlier runs' code still needs the affected set, and the
+   last run is the only one that checks it. Do **not** use step 1's
+   `trivialDiffPaths`: it holds `*.css`, `*.svg` and `public/**`, and a
+   style change breaks flows (a button under a transparent layer,
+   `display: none`). No line-count threshold either: one line in a
+   component can break a flow.
+5. `web-qa` ran in this run with verdict `clean`, and every path in
    `git diff --name-only <the group commit web-qa's pass went into>..HEAD`
-   ends in `.md` (or there is none) → `replayed by web-qa`. Compare from the
-   group's commit, not from `web-qa` itself: `web-qa` runs before that
-   commit, on the very code it then holds. A `code-review` fix after it is
-   code `web-qa` never saw, so the replay runs.
+   ends in `.md` (or there is none) → `replayed by web-qa`. Only `clean`:
+   `web-qa` replays the scenarios before its manual pass, so a fix from its
+   own `debug-loop` lands after that replay — a `confirmed` pass means code
+   the older scenarios never ran against. Compare from the group's commit,
+   not from `web-qa` itself: a `clean` `web-qa` runs before that commit, on
+   the very code it then holds. A `code-review` fix after it is code
+   `web-qa` never saw, so the replay runs.
 6. Last run, and the script's `files` is empty → `no affected scenarios`.
 
 Each skip writes one log line, `verdict` `skipped` (below), and goes on to
@@ -95,7 +118,8 @@ push.
    ```
    `<exclude>` is `(<externalTag>)(?![\w-])` from the settings — never type
    `@external` in yourself. When `tests.integration.healthCheck` is missing
-   or fails, it is `(<externalTag>|@local-stack)(?![\w-])`, and the report
+   or fails (run it with its output to `/dev/null`: a stack's status command
+   can print its keys), it is `(<externalTag>|@local-stack)(?![\w-])`, and the report
    says how many scenarios were left out, with the reason
    `local services down`. This step never starts a server: the config's
    `webServer` does, or reuses a running one.

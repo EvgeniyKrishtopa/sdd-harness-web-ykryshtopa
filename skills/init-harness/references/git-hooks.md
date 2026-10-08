@@ -85,7 +85,7 @@ of once per commit.
    trap write_note EXIT
    trap 'exit 130' INT TERM
    <pm> test:coverage || exit 1
-   if ! <healthCheck> >/dev/null 2>&1; then
+   if ! { <healthCheck>; } >/dev/null 2>&1; then
      outcome=services-down
      echo 'pre-push: local services are not running — start them with: <requires>' >&2
      exit 1
@@ -96,7 +96,10 @@ of once per commit.
    outcome=pass
    <audit command>
    ```
-   `<healthCheck>` is `tests.integration.healthCheck` as written;
+   `<healthCheck>` is `tests.integration.healthCheck` as written, inside
+   the `{ …; }`: without it a user's compound check (`a && b`, `a; b`) is
+   judged wrong both ways, and a `$(…)` in it, like the Compose row's,
+   prints its errors past the redirect;
    `<requires>` is `tests.integration.requires` with each `'` written as
    `'\''`. No `healthCheck` → leave out the whole `if … fi` block. The
    message is exactly one line: the human should see which command to run,

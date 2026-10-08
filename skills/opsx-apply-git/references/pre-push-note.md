@@ -21,7 +21,13 @@ step 4).
    ```
    Empty output (no note, an unreadable one, or one older than this push —
    left by an earlier push, or by a hook written before 0.11.0) → don't
-   trust it.
+   trust it. If, on top of that, `tests.integration` is set and
+   `grep -qF -- "<tests.integration.script>" .husky/pre-push` finds
+   nothing, the integration tests never run before a push at all: tell the
+   human in one line, on every such run — `integration tests are set up in
+   .claude/harness.json, but .husky/pre-push doesn't run them; ask
+   init-harness to re-run anyway and add the pre-push block it offers`. The log
+   line stays `no fresh hook result`.
 3. Write one `gate:"integration"` line (below), whatever the push did. It
    goes into this run's log commit at step 6.2.
 

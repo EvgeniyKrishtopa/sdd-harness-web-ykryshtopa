@@ -45,23 +45,43 @@ fallback, so a manifest not yet upgraded keeps working.
   fields.
 - **`init-harness` Step 1b** (`references/test-layers.md`) — one question
   per layer, asked only when its sign is found: an integration layer for a
-  local service, a Playwright config for `@playwright/test`, and a CI job
-  template that is printed, never written.
+  local service, a Playwright config for `@playwright/test` with the
+  environment check offered next to it (a drafted
+  `scripts/qa-preflight.mjs` that names variables, never values), and a CI
+  job template that is printed, never written.
 - **`init-harness/references/local-stack-profile.md`** — integration test
   config whose global setup takes addresses from `envCommand`, never from
-  `.env*`, and stops on a non-local address; an environment-check template;
-  an email-flow scenario through Mailpit; the `@local-stack` tag.
+  `.env*`, and stops on a non-local address, and which resolves `@/…`
+  imports the way the main test config does; an environment-check template
+  that prints a service's host, never its full address (an address can
+  carry a password or a token, and the output reaches the chat); an
+  email-flow scenario through Mailpit; the `@local-stack` tag. Whoever runs
+  `healthCheck` reads its exit code only, with the output discarded — a
+  stack's status command can print its keys.
 - **Replay before push** — `opsx-apply-git` §4 step 3a
   (`references/e2e-replay.md`). An ordinary run replays this change's
   tagged scenarios; the change's last run adds older scenarios whose pages
   the whole change touched, picked by
   `opsx-apply-git/scripts/affected-scenarios.mjs` from the project's import
-  graph. Shared files, TypeScript 7 (no JS API) or no route structure → all
-  scenarios, with the reason logged. Environment failures never reach
+  graph. Whenever that would be a guess, all scenarios run, with the reason
+  logged and the deciding file named in the report: a project that isn't
+  Next.js by the manifest's `framework` (a Vite app's `src/pages/` or
+  `app/` folder says nothing about its routes), a shared file or a file one
+  imports (a module middleware imports), a route handler or a file one
+  imports, a changed file that reaches no page (`tailwind.config.*`, a
+  `public/` asset), or TypeScript 7 (no JS API). Docs, `*.d.ts`, tests and
+  the harness's own folders decide nothing; an empty `// pages:` list runs
+  always, and so does a scenario that imports a changed helper. A run that
+  changed only `*.md` skips the replay; on a change's last run that is
+  judged on the whole change, so a docs-only last run still checks the
+  code earlier runs changed. Environment failures never reach
   `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
 - **`web-qa` recording rules** (`references/recording-rules.md`) and a
   hydration marker helper (`references/hydration-helper.md`); every
-  scenario carries `@<change-slug>` and a `// pages:` line.
+  scenario carries `@<change-slug>` and a `// pages:` line. A flow is
+  `@external` only when the human says it needs the non-local host it
+  reached: one that only loads analytics, fonts or CDN files can be recorded
+  untagged, so it stays in the replay before push.
 - **`web-qa` environment check** — `tests.e2e.preflight` runs before the
   replay and the manual pass; a failure is reported as the environment, not
   the app.
@@ -69,7 +89,11 @@ fallback, so a manifest not yet upgraded keeps working.
   `opsx-apply-git/references/integration-tests.md`: a group adding a new
   boundary to a local-stack service writes its `*.integration.test.ts`
   (`test-author` does it under `makerChecker`). Services down → the test is
-  written and reported as not verified; the group goes on.
+  written and reported as not verified; the group goes on. `init-harness`
+  with the services down keeps both the `tests.integration` block and its
+  `pre-push` link — the hook then stops pushes until they're up — so the
+  manifest never promises tests the hook doesn't run; a hook that still
+  doesn't run them (a declined diff, a hand edit) is reported on every run.
 - **`CR-14`** (`code-reviewer`, PLAUSIBLE only) — a new user flow with no
   scenario on the change's last run, unless the human already recorded or
   declined it in `web-qa`; a new service boundary with no integration
@@ -87,7 +111,8 @@ fallback, so a manifest not yet upgraded keeps working.
   `.claude/harness-log.jsonl` is let through untested (the run's log-commit
   push used to re-run every test). With an integration script, the
   services are checked right before that link — one line naming
-  `requires` when they are down — and the hook leaves
+  `requires` when they are down; the check runs as one group, so a
+  compound command is judged whole and prints nothing — and the hook leaves
   `.claude/.last-pre-push.json` (gitignored) for the log.
 - **`web-qa`'s replay** excludes `tests.e2e.externalTag` on the command
   line instead of trusting the project's Playwright config.
@@ -95,6 +120,11 @@ fallback, so a manifest not yet upgraded keeps working.
   the share of environment failures among `confirmed`.
 - **`test-plan`** marks a criterion crossing a new local-stack boundary
   `integration`.
+- **The git guards** ask before a commit or push that skips the git hooks:
+  `--no-verify` (and `-n` on commit), `HUSKY=0`, or a `git -c
+  core.hooksPath=…` override. The harness already forbade `--no-verify`,
+  but nothing checked it, and with this version `pre-push` carries the
+  integration tests too.
 
 ## 0.10.6
 

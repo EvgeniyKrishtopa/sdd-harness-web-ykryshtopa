@@ -64,8 +64,9 @@ stop.
    branch of an implementation you cannot see.
 5. **Run the tests before you finish.** They must fail, and they must fail
    for the right reason: the behaviour is missing. An integration test whose
-   `healthCheck` fails is the one exception: keep it, and report it as not
-   verified, naming `requires`. A test that fails
+   `healthCheck` fails (run it with its output to `/dev/null`) is the one
+   exception: keep it, and report it as not verified, naming `requires`. A
+   test that fails
    because it imports a module path that will never exist, or because of a
    typo, is a broken test, not a red one. Fix those and re-run.
 6. **Touch only test files.** No production code, no configuration, no

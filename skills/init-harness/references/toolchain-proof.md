@@ -81,13 +81,17 @@ they need something — a database, a running server — which may simply not be
 there on this machine.
 
 **Check the services first.** When `tests.integration.healthCheck` is set,
-run it before the script. Non-zero → the services aren't up, which says
-nothing about the setup: don't run the script, keep `tests.integration` in
-the manifest, but leave the middle link out of `.husky/pre-push`
-(`references/git-hooks.md` step 4) — a hook chaining tests that were never
-seen to pass would block the next push. Put one line in the report —
-`services not running, integration tests not verified and not added to
-pre-push; start them with <requires> and re-run init-harness` — then go on.
+run it before the script, its output to `/dev/null` (a stack's status
+command can print its keys). Non-zero → the services aren't up, which says
+nothing about the setup: don't run the script, and keep both
+`tests.integration` in the manifest and its link in `.husky/pre-push`
+(`references/git-hooks.md` step 4). The two must agree: every later step
+trusts the manifest, so an integration block the hook doesn't run means
+integration tests that nothing ever runs. The link is safe to keep — its
+own services check stops a push with one line until the services are up,
+and from then on it runs the tests. Put one line in the report —
+`services not running, integration tests not verified; pushes stop until
+you start them with <requires>` — then go on.
 A script this run just added (`references/test-layers.md`) has no tests
 yet; it passes on zero tests by design, so skip the count rule for it.
 

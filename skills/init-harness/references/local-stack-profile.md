@@ -22,7 +22,7 @@ Four fields in `tests.integration` (`references/manifest-schema.md`):
 | Field | What it is | Who uses it |
 | --- | --- | --- |
 | `requires` | how a human starts the stack | messages only; never run |
-| `healthCheck` | exits 0 when the stack is up | `.husky/pre-push`, the templates, `web-qa`, the replay |
+| `healthCheck` | exits 0 when the stack is up; only the exit code is read, the output goes to `/dev/null` — a stack's status command can print its keys | `.husky/pre-push`, the templates, `web-qa`, the replay |
 | `envCommand` | prints one JSON object of addresses and keys | the integration test template |
 | `mailCatcherUrl` | the stack's Mailpit address, optional | the email-flow template, `web-qa` |
 
@@ -43,12 +43,24 @@ template never reads `.claude/harness.json` at run time.
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // `@/…` imports, resolved the way the main test config resolves them (see below).
+  resolve: { tsconfigPaths: true },
   test: {
     include: ['**/*.integration.test.ts'],
     globalSetup: ['./tests/integration/global-setup.ts'],
   },
 })
 ```
+
+This config doesn't inherit the main test config, so it resolves `@/…`
+imports itself — without that, the first integration test that imports app
+code fails with `Cannot find package '@/…'`. Copy what the project's main
+test config already uses: `resolve: { tsconfigPaths: true }` as above
+(Vite 8 or newer only), the `vite-tsconfig-paths` plugin in `plugins`, or
+its `resolve.alias`. The main config resolves none of them → ask. Never
+inherit the main config with `mergeConfig`: its `exclude` holds
+`**/*.integration.test.ts`, merged arrays keep it, and with
+`--passWithNoTests` the run would pass on zero tests.
 
 ```ts
 // tests/integration/global-setup.ts
@@ -101,8 +113,9 @@ The opposite job to section 2: talk to a service *the way the app is
 configured to*, and check the answer has the expected shape. It is what
 catches a wrong service address in the app's settings — the thing
 integration tests deliberately can't see. A package script, e.g.
-`"qa:preflight": "node scripts/qa-preflight.mjs"`; `init-harness` never
-writes the `preflight` key itself (`references/test-layers.md`).
+`"qa:preflight": "node scripts/qa-preflight.mjs"`. `init-harness` offers it
+with the end-to-end layer and writes the `preflight` key only for the
+script it wrote itself (`references/test-layers.md`).
 
 ```js
 // scripts/qa-preflight.mjs — one probe per external service the app uses
@@ -114,11 +127,15 @@ const probes = [
   // { name, url: <the app's own setting>, init: <a request that cannot change data>, expect: <status> }
 ]
 
+// Only the host is printed: an address can carry a password or a token, and
+// this output ends up in the agent's report.
+const host = (url) => { try { return new URL(url).host } catch { return 'an unparsable address' } }
+
 let failed = false
 for (const { name, url, init, expect } of probes) {
   if (!url) { console.error(`preflight: ${name} has no address configured`); failed = true; continue }
   const status = await fetch(url, init).then((r) => r.status, () => 'no answer')
-  if (status !== expect) { console.error(`preflight: ${name} at ${url} answered ${status}, expected ${expect}`); failed = true }
+  if (status !== expect) { console.error(`preflight: ${name} at ${host(url)} answered ${status}, expected ${expect}`); failed = true }
 }
 if (failed) process.exit(1)
 console.log('preflight: ok')
@@ -139,9 +156,12 @@ Mailpit's HTTP API (`GET /api/v1/search?query=to:<address>`, then
 something else (older Supabase CLI versions shipped Inbucket) needs its own
 two requests here; open the catcher's web UI to see which it is.
 
+Written to `<scenariosDir>/sign-up-confirm.spec.ts`:
+
 ```ts
-// <scenariosDir>/sign-up-confirm.spec.ts
+// pages: /sign-up, <the paths the recorded flow actually opened>
 import { test, expect, type APIRequestContext } from '@playwright/test'
+import { waitForHydration } from './support/hydration'
 
 const MAIL_CATCHER = <mailCatcherUrl> // JSON string literal of the manifest field
 // Required: a part of the URL only the confirmation link has, e.g. its path. An email's
@@ -164,9 +184,10 @@ async function emailLink(request: APIRequestContext, to: string, timeoutMs = 30_
   throw new Error(`no email for ${to} within ${timeoutMs} ms`)
 }
 
-test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ page, request }) => {
+test('sign up, confirm by email, signed in', { tag: ['@<change-slug>', '@local-stack'] }, async ({ page, request }) => {
   const email = `e2e-${Date.now()}@example.test` // a fresh user every run
   await page.goto('/sign-up')
+  await waitForHydration(page)
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill('Correct-horse-42')
   await page.getByRole('button', { name: 'Sign up' }).click()
@@ -175,13 +196,17 @@ test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ p
 })
 ```
 
-Substitute both `<…>` as JSON string literals, as in section 2.
-`LINK_MUST_CONTAIN` has no default — `web-qa`
-fills it from the link the recorded flow actually followed.
+Substitute `<mailCatcherUrl>` and the link's path as JSON string literals,
+as in section 2. `LINK_MUST_CONTAIN` has no default — `web-qa`
+fills it from the link the recorded flow actually followed. `<change-slug>`
+and the `// pages:` line come from the recording, like any scenario's.
 
 Three things the template must keep: a unique email per run (a rerun
 otherwise fails on "user already exists"); polling with a deadline, never a
 fixed wait; the mail catcher's address from the manifest, never a guess.
+It is a recorded scenario too, so `skills/web-qa/references/recording-rules.md`
+holds for it in full: the `// pages:` line, the change tag, the hydration
+wait before the first form action, three green runs before it is kept.
 Labels, routes and the signed-in check are the project's own — the ones
 above are placeholders to replace with what the recorded flow actually used.
 

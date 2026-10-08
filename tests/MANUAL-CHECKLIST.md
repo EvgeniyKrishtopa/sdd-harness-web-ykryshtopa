@@ -208,7 +208,10 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    compiles.
 7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
    and run the integration script — it stops with one line naming
-   `API_URL` and the host, before any test.
+   `API_URL` and the host, before any test. With the real `envCommand` and
+   the stack up, an integration test that imports app code through `@/…`
+   passes: the written config resolves the alias the way the main test
+   config does.
 
 ### Integration tests in `pre-push` (0.11.0)
 
@@ -231,6 +234,15 @@ a real project with a local stack:
 13. Upgrade mode on a project whose `pre-push` is the plain 0.10.6 chain:
     a diff to the new hook, applied on yes. On a hand-edited `pre-push`:
     both blocks printed for a manual merge, the file left alone.
+14. `init-harness` with the stack stopped: the report says the integration
+    tests weren't verified, `tests.integration` stays in the manifest, and
+    `.husky/pre-push` still has its integration block — the first push
+    stops with step 8's one line.
+15. Delete the integration block from `.husky/pre-push` by hand and run
+    `opsx-apply-git`: after its push, one line says the hook doesn't run
+    the integration tests, and the log line is `no fresh hook result`. A
+    group that writes an integration test with the stack stopped says the
+    same at the end of its "not verified" line.
 
 ---
 
@@ -300,13 +312,17 @@ a real project with a local stack:
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
 7. No `tests.e2e.preflight` in the manifest: the report has one line, "no
-   environment check configured", and everything else runs as before.
+   environment check — …", and everything else runs as before.
 8. `tests.e2e.preflight` naming a script that exits 1: the report opens
    with `Environment: …`; no replay, no manual pass, no `debug-loop`; the
    dev server is gone; the log has a `confirmed` verdict line and a
    `web-qa-flows` line with `failureKind: "environment"`.
 9. The same script exiting 0: the gate goes on, and the delegation prompt
    to `web-qa-manual-tester` says "environment check passed".
+10. A flow whose page loads a font or an analytics script from another
+    host: the recording question names the host and offers `@external`,
+    untagged, or not recorded. "Untagged" writes the scenario without
+    `@external`, and the replay before push runs it.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
@@ -544,7 +560,9 @@ scenarios the last run picks is checked by `tests/affected-scenarios.sh`;
 these are the step's own decisions:
 
 14. A run that changed only `README.md`: the log has `e2e-replay`
-    `skipped` `docs only`, and Playwright never ran.
+    `skipped` `docs only`, and Playwright never ran. The same `README.md`
+    run as the last run of a change whose earlier runs changed code: not
+    skipped — the affected scenarios run.
 15. A run that changed only `globals.css`: the replay is **not** skipped.
 16. Break a recorded scenario with a component change: the run reaches
     `debug-loop` and does not push while the scenario is red.
@@ -562,21 +580,28 @@ these are the step's own decisions:
     everything else as in 0.10.6.
 21. The last group with UI: `web-qa` passed and nothing but `.md` was
     committed after that group's commit → `skipped` `replayed by web-qa`.
-    Add a `code-review` fix commit to a source file → the replay runs.
+    Add a `code-review` fix commit to a source file → the replay runs. A
+    `web-qa` that needed a fix along the way (verdict `confirmed`) → the
+    replay runs too.
 
 ## 10. Live project, end to end (0.11.0)
 
 One Next.js project with a local stack, start to finish, by a human:
 
 1. `init-harness` offers the test layers: the integration layer with its
-   start command, a Playwright config without `@external`, and a printed
-   CI template. Declining leaves the repository as it was; no CI file is
-   ever written.
+   start command, a Playwright config without `@external`, the environment
+   check (a drafted `scripts/qa-preflight.mjs` whose probes name variables,
+   never values), and a printed CI template. Declining leaves the
+   repository as it was; no CI file is ever written.
 2. A change with a UI flow passes `web-qa` and records a scenario.
-3. The next, unrelated run replays that scenario before push.
-4. A deliberate UI break blocks the push through `debug-loop`.
-5. A wrong service address in `.env.local` stops the replay before push as
-   an environment failure, with no `debug-loop`.
+3. A later change that touches that scenario's page replays it before the
+   push of its last run. A later change that doesn't touch the page leaves
+   it alone (only the change's own scenarios and the affected ones run).
+4. A deliberate break of that page, made in a new change, blocks that
+   change's push through `debug-loop`.
+5. With the environment check added (step 1), a wrong service address in
+   `.env.local` stops the replay before push as an environment failure,
+   with no `debug-loop`.
 
 ---
 

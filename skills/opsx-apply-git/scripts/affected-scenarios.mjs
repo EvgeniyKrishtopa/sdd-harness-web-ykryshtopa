@@ -9,16 +9,26 @@
 // every scenario tagged with this change. Whenever the answer would be a
 // guess, it says "run them all" instead, with the reason: a scenario run for
 // nothing costs seconds, a skipped one that was broken costs a broken main.
+// A changed file is such a guess when it reaches a file every page depends
+// on (middleware, the root layout), a route handler (pages call it by URL,
+// which no import shows), or no page at all (a config, a public/ asset).
+//
+// Only Next.js routes are read. Any other framework -- a Vite app keeps its
+// routes in code, even when it has a src/pages/ or app/ folder -- runs every
+// scenario.
 //
 // Imports are parsed and resolved with the project's own `typescript`
 // package (ts.preProcessFile, ts.resolveModuleName with the project's
 // tsconfig paths). TypeScript 7 no longer ships that JS API; such a project
 // gets "import map failed" and every scenario runs.
 //
-// Usage: node affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> [--project <dir>]
-// Prints one JSON object: {scope, scopeReason, files}. scope is "affected"
-// (files = the picked list, possibly empty) or "full" (files = every
-// scenario; scopeReason says why). Exit 2 on a usage error only.
+// Usage: node affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug>
+//          --framework <the manifest's framework> [--project <dir>]
+// Prints one JSON object: {scope, scopeReason, trigger, files}. scope is
+// "affected" (files = the picked list, possibly empty) or "full" (files =
+// every scenario; scopeReason says why, trigger names the changed file that
+// decided it, "<file> -> <the file it reaches>" when that is an import away).
+// Exit 2 on a usage error only.
 import { readFileSync, readdirSync, existsSync, statSync, realpathSync } from 'node:fs';
 import { join, relative, resolve, dirname, basename, extname, sep } from 'node:path';
 import { createRequire } from 'node:module';
@@ -26,7 +36,7 @@ import { execFileSync } from 'node:child_process';
 
 const args = parseArgs(process.argv.slice(2));
 if (!args.base || !args.dir || !args.change) {
-  console.error('usage: affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> [--project <dir>]');
+  console.error('usage: affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> --framework <framework> [--project <dir>]');
   process.exit(2);
 }
 // Real path: ts.resolveModuleName returns real paths, and a symlinked
@@ -50,12 +60,25 @@ const SHARED_FILES = [
   /^(?:ts|js)config\.json$/,
   /^playwright\.config\.[cm]?[jt]s$/,
 ];
+// Changed paths that never decide which scenarios run: documentation (the
+// replay's own "docs only" rule), type declarations, and the harness, git
+// hooks, CI and specs around the app. Tests are set aside by isTestFile.
+const IGNORED_FILES = [
+  /\.md$/i,
+  /\.d\.[cm]?ts$/,
+  /^(?:\.claude|\.husky|\.github|openspec)\//,
+];
 
 console.log(JSON.stringify(pick()));
 
 function pick() {
   const scenarios = listScenarios();
-  const all = (scopeReason) => ({ scope: 'full', scopeReason, files: scenarios.map((s) => s.file) });
+  const all = (scopeReason, trigger = '') => ({ scope: 'full', scopeReason, trigger, files: scenarios.map((s) => s.file) });
+
+  if (!/next/i.test(args.framework || '')) return all('no route structure');
+  const appDir = ['app', 'src/app'].map((d) => join(projectDir, d)).find(isDir);
+  const pagesDir = ['pages', 'src/pages'].map((d) => join(projectDir, d)).find(isDir);
+  if (!appDir && !pagesDir) return all('no route structure');
 
   let changed;
   try {
@@ -65,31 +88,60 @@ function pick() {
     return all('import map failed');
   }
 
-  const appDir = ['app', 'src/app'].map((d) => join(projectDir, d)).find(isDir);
-  const pagesDir = ['pages', 'src/pages'].map((d) => join(projectDir, d)).find(isDir);
-  if (!appDir && !pagesDir) return all('no route structure');
+  const relevant = changed.filter((f) => !isTestFile(f) && !IGNORED_FILES.some((re) => re.test(f)));
+  const shared = relevant.find(isSharedFile);
+  if (shared) return all('shared file changed', shared);
 
-  if (changed.some(isSharedFile)) return all('shared file changed');
+  const patterns = [];
+  const reachedScenarios = new Set();
+  if (relevant.length) {
+    let importers;
+    try {
+      importers = importGraph();
+    } catch {
+      return all('import map failed');
+    }
+    const scenarioPaths = new Set(scenarios.map((s) => s.path));
+    for (const file of relevant) {
+      const path = join(projectDir, file);
+      const reach = [...importersOf(path, importers)];
+      const via = (hit) => (hit === path ? file : `${file} -> ${rel(hit)}`);
 
-  let routeFiles;
-  try {
-    routeFiles = touchedRouteFiles(changed.map((f) => join(projectDir, f)), appDir, pagesDir);
-  } catch {
-    return all('import map failed');
+      const sharedHit = reach.find((p) => isSharedFile(rel(p)));
+      if (sharedHit) return all('shared file changed', via(sharedHit));
+      const routes = reach.filter((p) => isRouteFile(p, appDir, pagesDir));
+      const handler = routes.find((p) => isRouteHandler(p, appDir, pagesDir));
+      if (handler) return all('route handler changed', via(handler));
+      const hits = reach.filter((p) => scenarioPaths.has(p));
+      if (routes.length || hits.length) {
+        patterns.push(...routes.map((p) => routePattern(p, appDir, pagesDir)).filter(Boolean));
+        hits.forEach((p) => reachedScenarios.add(p));
+        continue;
+      }
+      // Test code: every file at the top of its import chains is a test.
+      const tops = reach.filter((p) => !importers.has(p));
+      if (tops.length && tops.every((p) => isTestFile(rel(p)))) continue;
+      // Deleted code: whatever imported it had to change in the same diff.
+      if (!existsSync(path) && CODE_EXT.test(file)) continue;
+      return all('unmapped file changed', file);
+    }
   }
-  const patterns = routeFiles.map((f) => routePattern(f, appDir, pagesDir)).filter(Boolean);
-  const changedSet = new Set(changed.map((f) => join(projectDir, f)));
 
+  const changedSet = new Set(changed.map((f) => join(projectDir, f)));
   const files = scenarios
-    .filter((s) => s.taggedWithChange || s.pages === null || changedSet.has(s.path)
+    .filter((s) => s.taggedWithChange || s.pages === null || changedSet.has(s.path) || reachedScenarios.has(s.path)
       || s.pages.some((p) => patterns.some((re) => re.test(p))))
     .map((s) => s.file);
-  return { scope: 'affected', scopeReason: '', files };
+  return { scope: 'affected', scopeReason: '', trigger: '', files };
 }
 
 function isSharedFile(file) {
   if (STYLE_FILE.test(file) && !/\.module\.[^.]+$/.test(file)) return true;
   return SHARED_FILES.some((re) => re.test(file));
+}
+
+function isTestFile(file) {
+  return SCENARIO_FILE.test(file) || /(?:^|\/)__(?:tests|mocks)__\//.test(file);
 }
 
 function listScenarios() {
@@ -98,18 +150,19 @@ function listScenarios() {
   return walk(scenariosDir).filter((f) => SCENARIO_FILE.test(f)).sort().map((path) => {
     const text = readFileSync(path, 'utf8');
     const line = text.match(/^\s*\/\/\s*pages:(.*)$/m);
+    const pages = line ? line[1].split(',').map(normalizePage).filter(Boolean) : [];
     return {
       path,
-      file: relative(projectDir, path).split(sep).join('/'),
+      file: rel(path),
       taggedWithChange: tag.test(text),
-      pages: line ? line[1].split(',').map(normalizePage).filter(Boolean) : null,
+      // No list, or an empty one: nothing to match against, so it always runs.
+      pages: pages.length ? pages : null,
     };
   });
 }
 
-// Every route file whose import chain reaches one of the changed files,
-// including a changed route file itself.
-function touchedRouteFiles(changedPaths, appDir, pagesDir) {
+// Every code file's importers, keyed by the imported file's path.
+function importGraph() {
   const ts = createRequire(join(projectDir, 'package.json'))('typescript');
   if (typeof ts.preProcessFile !== 'function' || typeof ts.resolveModuleName !== 'function') {
     throw new Error('typescript has no preProcessFile/resolveModuleName');
@@ -126,15 +179,19 @@ function touchedRouteFiles(changedPaths, appDir, pagesDir) {
       importers.get(target).add(file);
     }
   }
+  return importers;
+}
 
-  const seen = new Set(changedPaths);
-  const queue = [...changedPaths];
+// The file itself and everything that imports it, directly or not.
+function importersOf(path, importers) {
+  const seen = new Set([path]);
+  const queue = [path];
   while (queue.length) {
     for (const importer of importers.get(queue.shift()) || []) {
       if (!seen.has(importer)) { seen.add(importer); queue.push(importer); }
     }
   }
-  return [...seen].filter((f) => isRouteFile(f, appDir, pagesDir));
+  return seen;
 }
 
 function compilerOptions(ts) {
@@ -189,15 +246,22 @@ function isRouteFile(file, appDir, pagesDir) {
   return false;
 }
 
+// A route that answers requests instead of rendering a page: app/**/route.*
+// and pages/api/**.
+function isRouteHandler(file, appDir, pagesDir) {
+  if (appDir && file.startsWith(appDir + sep)) return basename(file, extname(file)) === 'route';
+  return Boolean(pagesDir) && file.startsWith(join(pagesDir, 'api') + sep);
+}
+
 // Route file -> a RegExp over normalized paths ("/login", "/items/42").
 // Route groups "(x)" and slots "@x" are not part of the address; a private
 // "_x" folder has none. A group's own layout is matched as its whole parent
 // subtree -- broader than the group, never narrower.
 function routePattern(file, appDir, pagesDir) {
   const inApp = appDir && file.startsWith(appDir + sep);
-  const rel = relative(inApp ? appDir : pagesDir, file).split(sep);
-  const name = basename(rel.pop(), extname(file));
-  const segments = rel.filter((s) => !(s.startsWith('(') && s.endsWith(')')) && !s.startsWith('@'))
+  const segs = relative(inApp ? appDir : pagesDir, file).split(sep);
+  const name = basename(segs.pop(), extname(file));
+  const segments = segs.filter((s) => !(s.startsWith('(') && s.endsWith(')')) && !s.startsWith('@'))
     .map((s) => s.replace(/^(?:\(\.{1,3}\))+/, ''));
   if (segments.some((s) => s.startsWith('_'))) return null;
   if (!inApp && name !== 'index') segments.push(name);
@@ -229,6 +293,11 @@ function walk(dir) {
     } else if (entry.isFile()) out.push(join(dir, entry.name));
   }
   return out;
+}
+
+// A project path as git prints it: relative, with forward slashes.
+function rel(path) {
+  return relative(projectDir, path).split(sep).join('/');
 }
 
 function insideProject(p) {

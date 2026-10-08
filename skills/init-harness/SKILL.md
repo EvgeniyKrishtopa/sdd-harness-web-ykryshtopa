@@ -354,7 +354,8 @@ the `.husky/` hook; (2) typecheck and lint exit 0; (3) the tests run and at
 least one passes — read the count, `--passWithNoTests` makes an empty run
 look green; (4) any of the three not satisfied → stop the whole run, leaving
 `harnessVersion` and `toolchainVerifiedAt` unwritten. Services down for the
-integration tests: not a failure — no pre-push link, one report line.
+integration tests: not a failure — the manifest block and its pre-push link
+both stay, one report line.
 
 Only once all three pass does this step write `harnessVersion` and
 `toolchainVerifiedAt`. That pair is the difference between "the harness found

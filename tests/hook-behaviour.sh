@@ -327,6 +327,25 @@ for c in 'echo "git push origin main"' 'git commit -m "merge main into feature"'
 done
 echo
 
+echo "-- PreToolUse: skipping the git hooks asks first --"
+# The harness forbids --no-verify (ci-probes.md); HUSKY=0 and a
+# core.hooksPath override skip the same hooks.
+for c in 'git push --no-verify -u origin feature/x' 'npm test && git push --no-verify' \
+         'HUSKY=0 git push -u origin feature/x' 'git -c core.hooksPath=/dev/null push -u origin feature/x'; do
+  verdict "$c -> ask" 'skips .husky/pre-push' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+for c in 'git commit --no-verify -m x' 'git commit -nm x' 'git commit -m x -n' \
+         'HUSKY=0 git commit -m x' 'git -c core.HooksPath=/dev/null commit -m x'; do
+  verdict "$c -> ask" 'skips .husky/pre-commit' "$(bash_json "$c" | sh "$CMD/commit.sh")"
+done
+verdict 'git push -n (a dry run) -> allow' '"permissionDecision":"allow"' \
+  "$(bash_json 'git push -n -u origin feature/x' | sh "$CMD/push.sh")"
+for c in 'git commit -m "no verify needed"' 'git commit -uno -m x' 'git commit -mnote' \
+         'echo "git commit --no-verify"'; do
+  verdict_absent "$c -> not a hook skip" 'skips .husky' "$(bash_json "$c" | sh "$CMD/commit.sh")"
+done
+echo
+
 echo "-- PreToolUse: commit guard, size and scope --"
 lines src/big.ts && git add src/big.ts
 verdict_absent "staged 600 lines + jq/mv, no commit -> no Large commit" '"ask"' \
@@ -464,7 +483,11 @@ fill() { sed -e 's|<pm> test:coverage|sh ./cov.sh|' -e 's|<pm> <integration scri
   -e 's|<healthCheck>|sh ./hc.sh|' -e "s|<requires>|svc start|" -e 's|<audit command>|sh ./audit.sh|'; }
 { cat "$PP/skip.sh"; echo '<pm> test:coverage && <audit command>'; } | fill > "$PP/hook-plain.sh"
 cat "$PP/skip.sh" "$PP/int.sh" | fill > "$PP/hook-int.sh"
-awk '/^if ! <healthCheck>/ {s=1} !s {print} s && /^fi$/ {s=0}' "$PP/int.sh" | { cat "$PP/skip.sh"; cat; } | fill > "$PP/hook-nohc.sh"
+awk '/^if ! .*<healthCheck>/ {s=1} !s {print} s && /^fi$/ {s=0}' "$PP/int.sh" | { cat "$PP/skip.sh"; cat; } | fill > "$PP/hook-nohc.sh"
+# A user's own healthCheck may be compound, or wrap a $(...) like the
+# Compose row: it must be judged as a whole, and print nothing.
+sed 's|<healthCheck>|sh ./hc.sh \&\& sh ./hc2.sh|' "$PP/int.sh" | { cat "$PP/skip.sh"; cat; } | fill > "$PP/hook-hc-and.sh"
+sed 's|<healthCheck>|test -n "$(sh ./noisy.sh)"|' "$PP/int.sh" | { cat "$PP/skip.sh"; cat; } | fill > "$PP/hook-hc-noisy.sh"
 
 PR="$WORK/prepush-repo"; mkdir -p "$PR/.claude"
 git -C "$PR" init -q; git -C "$PR" config user.email t@example.com; git -C "$PR" config user.name t
@@ -524,6 +547,18 @@ printf 'echo cov >> trace\nexit 0\n' > "$PR/cov.sh"
 
 r=$(push hook-nohc.sh "$code" "$base")
 verdict "no healthCheck -> integration runs unchecked" "TRACE=cov integ audit $" "$r"
+
+printf 'echo hc2 >> trace\nexit 1\n' > "$PR/hc2.sh"
+r=$(push hook-hc-and.sh "$code" "$base")
+verdict "compound healthCheck, its second part down -> services-down" '"integration":"services-down"' "$r"
+verdict_absent "compound healthCheck, its second part down -> integration not run" "integ" "$(printf '%s' "$r" | grep '^TRACE=')"
+printf 'echo hc2 >> trace\nexit 0\n' > "$PR/hc2.sh"
+r=$(push hook-hc-and.sh "$code" "$base")
+verdict "compound healthCheck, both parts up -> integration runs" "TRACE=cov hc hc2 integ audit $" "$r"
+printf 'echo "Cannot connect to the service" >&2\n' > "$PR/noisy.sh"
+r=$(push hook-hc-noisy.sh "$code" "$base")
+verdict "healthCheck with a \$(...) printing nothing -> services-down" '"integration":"services-down"' "$r"
+verdict_absent "healthCheck with a \$(...) -> its errors don't leak" "Cannot connect" "$r"
 r=$(push hook-plain.sh "$code" "$base")
 verdict "no integration script -> coverage and audit only" "TRACE=cov audit $" "$r"
 verdict "no integration script -> no note" "NOTE=$" "$r"

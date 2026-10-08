@@ -33,7 +33,9 @@ The Compose check is wrapped in `test -n` on purpose: `docker compose ps
 -q` exits 0 with empty output when nothing runs, so the bare command would
 always pass. Whatever the stack, confirm once that the proposed
 `healthCheck` exits non-zero with the stack stopped, before writing it —
-not from memory.
+not from memory. Run it with its output to `/dev/null` there and everywhere
+else: only the exit code matters, and a status command can print the
+stack's keys.
 
 Then, by what the project already has:
 
@@ -45,7 +47,9 @@ Then, by what the project already has:
   - a `test:integration` script in `package.json`;
   - for Vitest, a separate `vitest.integration.config.ts` with
     `test.include: ['**/*.integration.test.ts']`, run as
-    `vitest run --config vitest.integration.config.ts --passWithNoTests`;
+    `vitest run --config vitest.integration.config.ts --passWithNoTests`,
+    resolving `@/…` imports the way the main test config does
+    (`references/local-stack-profile.md` section 2);
   - the same pattern excluded from the main config so `<pm> test` doesn't
     run them — `exclude: [...configDefaults.exclude,
     '**/*.integration.test.ts']`, because a plain `exclude` replaces
@@ -77,10 +81,21 @@ the first scenario, as it does today.
 Present → one question: turn on the replay of recorded scenarios before
 push. Yes → write `tests.e2e` with `dir` (default
 `tests/web-qa-scenarios`), `command: "npx playwright test"`,
-`externalTag: "@external"`, and `replayBeforePush: true`. Never write
-`preflight` here: no detection rule for an environment-check script exists
-yet, and a guessed script name is the one thing this skill never writes. No → no
+`externalTag: "@external"`, and `replayBeforePush: true`. No → no
 `tests.e2e` block; the replay stays off.
+
+After a yes, offer the environment check in one more question: without
+it, a wrong service address in the app's settings reads as an app failure,
+and `debug-loop` goes looking for it in the code. Yes → draft
+`scripts/qa-preflight.mjs` from `references/local-stack-profile.md`
+section 3, one probe per external service the app's code reaches, each
+address taken from a variable *name* the code reads (or `.env.example`
+lists) — never a value. Show it; on a second yes write it, add a
+`qa:preflight` script to `package.json`, and set
+`tests.e2e.preflight: "qa:preflight"`. Never point `preflight` at a script
+this step didn't write: no rule detects an existing environment check, and
+a guessed script name is the one thing this skill never writes. In upgrade
+mode, ask this whenever `tests.e2e` has no `preflight`.
 
 The same question covers the Playwright config:
 
