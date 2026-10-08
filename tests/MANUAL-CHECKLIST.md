@@ -231,6 +231,15 @@ a real project with a local stack:
 13. Upgrade mode on a project whose `pre-push` is the plain 0.10.6 chain:
     a diff to the new hook, applied on yes. On a hand-edited `pre-push`:
     both blocks printed for a manual merge, the file left alone.
+14. `init-harness` with the stack stopped: the report says the integration
+    tests weren't verified, `tests.integration` stays in the manifest, and
+    `.husky/pre-push` still has its integration block — the first push
+    stops with step 8's one line.
+15. Delete the integration block from `.husky/pre-push` by hand and run
+    `opsx-apply-git`: after its push, one line says the hook doesn't run
+    the integration tests, and the log line is `no fresh hook result`. A
+    group that writes an integration test with the stack stopped says the
+    same at the end of its "not verified" line.
 
 ---
 

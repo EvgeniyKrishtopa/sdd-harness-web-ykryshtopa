@@ -49,6 +49,10 @@ Run `tests.integration.healthCheck` first.
   running"** → keep the test written. Add one line to the run's report:
   `integration test <file> not verified: start <requires>`. Do not stop
   the group and do not mark it `blocked` — its own unit tests, typecheck
-  and lint decide whether it is green. `.husky/pre-push` runs the
-  integration tests before the code leaves the machine, so an unverified
-  test cannot reach `main` unrun.
+  and lint decide whether it is green. What keeps an unverified test from
+  reaching `main` unrun is `.husky/pre-push`, so check that it really runs
+  them: `grep -qF -- "<tests.integration.script>" .husky/pre-push`. No
+  match (a declined upgrade diff, a hand-edited hook) → end that report
+  line with `— and .husky/pre-push doesn't run integration tests; ask
+  init-harness to re-run anyway and add the pre-push block it offers`. Say the
+  gap; never assume the hook covers it.

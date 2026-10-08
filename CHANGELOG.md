@@ -69,7 +69,11 @@ fallback, so a manifest not yet upgraded keeps working.
   `opsx-apply-git/references/integration-tests.md`: a group adding a new
   boundary to a local-stack service writes its `*.integration.test.ts`
   (`test-author` does it under `makerChecker`). Services down → the test is
-  written and reported as not verified; the group goes on.
+  written and reported as not verified; the group goes on. `init-harness`
+  with the services down keeps both the `tests.integration` block and its
+  `pre-push` link — the hook then stops pushes until they're up — so the
+  manifest never promises tests the hook doesn't run; a hook that still
+  doesn't run them (a declined diff, a hand edit) is reported on every run.
 - **`CR-14`** (`code-reviewer`, PLAUSIBLE only) — a new user flow with no
   scenario on the change's last run, unless the human already recorded or
   declined it in `web-qa`; a new service boundary with no integration
