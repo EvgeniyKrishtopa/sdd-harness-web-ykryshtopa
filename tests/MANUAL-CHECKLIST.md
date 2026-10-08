@@ -312,7 +312,7 @@ a real project with a local stack:
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
 7. No `tests.e2e.preflight` in the manifest: the report has one line, "no
-   environment check configured — …", and everything else runs as before.
+   environment check — …", and everything else runs as before.
 8. `tests.e2e.preflight` naming a script that exits 1: the report opens
    with `Environment: …`; no replay, no manual pass, no `debug-loop`; the
    dev server is gone; the log has a `confirmed` verdict line and a
