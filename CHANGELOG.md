@@ -111,7 +111,8 @@ fallback, so a manifest not yet upgraded keeps working.
   `.claude/harness-log.jsonl` is let through untested (the run's log-commit
   push used to re-run every test). With an integration script, the
   services are checked right before that link — one line naming
-  `requires` when they are down — and the hook leaves
+  `requires` when they are down; the check runs as one group, so a
+  compound command is judged whole and prints nothing — and the hook leaves
   `.claude/.last-pre-push.json` (gitignored) for the log.
 - **`web-qa`'s replay** excludes `tests.e2e.externalTag` on the command
   line instead of trusting the project's Playwright config.
