@@ -40,11 +40,9 @@ Gate 4.
    test/browser-automation package, if the project also has that as a test
    dependency) stays resident for the whole session per `mcp-config.json`,
    regardless of whether this gate ever runs — there's no supported
-   per-gate MCP toggle in this Claude Code version. If this project runs
-   this gate often, install `@playwright/mcp` as a devDependency so `npx`
-   resolves it locally instead of doing a registry check on every session
-   start; if it rarely touches user-facing UI, the README recommends
-   disabling the server via `/mcp` for sessions that won't use it.
+   per-gate MCP toggle in this Claude Code version. Run often → install
+   `@playwright/mcp` as a devDependency so `npx` skips a registry check each
+   session; rarely → the README recommends disabling it via `/mcp`.
 3. Start the dev server **in the background** (`run_in_background` on the
    Bash tool, or the run harness's background-job equivalent) — never
    foreground, since `<runCmd> <scripts.dev>` (e.g. `yarn dev`, `npm run
@@ -57,13 +55,10 @@ Gate 4.
    taken, e.g. `5173` busy → `5174`, and print the real address to stdout on
    startup (`Local: http://localhost:5174/`). Poll the background process's
    output for that line and parse the live URL out of it, bounded to ~30s at
-   1-2s intervals. Handing the manifest's `devServerUrl` to the reviewer
-   unconditionally risks QA-ing a stale server left over from a previous
-   session on the configured port, while this change's own server sits
-   untested on the port it actually bound. If the expected startup line
-   never appears in that window (crash, unfamiliar dev-server output
-   format), stop, tear down (below), and report the captured stdout/stderr
-   as a Gate 3 failure rather than guessing at a URL.
+   1-2s intervals — trusting `devServerUrl` risks QA-ing a stale server on
+   the configured port while this change's own sits elsewhere. No such line
+   in that window (crash, unfamiliar output) → stop, tear down (below), and
+   report the captured stdout/stderr as a Gate 3 failure; never guess a URL.
 5. Poll the real URL for a `2xx`/HTML response before handing off to the
    reviewer, bounded to ~60s at 1-2s intervals — don't let the QA pass start
    against a server that's still compiling, but also don't let a server that
@@ -77,8 +72,9 @@ first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
 `jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'
 .claude/harness.json` (call the result `<scenariosDir>`). If the
 directory exists and holds at least one recorded scenario file, run the
-accumulated suite first: `npx playwright test <scenariosDir>`. Zero
-model tokens, seconds instead of a click pass.
+accumulated suite first: `npx playwright test <scenariosDir>`, plus
+`--grep-invert @local-stack` unless `tests.integration.healthCheck` passes
+(those scenarios need the local stack up). Zero model tokens.
 
 This is the only part of this gate that checks flows the *current* diff
 didn't touch: cart changing what it hands off to checkout doesn't necessarily
@@ -109,7 +105,9 @@ incident this closes.
    against the running dev server — this plugin's own pinned server only
    (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a
    Playwright MCP the project or the user supplies at some other version;
-   the reasoning is in `agents/web-qa-manual-tester.md`. Disabled via `/mcp`
+   the reasoning is in `agents/web-qa-manual-tester.md`. If
+   `tests.integration.healthCheck` passes, pass the mail catcher's address
+   (`local-stack-profile.md` section 4) so the agent reads emails itself. Disabled via `/mcp`
    → the agent refuses to launch, which is the intended loud failure. Scope
    its flows to the *whole change's* diff against the parent branch, not
    just the last group, so the final pass covers everything the change
@@ -164,13 +162,14 @@ maintenance debt, not a safety net — see
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
    reasonable one to keep.
-2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (the directory
-   read under "Replay recorded scenarios" above)
-   (kebab-case from the flow's name), authored against `@playwright/test`'s
-   own API (`page.goto`, `page.getByRole(...).click()`,
-   `expect(...).toBeVisible()`, …) — translate the steps the MCP session
-   actually took into their `@playwright/test` equivalents, not a literal
-   transcript of MCP tool calls, which don't run outside that server.
+2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (kebab-case flow
+   name) against `@playwright/test`'s own API (`page.goto`,
+   `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —
+   translating the steps the MCP session took, not a transcript of MCP tool
+   calls, which don't run outside that server. A flow that sends an email
+   starts from section 4 of
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`,
+   tagged `@local-stack`.
 3. **First scenario ever recorded in this project**: `permissions.deny`
    (written by `init-harness`) blocks every package manager's install
    command, on purpose, and this gate doesn't get an exception. If

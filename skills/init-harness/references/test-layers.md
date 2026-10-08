@@ -48,6 +48,10 @@ Then, by what the project already has:
   - for Jest, the same through `testMatch` and a second config;
   - `requires` and `healthCheck` from the table.
 
+  For Supabase, the config and its global setup come from
+  `references/local-stack-profile.md` section 2 — it checks the services
+  are up and refuses any address that isn't local.
+
   `--passWithNoTests` is deliberate here and nowhere else: the layer is
   new and has no tests yet, and an empty layer must not block every push
   until the first one lands. Step 8b reads this run's script with that in
@@ -55,7 +59,7 @@ Then, by what the project already has:
 - **No script, no sign** → ask nothing, write nothing.
 
 The integration tests themselves take the service's address and keys from
-the local stack's own output (`supabase status -o env`), never from the
+the local stack's own output (`supabase status -o json`, `references/local-stack-profile.md` section 1), never from the
 project's `.env*` files or the app's `process.env`.
 
 ## End-to-end layer
