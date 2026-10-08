@@ -208,7 +208,10 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    compiles.
 7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
    and run the integration script — it stops with one line naming
-   `API_URL` and the host, before any test.
+   `API_URL` and the host, before any test. With the real `envCommand` and
+   the stack up, an integration test that imports app code through `@/…`
+   passes: the written config resolves the alias the way the main test
+   config does.
 
 ### Integration tests in `pre-push` (0.11.0)
 

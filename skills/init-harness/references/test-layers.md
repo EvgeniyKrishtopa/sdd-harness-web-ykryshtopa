@@ -45,7 +45,9 @@ Then, by what the project already has:
   - a `test:integration` script in `package.json`;
   - for Vitest, a separate `vitest.integration.config.ts` with
     `test.include: ['**/*.integration.test.ts']`, run as
-    `vitest run --config vitest.integration.config.ts --passWithNoTests`;
+    `vitest run --config vitest.integration.config.ts --passWithNoTests`,
+    resolving `@/…` imports the way the main test config does
+    (`references/local-stack-profile.md` section 2);
   - the same pattern excluded from the main config so `<pm> test` doesn't
     run them — `exclude: [...configDefaults.exclude,
     '**/*.integration.test.ts']`, because a plain `exclude` replaces

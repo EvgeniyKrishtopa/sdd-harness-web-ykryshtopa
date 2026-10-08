@@ -49,7 +49,8 @@ fallback, so a manifest not yet upgraded keeps working.
   template that is printed, never written.
 - **`init-harness/references/local-stack-profile.md`** — integration test
   config whose global setup takes addresses from `envCommand`, never from
-  `.env*`, and stops on a non-local address; an environment-check template;
+  `.env*`, and stops on a non-local address, and which resolves `@/…`
+  imports the way the main test config does; an environment-check template;
   an email-flow scenario through Mailpit; the `@local-stack` tag.
 - **Replay before push** — `opsx-apply-git` §4 step 3a
   (`references/e2e-replay.md`). An ordinary run replays this change's

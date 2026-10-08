@@ -43,12 +43,24 @@ template never reads `.claude/harness.json` at run time.
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
+  // `@/…` imports, resolved the way the main test config resolves them (see below).
+  resolve: { tsconfigPaths: true },
   test: {
     include: ['**/*.integration.test.ts'],
     globalSetup: ['./tests/integration/global-setup.ts'],
   },
 })
 ```
+
+This config doesn't inherit the main test config, so it resolves `@/…`
+imports itself — without that, the first integration test that imports app
+code fails with `Cannot find package '@/…'`. Copy what the project's main
+test config already uses: `resolve: { tsconfigPaths: true }` as above
+(Vite 8 or newer only), the `vite-tsconfig-paths` plugin in `plugins`, or
+its `resolve.alias`. The main config resolves none of them → ask. Never
+inherit the main config with `mergeConfig`: its `exclude` holds
+`**/*.integration.test.ts`, merged arrays keep it, and with
+`--passWithNoTests` the run would pass on zero tests.
 
 ```ts
 // tests/integration/global-setup.ts
