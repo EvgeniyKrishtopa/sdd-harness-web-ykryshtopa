@@ -592,10 +592,11 @@ if [ -n "$flows_line" ] && [ "$(log_line_fields "$flows_line")" = "$FLOWS_LINE_E
 else
   bad "$FLOWS_LINE_REF's web-qa-flows line is missing or its field set is not \"$FLOWS_LINE_EXPECTED\""
 fi
-if grep -q 'select(.kind != "finding")' skills/harness-review/references/harness-stats.md; then
-  bad "harness-stats.md still counts every non-finding line as a run; web-qa-flows lines would inflate it"
+stale_run_filters="$(grep -rlE 'kind != "finding"|kind !== .finding.|get\("kind"\) != "finding"' skills hooks 2>/dev/null)"
+if [ -n "$stale_run_filters" ]; then
+  bad "still counting every non-finding log line as a run, so web-qa-flows lines inflate it:" $stale_run_filters
 else
-  ok "harness-stats.md counts only kind-less lines as runs"
+  ok "every log reader under skills/ and hooks/ counts only kind-less lines as runs"
 fi
 
 # The Claude Code version floor is one number that has to be stated in three

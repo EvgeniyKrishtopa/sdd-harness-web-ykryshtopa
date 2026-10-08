@@ -192,7 +192,7 @@ maintenance debt, not a safety net — see
    it just looks like coverage. Never leave a red spec file behind.
 5. Tell the user plainly what got recorded and what got declined this run —
    the report from step 1's per-flow answers, not a single aggregate line;
-   the same answers fill the `kind:"web-qa-flows"` log line below.
+   what was actually written fills the `kind:"web-qa-flows"` log line below.
 
 ## Tear down the dev server whenever this gate exits
 

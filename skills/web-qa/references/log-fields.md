@@ -47,8 +47,10 @@ printf '%s\n' "$(jq -nc \
   >> .claude/harness-log.jsonl
 ```
 
-`recordedFlows` and `declinedFlows` come from "Propose recording" step 1's
-per-flow answers; `code-review` reads them so it never reminds the human
+`recordedFlows` lists only flows whose file was actually written and passed
+rule 4's three runs; every other flow the human was asked about goes to
+`declinedFlows` — including a "yes" that never became a file (the hydration
+marker declined, three green runs not reached); `code-review` reads them so it never reminds the human
 about a flow they already decided on. Both empty and `failureKind` empty is
 a real line, not one to leave out: it says this gate ran and recorded
 nothing. The same failed-write rule as the verdict line applies.
