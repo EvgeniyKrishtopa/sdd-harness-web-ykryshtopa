@@ -121,6 +121,10 @@ condition and re-run rather than failing the flow outright. The app must
 still degrade gracefully in that case (no crash, no blank screen) — that
 part *is* worth failing on if it breaks.
 
+If the calling skill told you "environment check passed", an external
+service failing during the pass points at the code, not the environment —
+report it as a FAIL, not as noise.
+
 This carve-out is for noise encountered incidentally while testing a flow —
 never for a failure you deliberately induced to exercise the error or
 offline state above. A forced bad endpoint or a toggled-offline browser

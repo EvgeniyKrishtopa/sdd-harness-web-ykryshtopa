@@ -65,6 +65,23 @@ Gate 4.
    never comes up hang the gate forever. If the timeout is hit, tear down
    (below) and report it as a Gate 3 failure.
 
+## Check the environment before anything runs against it
+
+Once the dev server answers, read `tests.e2e.preflight` from
+`.claude/harness.json`. Absent → say one line, "no environment check
+configured", and go on — that is not a failure. Present → run
+`<runCmd> <preflight>` (the project's own script: it reaches each external
+service the way the app is configured to and checks the answer's shape —
+`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
+section 3). Exit 0 → go on as before. Non-zero → an **environment
+failure**, kept apart from an app FAIL: report `Environment: <its output>`
+as its own line before any flow; run neither the replay nor the manual pass
+(both would fail for the same reason and blur it); do **not** start
+`debug-loop` — the fix is configuration, the human's, and "the code is
+wrong" is the false hypothesis this check exists to stop; log `verdict`
+`confirmed` with `failureKind` `environment`; tear the dev server down.
+When it passed, tell `web-qa-manual-tester` "environment check passed".
+
 ## Replay recorded scenarios before the manual pass
 
 Read the scenarios directory from `.claude/harness.json` — `tests.e2e.dir`
@@ -77,12 +94,9 @@ accumulated suite first: `npx playwright test <scenariosDir>`, plus
 (those scenarios need the local stack up). Zero model tokens.
 
 This is the only part of this gate that checks flows the *current* diff
-didn't touch: cart changing what it hands off to checkout doesn't necessarily
-show up in checkout's own diff, and the manual pass below stays scoped to
-this change's diff, not the whole app, so nothing else in this gate would
-ever re-open checkout on its own. See
-`harness-audit/v0.4.0-implemented/01-review-blind-spots.txt` point 3 for the
-incident this closes.
+didn't touch: cart changing what it hands off to checkout needn't show up
+in checkout's own diff, and the manual pass stays scoped to this change's
+diff, so nothing else here would re-open checkout on its own.
 
 - **Any failure here** feeds into the same fix loop as a manual-tester FAIL,
   below — a regression the replay catches is exactly as real as one the
