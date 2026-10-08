@@ -80,7 +80,8 @@ as its own line before any flow; run neither the replay nor the manual pass
 `debug-loop` — the fix is configuration, the human's, and "the code is
 wrong" is the false hypothesis this check exists to stop; log `verdict`
 `confirmed` with `failureKind` `environment`; tear the dev server down.
-When it passed, tell `web-qa-manual-tester` "environment check passed".
+Only when the script ran and exited 0, tell `web-qa-manual-tester`
+"environment check passed" — never when there is no script.
 
 ## Replay recorded scenarios before the manual pass
 
@@ -221,9 +222,9 @@ same port.
 
 ## Log this gate's run
 
-After the fix loop settles (all-PASS, or an explicit human override), append
-one line to `.claude/harness-log.jsonl` in the target repo (create the file
-if it doesn't exist yet) — a plain shell append, 0 model tokens:
+After the fix loop settles (all-PASS, or an explicit human override), or right
+after an environment failure stopped the gate, append
+one line to `.claude/harness-log.jsonl` (create it if absent), 0 model tokens:
 
 ```bash
 mkdir -p .claude

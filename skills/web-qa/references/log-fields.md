@@ -5,7 +5,8 @@ Read from `SKILL.md` "Log this gate's run".
 ## The verdict line
 
 Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
-any FAIL found along the way (even if later fixed and re-passed), or
+any FAIL found along the way (even if later fixed and re-passed) and for an
+environment failure (`failureKind` `environment` on the flows line), or
 `skipped` when this gate wasn't applicable; the wall-clock time across the
 whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
 this gate covers the whole change, triggered on the last group). `skipReason`
