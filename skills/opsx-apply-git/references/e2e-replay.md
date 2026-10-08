@@ -83,13 +83,15 @@ change.
    style change breaks flows (a button under a transparent layer,
    `display: none`). No line-count threshold either: one line in a
    component can break a flow.
-5. `web-qa` ran in this run and ended passed (`clean`, or `confirmed` with
-   its fix loop ending green), and every path in
+5. `web-qa` ran in this run with verdict `clean`, and every path in
    `git diff --name-only <the group commit web-qa's pass went into>..HEAD`
-   ends in `.md` (or there is none) → `replayed by web-qa`. Compare from the
-   group's commit, not from `web-qa` itself: `web-qa` runs before that
-   commit, on the very code it then holds. A `code-review` fix after it is
-   code `web-qa` never saw, so the replay runs.
+   ends in `.md` (or there is none) → `replayed by web-qa`. Only `clean`:
+   `web-qa` replays the scenarios before its manual pass, so a fix from its
+   own `debug-loop` lands after that replay — a `confirmed` pass means code
+   the older scenarios never ran against. Compare from the group's commit,
+   not from `web-qa` itself: a `clean` `web-qa` runs before that commit, on
+   the very code it then holds. A `code-review` fix after it is code
+   `web-qa` never saw, so the replay runs.
 6. Last run, and the script's `files` is empty → `no affected scenarios`.
 
 Each skip writes one log line, `verdict` `skipped` (below), and goes on to

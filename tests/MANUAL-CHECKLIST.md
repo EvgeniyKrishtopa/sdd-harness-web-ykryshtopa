@@ -576,7 +576,9 @@ these are the step's own decisions:
     everything else as in 0.10.6.
 21. The last group with UI: `web-qa` passed and nothing but `.md` was
     committed after that group's commit → `skipped` `replayed by web-qa`.
-    Add a `code-review` fix commit to a source file → the replay runs.
+    Add a `code-review` fix commit to a source file → the replay runs. A
+    `web-qa` that needed a fix along the way (verdict `confirmed`) → the
+    replay runs too.
 
 ## 10. Live project, end to end (0.11.0)
 
