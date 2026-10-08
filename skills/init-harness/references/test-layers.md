@@ -33,7 +33,9 @@ The Compose check is wrapped in `test -n` on purpose: `docker compose ps
 -q` exits 0 with empty output when nothing runs, so the bare command would
 always pass. Whatever the stack, confirm once that the proposed
 `healthCheck` exits non-zero with the stack stopped, before writing it —
-not from memory.
+not from memory. Run it with its output to `/dev/null` there and everywhere
+else: only the exit code matters, and a status command can print the
+stack's keys.
 
 Then, by what the project already has:
 

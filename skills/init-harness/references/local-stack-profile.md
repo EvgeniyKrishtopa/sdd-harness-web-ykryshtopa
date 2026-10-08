@@ -22,7 +22,7 @@ Four fields in `tests.integration` (`references/manifest-schema.md`):
 | Field | What it is | Who uses it |
 | --- | --- | --- |
 | `requires` | how a human starts the stack | messages only; never run |
-| `healthCheck` | exits 0 when the stack is up | `.husky/pre-push`, the templates, `web-qa`, the replay |
+| `healthCheck` | exits 0 when the stack is up; only the exit code is read, the output goes to `/dev/null` — a stack's status command can print its keys | `.husky/pre-push`, the templates, `web-qa`, the replay |
 | `envCommand` | prints one JSON object of addresses and keys | the integration test template |
 | `mailCatcherUrl` | the stack's Mailpit address, optional | the email-flow template, `web-qa` |
 
@@ -127,11 +127,15 @@ const probes = [
   // { name, url: <the app's own setting>, init: <a request that cannot change data>, expect: <status> }
 ]
 
+// Only the host is printed: an address can carry a password or a token, and
+// this output ends up in the agent's report.
+const host = (url) => { try { return new URL(url).host } catch { return 'an unparsable address' } }
+
 let failed = false
 for (const { name, url, init, expect } of probes) {
   if (!url) { console.error(`preflight: ${name} has no address configured`); failed = true; continue }
   const status = await fetch(url, init).then((r) => r.status, () => 'no answer')
-  if (status !== expect) { console.error(`preflight: ${name} at ${url} answered ${status}, expected ${expect}`); failed = true }
+  if (status !== expect) { console.error(`preflight: ${name} at ${host(url)} answered ${status}, expected ${expect}`); failed = true }
 }
 if (failed) process.exit(1)
 console.log('preflight: ok')

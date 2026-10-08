@@ -41,7 +41,8 @@ With `makerChecker.enabled`, `test-author` writes this file before the code
 
 ## Running it
 
-Run `tests.integration.healthCheck` first.
+Run `tests.integration.healthCheck` first, its output to `/dev/null`: only
+the exit code matters, and a stack's status command can print its keys.
 
 - **Passes** → run `<runCmd> <tests.integration.script>`. Red is red: the
   group is not green until it passes, the same as any other test.

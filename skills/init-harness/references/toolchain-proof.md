@@ -81,7 +81,8 @@ they need something — a database, a running server — which may simply not be
 there on this machine.
 
 **Check the services first.** When `tests.integration.healthCheck` is set,
-run it before the script. Non-zero → the services aren't up, which says
+run it before the script, its output to `/dev/null` (a stack's status
+command can print its keys). Non-zero → the services aren't up, which says
 nothing about the setup: don't run the script, and keep both
 `tests.integration` in the manifest and its link in `.husky/pre-push`
 (`references/git-hooks.md` step 4). The two must agree: every later step

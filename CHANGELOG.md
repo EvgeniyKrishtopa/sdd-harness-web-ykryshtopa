@@ -52,8 +52,12 @@ fallback, so a manifest not yet upgraded keeps working.
 - **`init-harness/references/local-stack-profile.md`** — integration test
   config whose global setup takes addresses from `envCommand`, never from
   `.env*`, and stops on a non-local address, and which resolves `@/…`
-  imports the way the main test config does; an environment-check template;
-  an email-flow scenario through Mailpit; the `@local-stack` tag.
+  imports the way the main test config does; an environment-check template
+  that prints a service's host, never its full address (an address can
+  carry a password or a token, and the output reaches the chat); an
+  email-flow scenario through Mailpit; the `@local-stack` tag. Whoever runs
+  `healthCheck` reads its exit code only, with the output discarded — a
+  stack's status command can print its keys.
 - **Replay before push** — `opsx-apply-git` §4 step 3a
   (`references/e2e-replay.md`). An ordinary run replays this change's
   tagged scenarios; the change's last run adds older scenarios whose pages

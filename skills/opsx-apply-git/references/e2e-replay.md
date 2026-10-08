@@ -118,7 +118,8 @@ push.
    ```
    `<exclude>` is `(<externalTag>)(?![\w-])` from the settings — never type
    `@external` in yourself. When `tests.integration.healthCheck` is missing
-   or fails, it is `(<externalTag>|@local-stack)(?![\w-])`, and the report
+   or fails (run it with its output to `/dev/null`: a stack's status command
+   can print its keys), it is `(<externalTag>|@local-stack)(?![\w-])`, and the report
    says how many scenarios were left out, with the reason
    `local services down`. This step never starts a server: the config's
    `webServer` does, or reuses a running one.

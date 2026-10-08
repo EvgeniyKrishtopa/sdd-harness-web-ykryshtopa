@@ -92,7 +92,7 @@ first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
 directory holds a recorded scenario file, run them first (0 tokens): `npx playwright test
 <scenariosDir> --grep-invert "(<externalTag>|@local-stack)(?![\w-])"` —
 `tests.e2e.externalTag` (default `@external`), the config may lack its own
-filter; drop `|@local-stack` when `tests.integration.healthCheck` passes.
+filter; drop `|@local-stack` when `tests.integration.healthCheck` passes (its exit code only, output to `/dev/null`).
 
 This is the only part of this gate that checks flows the *current* diff
 didn't touch: cart changing what it hands off to checkout needn't show up
