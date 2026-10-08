@@ -78,8 +78,9 @@ change as a whole — not any one of them in isolation:
    `@playwright/test` scenario under `tests.e2e.dir` (default
    `tests/web-qa-scenarios`), and every later
    Gate 3 run replays the accumulated set before its own click pass. Those
-   scenarios are also replayed before every push of a run that changed
-   source code, not only in the next browser pass.
+   scenarios are also replayed before push, not only in the next browser
+   pass: a change's own on each of its runs, and on its last run every
+   older one whose pages the change touched.
 
 **Tests come from a different actor than the code, when this project opts
 in.** With `makerChecker.enabled` in `.claude/harness.json`, a task group's

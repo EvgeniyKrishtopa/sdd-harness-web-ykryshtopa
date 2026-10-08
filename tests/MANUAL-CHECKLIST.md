@@ -594,10 +594,14 @@ One Next.js project with a local stack, start to finish, by a human:
    never values), and a printed CI template. Declining leaves the
    repository as it was; no CI file is ever written.
 2. A change with a UI flow passes `web-qa` and records a scenario.
-3. The next, unrelated run replays that scenario before push.
-4. A deliberate UI break blocks the push through `debug-loop`.
-5. A wrong service address in `.env.local` stops the replay before push as
-   an environment failure, with no `debug-loop`.
+3. A later change that touches that scenario's page replays it before the
+   push of its last run. A later change that doesn't touch the page leaves
+   it alone (only the change's own scenarios and the affected ones run).
+4. A deliberate break of that page, made in a new change, blocks that
+   change's push through `debug-loop`.
+5. With the environment check added (step 1), a wrong service address in
+   `.env.local` stops the replay before push as an environment failure,
+   with no `debug-loop`.
 
 ---
 
