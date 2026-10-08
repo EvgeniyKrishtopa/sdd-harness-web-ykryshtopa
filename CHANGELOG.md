@@ -67,9 +67,11 @@ fallback, so a manifest not yet upgraded keeps working.
   imports, a changed file that reaches no page (`tailwind.config.*`, a
   `public/` asset), or TypeScript 7 (no JS API). Docs, `*.d.ts`, tests and
   the harness's own folders decide nothing; an empty `// pages:` list runs
-  always, and so does a scenario that imports a changed helper.
-  Environment failures never reach `debug-loop`; `debug-loop` fixes get a
-  second `code-review` before push.
+  always, and so does a scenario that imports a changed helper. A run that
+  changed only `*.md` skips the replay; on a change's last run that is
+  judged on the whole change, so a docs-only last run still checks the
+  code earlier runs changed. Environment failures never reach
+  `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
 - **`web-qa` recording rules** (`references/recording-rules.md`) and a
   hydration marker helper (`references/hydration-helper.md`); every
   scenario carries `@<change-slug>` and a `// pages:` line.

@@ -74,11 +74,15 @@ change.
 2. `<dir>` missing or holds no scenario file → `no recorded scenarios`.
 3. An ordinary run and no file in `<dir>` carries `@<change-slug>` →
    `no scenarios for this change`. Never on the last run.
-4. Every path in `git diff --name-only <parent>..HEAD` ends in `.md` →
-   `docs only`. Do **not** use step 1's `trivialDiffPaths`: it holds `*.css`,
-   `*.svg` and `public/**`, and a style change breaks flows (a button under a
-   transparent layer, `display: none`). No line-count threshold either: one
-   line in a component can break a flow.
+4. Every path in the diff ends in `.md` → `docs only`. The diff is the
+   run's own, `git diff --name-only <parent>..HEAD`, except on the last run:
+   there it is the whole change's, from the same `merge-base` the script
+   above uses — earlier runs' code still needs the affected set, and the
+   last run is the only one that checks it. Do **not** use step 1's
+   `trivialDiffPaths`: it holds `*.css`, `*.svg` and `public/**`, and a
+   style change breaks flows (a button under a transparent layer,
+   `display: none`). No line-count threshold either: one line in a
+   component can break a flow.
 5. `web-qa` ran in this run and ended passed (`clean`, or `confirmed` with
    its fix loop ending green), and every path in
    `git diff --name-only <the group commit web-qa's pass went into>..HEAD`

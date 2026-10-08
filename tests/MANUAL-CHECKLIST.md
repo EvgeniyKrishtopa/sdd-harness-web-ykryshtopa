@@ -556,7 +556,9 @@ scenarios the last run picks is checked by `tests/affected-scenarios.sh`;
 these are the step's own decisions:
 
 14. A run that changed only `README.md`: the log has `e2e-replay`
-    `skipped` `docs only`, and Playwright never ran.
+    `skipped` `docs only`, and Playwright never ran. The same `README.md`
+    run as the last run of a change whose earlier runs changed code: not
+    skipped — the affected scenarios run.
 15. A run that changed only `globals.css`: the replay is **not** skipped.
 16. Break a recorded scenario with a component change: the run reaches
     `debug-loop` and does not push while the scenario is red.
