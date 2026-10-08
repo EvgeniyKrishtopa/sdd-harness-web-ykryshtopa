@@ -30,7 +30,9 @@ to a change that predates this step.
    plan reads the same on a project using either. This level is binding, not
    decorative: `code-reviewer`'s CR-13 later checks that the test closing a
    row actually reaches the level named here, not just that a matching test
-   exists at all.
+   exists at all. With `tests.integration` in `.claude/harness.json`, a
+   criterion that crosses a new boundary to a local-stack service is
+   **integration**, not unit.
 4. Every acceptance criterion gets at least one row. A criterion with no
    plan row is either a forgotten test or a criterion that shouldn't have
    been written — name it by identifier in the report, don't skip it

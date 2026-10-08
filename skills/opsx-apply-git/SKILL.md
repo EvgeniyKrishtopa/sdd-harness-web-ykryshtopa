@@ -140,11 +140,11 @@ case it is:
 2. For each isolated group in turn: weigh what to build against
    `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
    trigger against the task's own text and acceptance criteria, before writing
-   anything new — a named library or framework-specific API there means looking
-   it up via context7 first and marking the group's commit per that file. On
-   `makerChecker.enabled`, follow `references/maker-checker.md` first: this
-   group's tests are written by another actor, before its code. Then implement
-   its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A decision the
+   anything new (a named library or framework API → context7 first, per that
+   file). On `makerChecker.enabled`, follow `references/maker-checker.md`
+   first: this group's tests are written by another actor, before its code. A
+   new service boundary with `tests.integration` set → `references/integration-tests.md`.
+   Then implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A decision the
    agent can't confidently make means the classification was wrong — stop,
    leave it uncommitted, tell the user. One it CAN make confidently: read
    `references/decision-threshold.md` — it may still need recording (Proposed)
@@ -183,7 +183,7 @@ case it is:
 2. Announce why it's judgement-heavy. Weigh what to build against
    `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
    trigger the same way Case A's step 2 does, plus `references/maker-checker.md`
-   if the manifest opts in, before writing anything new. Then implement with the standard guardrails, but
+   and `references/integration-tests.md` when they apply, before writing anything new. Then implement with the standard guardrails, but
    pause and ask on every design decision or ambiguity. If the run ends
    (report and stop, §4 step 7) before that question is answered, write
    `<!-- blocked: <reason> -->` on the specific task line waiting on it and
