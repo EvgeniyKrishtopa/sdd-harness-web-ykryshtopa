@@ -581,6 +581,23 @@ else
   bad "$FINDING_LINE_REF does not exist"
 fi
 
+# web-qa's kind:"web-qa-flows" line (0.11.0) is the second kind-bearing
+# shape. It lives in a reference so the verdict-line loop above never sees
+# it, and harness-stats counts only kind-less lines as runs.
+FLOWS_LINE_REF="skills/web-qa/references/log-fields.md"
+FLOWS_LINE_EXPECTED="ts,change,kind,gate,recordedFlows,declinedFlows,failureKind,"
+flows_line="$(grep 'ts:\$ts' "$FLOWS_LINE_REF" 2>/dev/null | grep 'web-qa-flows' | head -1)"
+if [ -n "$flows_line" ] && [ "$(log_line_fields "$flows_line")" = "$FLOWS_LINE_EXPECTED" ]; then
+  ok "$FLOWS_LINE_REF's web-qa-flows line has the expected field set"
+else
+  bad "$FLOWS_LINE_REF's web-qa-flows line is missing or its field set is not \"$FLOWS_LINE_EXPECTED\""
+fi
+if grep -q 'select(.kind != "finding")' skills/harness-review/references/harness-stats.md; then
+  bad "harness-stats.md still counts every non-finding line as a run; web-qa-flows lines would inflate it"
+else
+  ok "harness-stats.md counts only kind-less lines as runs"
+fi
+
 # The Claude Code version floor is one number that has to be stated in three
 # places at once -- the reference that explains it, the SessionStart hook that
 # warns on it, and the README bullet a user reads before installing. Nothing

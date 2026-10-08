@@ -10,6 +10,12 @@ verdict held up — whether a CONFIRMED finding was actually fixed, or the
 human looked at it and moved on, or it never got resolved at all. Without
 that, a noisy gate and a trustworthy one look identical in the log.
 
+Two line shapes in the log carry a `kind` field and no `verdict`: this
+file's `kind:"finding"`, and `web-qa`'s `kind:"web-qa-flows"` (0.11.0 —
+`recordedFlows`, `declinedFlows`, `failureKind`; see
+`skills/web-qa/references/log-fields.md`). Anything that counts gate runs
+counts only lines without `kind`.
+
 ## When to write this
 
 At the point `SKILL.md` §4 step 6 already forms the run's summary — not
