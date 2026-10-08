@@ -5,9 +5,12 @@
 #
 # Builds a throwaway Next.js-shaped project: three pages (/login inside the
 # route group (auth), /profile, /cart), a component shared by two of them, a
-# component only /login imports, a CSS module, a dynamic route and one
-# Pages Router page, plus scenarios with and without a page list. Each case
-# commits one change and checks the scope and the picked files. A few cases
+# component only /login imports, a CSS module, a dynamic route, one Pages
+# Router page, a page no scenario lists, a module only middleware imports, a
+# route handler, a test with helpers only tests import, a scenario helper,
+# a Tailwind config and a public/ asset, plus scenarios with and without a
+# page list. Each case commits one change and checks the scope, the picked
+# files and, where it matters, the file that decided a full run. A few cases
 # reshape the project into a Vite app: those must run every scenario.
 #
 # The import map runs the project's own `typescript` package; this test
@@ -50,6 +53,8 @@ fi
 # put <path> <content> -- writes a file in the current repo.
 put() { mkdir -p "$repo/$(dirname "$1")"; printf '%s\n' "$2" > "$repo/$1"; }
 commit() { git -C "$repo" add -A && git -C "$repo" commit -qm "$1"; }
+# rebase_here -- the current commit becomes `base`, for cases that reshape the project first.
+rebase_here() { git -C "$repo" tag -f base >/dev/null; }
 
 # new_next_repo <name> -- the project above, committed and tagged `base`.
 new_next_repo() {
@@ -61,6 +66,8 @@ new_next_repo() {
   put package.json '{ "name": "demo", "private": true }'
   put next.config.js 'module.exports = {};'
   put tsconfig.json '{ "compilerOptions": { "jsx": "preserve", "moduleResolution": "bundler", "module": "esnext", "baseUrl": ".", "paths": { "@/*": ["./*"] } } }'
+  put tailwind.config.ts 'export default { content: [] };'
+  put public/logo.svg '<svg/>'
   put app/layout.tsx 'import "./globals.css"; export default function L({ children }) { return children; }'
   put app/globals.css 'body { margin: 0; }'
   put 'app/(auth)/login/page.tsx' 'import { LoginForm } from "@/components/LoginForm"; import { Button } from "@/components/Button"; export default function P() { return <LoginForm />; }'
@@ -68,15 +75,24 @@ new_next_repo() {
   put app/profile/layout.tsx 'export default function L({ children }) { return children; }'
   put 'app/(shop)/cart/page.tsx' 'import { Button } from "@/components/Button"; export default function P() { return <Button />; }'
   put 'app/items/[id]/page.tsx' 'import { format } from "@/lib/format"; export default function P() { return format(1); }'
+  put app/settings/page.tsx 'export default function P() { return null; }'
+  put app/api/session/route.ts 'import { readSession } from "@/lib/session"; export function GET() { return Response.json(readSession()); }'
   put pages/about.tsx 'export default function A() { return null; }'
   put components/LoginForm.tsx 'export function LoginForm() { return null; }'
   put components/Button.tsx 'export function Button() { return null; }'
+  put components/Button.test.tsx 'import { Button } from "./Button"; import { render } from "@/tests/utils/render"; render(Button);'
   put components/Avatar.tsx 'export function Avatar() { return null; }'
+  put tests/utils/render.ts 'import { wrap } from "./wrap"; export const render = (c: unknown) => wrap(c);'
+  put tests/utils/wrap.ts 'export const wrap = (c: unknown) => c;'
   put styles/card.module.css '.card { padding: 1px; }'
   put lib/format.ts 'export const format = (n: number) => String(n);'
   put lib/unused.ts 'export const unused = 1;'
-  put middleware.ts 'export function middleware() {}'
+  put lib/guard.ts 'export const guard = () => undefined;'
+  put lib/session.ts 'export const readSession = () => null;'
+  put middleware.ts 'import { guard } from "./lib/guard"; export function middleware() { return guard(); }'
+  put tests/web-qa-scenarios/support/hydration.ts 'export async function waitForHydration() {}'
   put tests/web-qa-scenarios/login.spec.ts "// pages: /login
+import { waitForHydration } from './support/hydration';
 test('sign in', { tag: ['@old-change'] }, async () => {});"
   put tests/web-qa-scenarios/profile.spec.ts "// pages: /profile
 test('profile', { tag: ['@old-change'] }, async () => {});"
@@ -102,20 +118,22 @@ test('a later change', { tag: ['@add-thing-v2'] }, async () => {});"
 # FW is the manifest's `framework` the call passes; unset means Next.js.
 run() { (cd "$repo" && node "$SCRIPT" --base base --dir tests/web-qa-scenarios --change add-thing --framework "${FW-next}"); }
 
-# field <json> <scope|scopeReason|files>
+# field <json> <scope|scopeReason|trigger|files>
 field() {
   node -e 'const o = JSON.parse(process.argv[1]); const v = o[process.argv[2]];
     console.log(Array.isArray(v) ? v.map((f) => f.split("/").pop().replace(/\.spec\.ts$/, "")).sort().join(" ") : v);' "$1" "$2"
 }
 
-# expect <case> <scope> <scopeReason> <space-separated scenario names, sorted>
+# expect <case> <scope> <scopeReason> <space-separated scenario names, sorted> [<trigger>]
 expect() {
   out="$(run)"
   scope="$(field "$out" scope)"; reason="$(field "$out" scopeReason)"; files="$(field "$out" files)"
-  if [ "$scope" = "$2" ] && [ "$reason" = "$3" ] && [ "$files" = "$4" ]; then
-    ok "$1 -> $2${3:+ ($3)}: $4"
+  trigger="$(field "$out" trigger)"
+  if [ "$scope" = "$2" ] && [ "$reason" = "$3" ] && [ "$files" = "$4" ] \
+     && { [ $# -lt 5 ] || [ "$trigger" = "$5" ]; }; then
+    ok "$1 -> $2${3:+ ($3${5:+: $5})}: $4"
   else
-    bad "$1: expected $2 '$3' [$4], got $scope '$reason' [$files]"
+    bad "$1: expected $2 '$3' [$4]${5:+ trigger '$5'}, got $scope '$reason' [$files] trigger '$trigger'"
   fi
 }
 
@@ -130,7 +148,7 @@ if $have_ts; then
 
   new_next_repo button
   put components/Button.tsx 'export function Button() { return "changed"; }'; commit button
-  expect "Button (shared by /login and /cart)" affected "" "cart current legacy login"
+  expect "Button (shared by /login and /cart, and a unit test)" affected "" "cart current legacy login"
 
   new_next_repo css-module
   put styles/card.module.css '.card { padding: 2px; }'; commit css
@@ -148,20 +166,63 @@ if $have_ts; then
   put pages/about.tsx 'export default function A() { return "about"; }'; commit about
   expect "Pages Router page" affected "" "about current legacy"
 
-  new_next_repo nothing
-  put lib/unused.ts 'export const unused = 2;'; commit unused
-  expect "a file no page imports" affected "" "$ALWAYS"
-
   new_next_repo scenario-edit
   put tests/web-qa-scenarios/cart.spec.ts "// pages: /cart
 test('cart, edited', { tag: ['@old-change'] }, async () => {});"; commit scenario
   expect "an edited scenario file runs itself" affected "" "cart current legacy"
 
+  new_next_repo scenario-helper
+  put tests/web-qa-scenarios/support/hydration.ts 'export async function waitForHydration() { return 1; }'; commit helper
+  expect "a scenario helper runs the scenarios that import it" affected "" "current legacy login"
+
+  new_next_repo tests-only
+  put components/Button.test.tsx 'import { Button } from "./Button"; import { render } from "@/tests/utils/render"; render(Button); render(Button);'
+  put tests/utils/wrap.ts 'export const wrap = (c: unknown) => [c];'; commit tests
+  expect "a unit test and a helper only tests import (through another helper)" affected "" "$ALWAYS"
+
+  new_next_repo docs-and-harness
+  put openspec/changes/add-thing/tasks.md '- [x] 1.1 done'
+  put .claude/harness-log.jsonl '{"gate":"x"}'
+  put docs/notes.md 'notes'
+  put types/global.d.ts 'declare const x: number;'
+  put components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit mixed
+  expect "docs, specs, the harness log and *.d.ts decide nothing" affected "" "current legacy login"
+
+  new_next_repo deleted
+  git -C "$repo" rm -q components/Avatar.tsx
+  put app/profile/page.tsx 'import s from "@/styles/card.module.css"; export default function P() { return null; }'; commit deleted
+  expect "a deleted component, its page changed with it" affected "" "current legacy profile"
+
+  new_next_repo empty-pages
+  put tests/web-qa-scenarios/about.spec.ts "// pages:
+test('about', { tag: ['@old-change'] }, async () => {});"; commit empty-pages; rebase_here
+  put app/settings/page.tsx 'export default function P() { return "settings"; }'; commit settings
+  expect "an empty // pages: line counts as no list" affected "" "about current legacy"
+
   new_next_repo empty
-  rm "$repo/tests/web-qa-scenarios/legacy.spec.ts" "$repo/tests/web-qa-scenarios/current.spec.ts"; commit trim
-  git -C "$repo" tag -f base >/dev/null
-  put lib/unused.ts 'export const unused = 3;'; commit unused
-  expect "nothing touched, nothing of this change" affected "" ""
+  rm "$repo/tests/web-qa-scenarios/legacy.spec.ts" "$repo/tests/web-qa-scenarios/current.spec.ts"; commit trim; rebase_here
+  put app/settings/page.tsx 'export default function P() { return "settings"; }'; commit settings
+  expect "a page no scenario lists, nothing of this change" affected "" ""
+
+  new_next_repo unused
+  put lib/unused.ts 'export const unused = 2;'; commit unused
+  expect "a file nothing imports" full "unmapped file changed" "$ALL" "lib/unused.ts"
+
+  new_next_repo tailwind
+  put tailwind.config.ts 'export default { content: ["./app/**/*.tsx"] };'; commit tailwind
+  expect "tailwind.config.ts" full "unmapped file changed" "$ALL" "tailwind.config.ts"
+
+  new_next_repo public-asset
+  put public/logo.svg '<svg><circle r="1"/></svg>'; commit logo
+  expect "a public/ asset" full "unmapped file changed" "$ALL" "public/logo.svg"
+
+  new_next_repo middleware-import
+  put lib/guard.ts 'export const guard = () => Response.redirect("/nowhere");'; commit guard
+  expect "a module only middleware.ts imports" full "shared file changed" "$ALL" "lib/guard.ts -> middleware.ts"
+
+  new_next_repo route-handler
+  put lib/session.ts 'export const readSession = () => ({ user: null });'; commit session
+  expect "a module only a route handler imports" full "route handler changed" "$ALL" "lib/session.ts -> app/api/session/route.ts"
 else
   skip "import-map cases (no typescript@6.0.3)"
 fi
@@ -169,11 +230,11 @@ fi
 echo "-- run everything --"
 new_next_repo globals
 put app/globals.css 'body { margin: 1px; }'; commit globals
-expect "globals.css" full "shared file changed" "$ALL"
+expect "globals.css" full "shared file changed" "$ALL" "app/globals.css"
 
 new_next_repo middleware
 put middleware.ts 'export function middleware() { return 1; }'; commit mw
-expect "middleware.ts" full "shared file changed" "$ALL"
+expect "middleware.ts" full "shared file changed" "$ALL" "middleware.ts"
 
 new_next_repo root-layout
 put app/layout.tsx 'export default function L({ children }) { return <body>{children}</body>; }'; commit rl
@@ -191,8 +252,7 @@ put components/LoginForm.tsx 'export function LoginForm() { return 1; }'; commit
 expect "typescript 7 (no preProcessFile)" full "import map failed" "$ALL"
 
 new_next_repo next-no-routes no-ts
-git -C "$repo" rm -rq app pages next.config.js && commit "no route folders"
-git -C "$repo" tag -f base >/dev/null
+git -C "$repo" rm -rq app pages next.config.js && commit "no route folders"; rebase_here
 put src/main.ts 'export const x = 1;'; commit main
 expect "Next.js manifest, no app/ or pages/" full "no route structure" "$ALL"
 
@@ -200,8 +260,7 @@ new_next_repo vite-pages
 git -C "$repo" rm -rq app pages next.config.js && commit "now a Vite app"
 put vite.config.ts 'export default {};'
 put src/pages/LoginPage.tsx 'import { LoginForm } from "../components/LoginForm"; export function LoginPage() { return LoginForm; }'
-put src/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "src/pages"
-git -C "$repo" tag -f base >/dev/null
+put src/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "src/pages"; rebase_here
 put src/components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit l
 FW=vite
 expect "Vite app with src/pages/" full "no route structure" "$ALL"
@@ -211,8 +270,7 @@ git -C "$repo" rm -rq app pages next.config.js && commit "now React Router 7"
 put vite.config.ts 'export default {};'
 put app/root.tsx 'export default function Root() { return null; }'
 put app/routes/login.tsx 'import { LoginForm } from "../components/LoginForm"; export default function Login() { return LoginForm; }'
-put app/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "app/routes"
-git -C "$repo" tag -f base >/dev/null
+put app/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "app/routes"; rebase_here
 put app/components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit l
 expect "React Router 7 app with app/routes/" full "no route structure" "$ALL"
 

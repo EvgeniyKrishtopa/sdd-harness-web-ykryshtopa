@@ -56,11 +56,17 @@ fallback, so a manifest not yet upgraded keeps working.
   tagged scenarios; the change's last run adds older scenarios whose pages
   the whole change touched, picked by
   `opsx-apply-git/scripts/affected-scenarios.mjs` from the project's import
-  graph. Shared files, TypeScript 7 (no JS API), no route structure, or a
-  project that isn't Next.js by the manifest's `framework` (a Vite app's
-  `src/pages/` or `app/` folder says nothing about its routes) → all
-  scenarios, with the reason logged. Environment failures never reach
-  `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
+  graph. Whenever that would be a guess, all scenarios run, with the reason
+  logged and the deciding file named in the report: a project that isn't
+  Next.js by the manifest's `framework` (a Vite app's `src/pages/` or
+  `app/` folder says nothing about its routes), a shared file or a file one
+  imports (a module middleware imports), a route handler or a file one
+  imports, a changed file that reaches no page (`tailwind.config.*`, a
+  `public/` asset), or TypeScript 7 (no JS API). Docs, `*.d.ts`, tests and
+  the harness's own folders decide nothing; an empty `// pages:` list runs
+  always, and so does a scenario that imports a changed helper.
+  Environment failures never reach `debug-loop`; `debug-loop` fixes get a
+  second `code-review` before push.
 - **`web-qa` recording rules** (`references/recording-rules.md`) and a
   hydration marker helper (`references/hydration-helper.md`); every
   scenario carries `@<change-slug>` and a `// pages:` line.

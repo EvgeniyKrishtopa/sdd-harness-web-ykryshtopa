@@ -40,14 +40,27 @@ the script below.
     --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>" \
     --framework "$(jq -r '.framework // empty' .claude/harness.json)"
   ```
-  It prints `{scope, scopeReason, files}`. `scope` `affected` → run `files`.
-  `scope` `full` → run the whole `<dir>`; `scopeReason` says why
-  (`shared file changed`, `import map failed`, `no route structure` — also
-  for any project that isn't Next.js by `framework`: a Vite app keeps its
-  routes in code, even with a `src/pages/` or `app/` folder). A
-  scenario without a `// pages:` list is always in `files`. TypeScript 7
-  dropped the JS API the script uses, so such a project always gets
-  `import map failed` — that is the safe direction, not an error.
+  It prints `{scope, scopeReason, trigger, files}`. `scope` `affected` →
+  run `files`. `scope` `full` → run the whole `<dir>`; the report names
+  `scopeReason` and `trigger`, the changed file that decided it
+  (`<file> -> <the file it reaches>` when that is an import away). When a
+  guess would be needed, the script runs everything:
+  - `no route structure` — not Next.js (a Vite app keeps its routes in
+    code, even with a `src/pages/` or `app/` folder), or no `app/`/`pages/`;
+  - `shared file changed` — a file every page depends on (root layout,
+    middleware, `next.config.*`, a global stylesheet, `package.json`, a
+    lockfile), or a file one of them imports;
+  - `route handler changed` — a `route.*` handler or `pages/api/**`, or a
+    file one imports: pages call it by URL, which no import shows;
+  - `unmapped file changed` — a changed file that reaches no page
+    (`tailwind.config.*`, a `public/` asset, a file nothing imports);
+  - `import map failed` — no `typescript` package, or TypeScript 7, which
+    dropped the JS API the script uses. The safe direction, not an error.
+
+  Docs, `*.d.ts`, tests and files only tests import, and `.claude/`,
+  `.husky/`, `.github/`, `openspec/` decide nothing. A scenario without a
+  `// pages:` list, or with an empty one, is always in `files`; so is one
+  that imports a changed file, such as a shared helper.
 
 On early runs this change has no scenarios of its own yet (`web-qa` records
 on the last group), so the ordinary run is skipped; old flows those runs

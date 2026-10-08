@@ -69,7 +69,7 @@ The file's first line names the paths the flow actually opened, from
 ```
 
 The replay before push uses this list to decide whether a change touched
-the scenario. A scenario without it is always run.
+the scenario. A scenario without it, or with an empty one, is always run.
 
 ## Suspense: a doubled form is an app defect
 
