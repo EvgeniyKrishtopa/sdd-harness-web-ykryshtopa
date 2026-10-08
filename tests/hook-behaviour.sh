@@ -448,6 +448,89 @@ verdict "no tsconfig.json -> exit 0" "EXIT=0" "$out"
 mv tsconfig.json.off tsconfig.json
 echo
 
+echo "== .husky/pre-push template (init-harness git-hooks.md step 4) =="
+# The template lives in a Markdown reference, so nothing ran it until a real
+# project did. Extract both blocks verbatim, fill the placeholders with fake
+# commands that leave a trace, and run the hook the way Husky does: `sh -e`,
+# from the repo root, with git's ref lines on stdin.
+GH="$ROOT/skills/init-harness/references/git-hooks.md"
+PP="$WORK/prepush"; mkdir -p "$PP"
+extract() { awk -v m="$1" '$0 ~ m {f=1} f && /^   ```/ {exit} f {sub(/^   /, ""); print}' "$GH"; }
+extract '^   # pre-push: a push that changes only' > "$PP/skip.sh"
+extract '^   # pre-push: integration tests' > "$PP/int.sh"
+verdict "skip block extracted" "only_log=yes" "$(cat "$PP/skip.sh")"
+verdict "integration block extracted" "write_note" "$(cat "$PP/int.sh")"
+fill() { sed -e 's|<pm> test:coverage|sh ./cov.sh|' -e 's|<pm> <integration script>|sh ./integ.sh|' \
+  -e 's|<healthCheck>|sh ./hc.sh|' -e "s|<requires>|svc start|" -e 's|<audit command>|sh ./audit.sh|'; }
+{ cat "$PP/skip.sh"; echo '<pm> test:coverage && <audit command>'; } | fill > "$PP/hook-plain.sh"
+cat "$PP/skip.sh" "$PP/int.sh" | fill > "$PP/hook-int.sh"
+awk '/^if ! <healthCheck>/ {s=1} !s {print} s && /^fi$/ {s=0}' "$PP/int.sh" | { cat "$PP/skip.sh"; cat; } | fill > "$PP/hook-nohc.sh"
+
+PR="$WORK/prepush-repo"; mkdir -p "$PR/.claude"
+git -C "$PR" init -q; git -C "$PR" config user.email t@example.com; git -C "$PR" config user.name t
+for f in cov hc integ audit; do printf 'echo %s >> trace\nexit 0\n' "$f" > "$PR/$f.sh"; done
+printf 'trace\n.claude/.last-pre-push.json\n' > "$PR/.gitignore"
+echo a > "$PR/app.ts"; git -C "$PR" add -A; git -C "$PR" commit -qm base
+base=$(git -C "$PR" rev-parse HEAD)
+echo '{"gate":"x"}' > "$PR/.claude/harness-log.jsonl"; git -C "$PR" add -A; git -C "$PR" commit -qm log
+logonly=$(git -C "$PR" rev-parse HEAD)
+echo b > "$PR/app.ts"; git -C "$PR" add -A; git -C "$PR" commit -qm code
+code=$(git -C "$PR" rev-parse HEAD)
+zero=0000000000000000000000000000000000000000
+
+# push <hook> <local sha> <remote sha> -- runs it, prints output + trace + note + exit code.
+push() {
+  rm -f "$PR/trace" "$PR/.claude/.last-pre-push.json"
+  out=$(cd "$PR" && printf 'refs/heads/b %s refs/heads/b %s\n' "$2" "$3" | sh -e "$PP/$1" origin url 2>&1; echo "EXIT=$?")
+  printf '%s\nTRACE=%s\nNOTE=%s\n' "$out" "$({ tr '\n' ' ' < "$PR/trace"; } 2>/dev/null)" "$(cat "$PR/.claude/.last-pre-push.json" 2>/dev/null)"
+}
+
+r=$(push hook-int.sh "$logonly" "$base")
+verdict "only the log changed -> exit 0" "EXIT=0" "$r"
+verdict "only the log changed -> says so in one line" "only the harness log changed" "$r"
+verdict "only the log changed -> no test ran" "TRACE=$" "$r"
+verdict "only the log changed -> no note" "NOTE=$" "$r"
+r=$(push hook-int.sh "$code" "$logonly")
+verdict "code changed -> every link ran, in order" "TRACE=cov hc integ audit $" "$r"
+verdict "code changed -> note says pass" '"integration":"pass"' "$r"
+verdict "note is valid JSON with a ts" "true" "$(cat "$PR/.claude/.last-pre-push.json" | jq -c 'has("ts") and has("durationMs")')"
+r=$(push hook-int.sh "$logonly" "$zero")
+verdict "new branch, even log-only -> tested" "TRACE=cov hc integ audit" "$r"
+r=$(push hook-int.sh "$logonly" 1111111111111111111111111111111111111111)
+verdict "remote commit unknown here -> tested" "TRACE=cov hc integ audit" "$r"
+r=$(push hook-int.sh "$zero" "$base")
+verdict "branch deletion only -> not tested" "TRACE=$" "$r"
+
+printf 'echo hc >> trace\nexit 1\n' > "$PR/hc.sh"
+r=$(push hook-int.sh "$code" "$base")
+verdict "services down -> push blocked" "EXIT=1" "$r"
+verdict "services down -> one line naming the start command" "start them with: svc start" "$r"
+verdict_absent "services down -> integration tests not run" "integ" "$(printf '%s' "$r" | grep '^TRACE=')"
+verdict "services down -> note says services-down" '"integration":"services-down"' "$r"
+printf 'echo hc >> trace\nexit 0\n' > "$PR/hc.sh"
+
+printf 'echo integ >> trace\nexit 1\n' > "$PR/integ.sh"
+r=$(push hook-int.sh "$code" "$base")
+verdict "integration fails -> push blocked" "EXIT=1" "$r"
+verdict "integration fails -> note says fail" '"integration":"fail"' "$r"
+verdict_absent "integration fails -> audit not reached" "audit" "$(printf '%s' "$r" | grep '^TRACE=')"
+printf 'echo integ >> trace\nexit 0\n' > "$PR/integ.sh"
+
+printf 'echo cov >> trace\nexit 1\n' > "$PR/cov.sh"
+r=$(push hook-int.sh "$code" "$base")
+verdict "coverage fails -> note says not-reached" '"integration":"not-reached"' "$r"
+verdict "coverage fails -> services not even checked" "TRACE=cov $" "$r"
+printf 'echo cov >> trace\nexit 0\n' > "$PR/cov.sh"
+
+r=$(push hook-nohc.sh "$code" "$base")
+verdict "no healthCheck -> integration runs unchecked" "TRACE=cov integ audit $" "$r"
+r=$(push hook-plain.sh "$code" "$base")
+verdict "no integration script -> coverage and audit only" "TRACE=cov audit $" "$r"
+verdict "no integration script -> no note" "NOTE=$" "$r"
+r=$(push hook-plain.sh "$logonly" "$base")
+verdict "no integration script, log-only -> skipped too" "TRACE=$" "$r"
+echo
+
 echo "== Summary =="
 printf '  %d passed, %d failed\n' "$pass" "$fail"
 if [ "$fail" -gt 0 ]; then

@@ -30,7 +30,7 @@ live service is not a review.
 
 ## What you are NOT here to do
 
-`code-reviewer` already ran on this same diff, under codes `CR-01`…`CR-13`:
+`code-reviewer` already ran on this same diff, under codes `CR-01`…`CR-14`:
 correctness, local reuse, simplification, efficiency, observability, effect
 cleanup, unstable references, the server/client boundary, and test coverage
 and level. Do not re-raise those. Two boundaries worth naming, because they

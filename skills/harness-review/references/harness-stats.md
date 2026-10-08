@@ -1,7 +1,8 @@
 # `harness-stats` — reading the log nobody was reading
 
-`.claude/harness-log.jsonl` (written by all seven gates and both skip-forms
-in `opsx-apply-git`, see each gate's own `## Log` section and #U13) is
+`.claude/harness-log.jsonl` (written by all seven gates, both skip-forms
+in `opsx-apply-git`, and its two test steps — `e2e-replay` and
+`integration`, 0.11.0 — see each one's own log section and #U13) is
 appended to on every run. Until this file existed, nothing ever read it
 back. This is that read path: one deterministic snippet, callable on demand
 or as part of the monthly harness-diet ritual (`README.md`'s
@@ -48,8 +49,10 @@ uses for JSON parsing.
 ## What it computes
 
 1. **Runs and verdict distribution per gate** — how many times each of the
-   seven gates ran, broken down by verdict (`clean`/`plausible`/`confirmed`/
-   `skipped`).
+   seven gates and the two test steps (`e2e-replay`, `integration`) ran,
+   broken down by verdict (`clean`/`plausible`/`confirmed`/`skipped`). The
+   snippet groups by the `gate` field, so a new step's lines show up on
+   their own line without any change here.
 2. **Skipped fraction per gate** — the whole reason `opsx-apply-git`'s
    0-token prefilters (#35 trivial-diff, #36 Gate 6 precondition) exist is
    to skip delegations that would come back clean anyway. This is the
@@ -87,9 +90,14 @@ uses for JSON parsing.
    out of both sum and median. `n=` is how many runs were counted, `null=`
    how many ran but have no figure — their `tokensNote` says why. A `null=`
    above zero means the sum understates the gate's real cost.
-9. **`skipReason` breakdown per gate** — for every skipped run, which of the
-   five closed-list reasons it was (#U17 point 6, plus `no risk signals`
-   on the `deep-review` line, added 0.5.0). Before 0.10.2 the reasons were
+9. **`skipReason` breakdown per gate** — for every skipped run, which
+   closed-list reason it was (#U17 point 6). The gates' five: `UI not
+   touched`, `docs only`, `small change`, `harness config unchanged`, `no
+   risk signals` (`deep-review`, added 0.5.0). `e2e-replay`'s six (0.11.0):
+   `e2e not configured`, `no recorded scenarios`, `no scenarios for this
+   change`, `no affected scenarios`, `docs only`, `replayed by web-qa`.
+   `integration`'s three: `integration not configured`, `no fresh hook
+   result`, `earlier link failed`. Before 0.10.2 the reasons were
    logged in Russian, so a log spanning that upgrade shows each reason as
    two separate buckets until the old lines age out of the window. The point of this over
    the plain `skippedPct` in item 2 above: a headline skip percentage reads
@@ -103,6 +111,14 @@ uses for JSON parsing.
     without it, "gate said confirmed" and "gate was right" are
     indistinguishable. These lines carry no `verdict`/`durationMs`, so they
     are excluded from every metric above (1-9) and counted here instead.
+11. **Environment failures among `confirmed`** (0.11.0) — for `e2e-replay`,
+    `integration` and `web-qa`: how many `confirmed` runs had `failureKind`
+    `environment` (the check stopped before the code was ever tried). For
+    `e2e-replay` and `integration` the field is on the verdict line; for
+    `web-qa` it is on the `web-qa-flows` line. This is the number that says
+    whether the environment check is earning its place: a high share means
+    it keeps catching what `debug-loop` would otherwise have chased in the
+    code.
 
 ## Empty or missing log
 
@@ -197,6 +213,14 @@ if command -v jq >/dev/null 2>&1; then
        ) | join("\n"))
      end),
     "",
+    (map(select(.kind == "web-qa-flows" and .failureKind == "environment")) | length) as $wqEnv |
+    (["e2e-replay", "integration", "web-qa"] | map(. as $g |
+      ($runs | map(select(.gate == $g and .verdict == "confirmed")) | length) as $conf |
+      (if $g == "web-qa" then $wqEnv
+       else ($runs | map(select(.gate == $g and .verdict == "confirmed" and .failureKind == "environment")) | length) end) as $env |
+      if $conf == 0 then "  environment failures \($g): no confirmed runs"
+      else "  environment failures \($g): \($env) of \($conf) confirmed" end) | join("\n")),
+    "",
     (if ($since // "") == "" then "  Rebuild Cost: no Clock-in found in PROGRESS.md — skipping"
      else
        ([$runs[] | select(.ts > $since and .verdict != "confirmed" and .verdict != "skipped")] | sort_by(.ts) | .[0].ts // "") as $firstPass |
@@ -225,6 +249,10 @@ with open(log_path) as f:
 runs = [r for r in all_rows if "kind" not in r]
 findings = [r for r in all_rows if r.get("kind") == "finding"]
 
+def num(x):
+    # Print 12500.0 as 12500, the way the jq and node branches do.
+    return int(x) if float(x).is_integer() else x
+
 by_gate = defaultdict(list)
 for r in runs:
     by_gate[r.get("gate", "?")].append(r)
@@ -234,7 +262,7 @@ for gate in sorted(by_gate):
     for e in entries:
         verdicts[e.get("verdict", "?")] += 1
     verdict_str = ", ".join(f"{k}={v}" for k, v in sorted(verdicts.items()))
-    skipped_pct = round(100 * verdicts.get("skipped", 0) / len(entries), 1)
+    skipped_pct = num(round(100 * verdicts.get("skipped", 0) / len(entries), 1))
     skip_reasons = defaultdict(int)
     for e in entries:
         if e.get("verdict") == "skipped" and e.get("skipReason"):
@@ -246,8 +274,8 @@ for gate in sorted(by_gate):
               if isinstance(e.get("tokensTotal"), (int, float)) and not isinstance(e.get("tokensTotal"), bool)]
     tok_null = len(ran) - len(tokens)
     print(f"  {gate}: {len(entries)} runs ({verdict_str}) — {skipped_pct}% skipped{skip_str}, "
-          f"durationMs sum={sum(durations)} median={statistics.median(durations) if durations else 0}, "
-          f"tokensTotal sum={sum(tokens)} median={statistics.median(tokens) if tokens else 0} "
+          f"durationMs sum={num(sum(durations))} median={num(statistics.median(durations)) if durations else 0}, "
+          f"tokensTotal sum={num(sum(tokens))} median={num(statistics.median(tokens)) if tokens else 0} "
           f"(n={len(tokens)}, null={tok_null})")
 
 print()
@@ -266,7 +294,7 @@ rated = [r for r in runs if r.get("reviewConfidence") in ("low", "high")]
 if not rated:
     print("  reviewConfidence: no rated reviews yet")
 else:
-    low_pct = round(100 * sum(1 for r in rated if r["reviewConfidence"] == "low") / len(rated), 1)
+    low_pct = num(round(100 * sum(1 for r in rated if r["reviewConfidence"] == "low") / len(rated), 1))
     print(f"  reviewConfidence: {low_pct}% low ({len(rated)} rated)")
 
 print()
@@ -283,6 +311,16 @@ else:
             outcomes[e.get("outcome", "?")] += 1
         outcome_str = ", ".join(f"{k}={v}" for k, v in sorted(outcomes.items()))
         print(f"  findings {gate}: {outcome_str} ({len(entries)} total)")
+
+print()
+wq_env = sum(1 for r in all_rows if r.get("kind") == "web-qa-flows" and r.get("failureKind") == "environment")
+for gate in ("e2e-replay", "integration", "web-qa"):
+    conf = [r for r in runs if r.get("gate") == gate and r.get("verdict") == "confirmed"]
+    env = wq_env if gate == "web-qa" else sum(1 for r in conf if r.get("failureKind") == "environment")
+    if not conf:
+        print(f"  environment failures {gate}: no confirmed runs")
+    else:
+        print(f"  environment failures {gate}: {env} of {len(conf)} confirmed")
 
 print()
 if not since:
@@ -367,6 +405,16 @@ if (findings.length === 0) {
     const outcomeStr = Object.keys(outcomes).sort().map(k => `${k}=${outcomes[k]}`).join(', ');
     console.log(`  findings ${gate}: ${outcomeStr} (${entries.length} total)`);
   }
+}
+
+console.log();
+const wqEnv = allRows.filter(r => r.kind === 'web-qa-flows' && r.failureKind === 'environment').length;
+for (const gate of ['e2e-replay', 'integration', 'web-qa']) {
+  const conf = runs.filter(r => r.gate === gate && r.verdict === 'confirmed');
+  const env = gate === 'web-qa' ? wqEnv : conf.filter(r => r.failureKind === 'environment').length;
+  console.log(conf.length === 0
+    ? `  environment failures ${gate}: no confirmed runs`
+    : `  environment failures ${gate}: ${env} of ${conf.length} confirmed`);
 }
 
 console.log();

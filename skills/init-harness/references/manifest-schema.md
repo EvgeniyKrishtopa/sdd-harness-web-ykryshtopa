@@ -123,6 +123,10 @@ Merge into the file Step 2e already started (it may already contain just the
     Optional; absent → no email-flow scenario is offered and
     `web-qa-manual-tester` asks the human for an email's link.
 
+  Integration tests only ever talk to this local stack, never to a cloud
+  service: the template takes addresses from `envCommand`, not from `.env*`,
+  and stops on any address that isn't local.
+
   These four describe the project's local stack; the plugin knows none by
   name. The values in the example are Supabase CLI's, one of the stacks
   `references/test-layers.md` proposes values for.

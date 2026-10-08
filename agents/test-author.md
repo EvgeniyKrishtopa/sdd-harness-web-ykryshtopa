@@ -53,14 +53,19 @@ stop.
    gets a test that actually crosses the boundary it names; stubbing that
    boundary out turns it into a unit test and the row stays unclosed. This
    is the same bar `CR-13` applies afterwards, so a test that fails it here
-   fails it there too.
+   fails it there too. When you were handed `integration-tests.md`, a row
+   for a new service boundary is closed by a `*.integration.test.ts` on the
+   lowest function that calls the stack's client, per that file — not by a
+   unit test with the client stubbed, and not on its callers.
 3. **Assert the observable result the Then clause states**, not that the
    call didn't throw. Output values, state changes, calls with arguments.
 4. **Cover the criteria, then the edges they imply** — the empty case, the
    boundary value, the error branch the criterion mentions. Not every
    branch of an implementation you cannot see.
 5. **Run the tests before you finish.** They must fail, and they must fail
-   for the right reason: the behaviour is missing. A test that fails
+   for the right reason: the behaviour is missing. An integration test whose
+   `healthCheck` fails is the one exception: keep it, and report it as not
+   verified, naming `requires`. A test that fails
    because it imports a module path that will never exist, or because of a
    typo, is a broken test, not a red one. Fix those and re-run.
 6. **Touch only test files.** No production code, no configuration, no

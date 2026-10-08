@@ -16,17 +16,19 @@ file's `kind:"finding"`, and `web-qa`'s `kind:"web-qa-flows"` (0.11.0 —
 `skills/web-qa/references/log-fields.md`). Anything that counts gate runs
 counts only lines without `kind`.
 
-Besides the nine verdict lines above, the replay of recorded scenarios before push (§4
-step 3a, `references/e2e-replay.md`) writes a verdict line of its own,
-`gate:"e2e-replay"`, with three more fields: `scope`, `scopeReason`,
-`scenarios`. It is a test step, not a numbered gate: its skip reasons are
-its own, not part of the list in "Checks" below, and the Checks part stays
-six lines.
+Besides the nine verdict lines above, two test steps write verdict lines
+of their own: the replay of recorded scenarios before push (§4 step 3a,
+`references/e2e-replay.md`), `gate:"e2e-replay"`, with three more fields —
+`scope`, `scopeReason`, `scenarios`; and the integration tests in
+`.husky/pre-push` (§4 step 4, `references/pre-push-note.md`),
+`gate:"integration"`. Neither is a numbered gate: their skip reasons are
+their own, not part of the list in "Checks" below, and the Checks part
+stays six lines.
 
-**`failureKind`** (0.11.0) — on `e2e-replay`'s verdict line: `app` when
+**`failureKind`** (0.11.0) — on `e2e-replay`'s and `integration`'s verdict lines: `app` when
 the code failed, `environment` when a check stopped before the code was
 ever tried (the environment check, `testDir` not covering the scenarios, no
-server to connect to). Set only when the verdict is `confirmed`, empty
+server to connect to, local services not running). Set only when the verdict is `confirmed`, empty
 otherwise. `web-qa`'s flows line carries the same field, with `environment`
 as its only value. An `environment` failure
 never goes through `debug-loop`, so its `fixIterations` is `0`.

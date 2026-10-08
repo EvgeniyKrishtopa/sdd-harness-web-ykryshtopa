@@ -39,29 +39,88 @@ of once per commit.
    only the files this commit actually touches — ask the user for the exact
    glob/command if the project's lint tooling isn't obvious from
    `package.json`.
-4. Write `.husky/pre-push` with the full coverage run, then a blocking
-   dependency-vulnerability audit, chained the same way as `pre-commit`
-   above so a high-or-above severity finding blocks the push:
+4. Write `.husky/pre-push` in two parts. **First, always**, the block that
+   lets a push carrying nothing but the harness log through untested —
+   `opsx-apply-git` §4 pushes once more after committing
+   `.claude/harness-log.jsonl`, and re-running every test for a file no test
+   reads doubles the wait for nothing. git hands the hook one line per
+   pushed ref on stdin (Husky passes stdin through):
+   ```sh
+   # pre-push: a push that changes only .claude/harness-log.jsonl is not tested
+   only_log=yes
+   while read -r _ local_sha _ remote_sha; do
+     case "$local_sha" in *[!0]*) ;; *) continue ;; esac
+     case "$remote_sha" in *[!0]*) ;; *) only_log=no; break ;; esac
+     changed=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null) || { only_log=no; break; }
+     if [ -n "$(printf '%s\n' "$changed" | grep -vxF .claude/harness-log.jsonl)" ]; then only_log=no; break; fi
+   done
+   if [ "$only_log" = yes ]; then
+     echo "pre-push: only the harness log changed — tests skipped"
+     exit 0
+   fi
    ```
+   A new branch (nothing on the remote yet) and a remote commit this clone
+   doesn't have are always tested. A deleted branch is ignored.
+
+   **Then** the full coverage run and a blocking dependency-vulnerability
+   audit, chained so a high-or-above severity finding blocks the push:
+   ```sh
    <pm> test:coverage && <audit command>
    ```
    **If — and only if — the manifest names an integration script**
    (`tests.integration.script`, or the pre-0.11.0 `scripts.testIntegration`
    on a manifest not yet upgraded; optional, see
-   `references/manifest-schema.md`), chain that script as a middle link:
+   `references/manifest-schema.md`), the second part is this instead:
+   ```sh
+   # pre-push: integration tests, with a note for opsx-apply-git's log
+   note=.claude/.last-pre-push.json
+   started=$(date +%s)
+   outcome=not-reached
+   int_started=
+   write_note() {
+     dur=0
+     [ -n "$int_started" ] && dur=$(( ($(date +%s) - int_started) * 1000 ))
+     printf '{"ts":%s,"integration":"%s","durationMs":%s}\n' "$started" "$outcome" "$dur" > "$note" 2>/dev/null || true
+   }
+   trap write_note EXIT
+   trap 'exit 130' INT TERM
+   <pm> test:coverage || exit 1
+   if ! <healthCheck> >/dev/null 2>&1; then
+     outcome=services-down
+     echo 'pre-push: local services are not running — start them with: <requires>' >&2
+     exit 1
+   fi
+   outcome=fail
+   int_started=$(date +%s)
+   <pm> <integration script> || exit 1
+   outcome=pass
+   <audit command>
    ```
-   <pm> test:coverage && <pm> <integration script> && <audit command>
-   ```
-   Order matters and this is the order: coverage, integration, audit. The
-   integration run is the slow one — a project puts its tests behind a
-   second script precisely because they need a database or a running
-   server — so the faster check gets to fail first, and the audit stays
-   last where it already was. No integration script in the manifest
-   (the common case) → write the two-link chain above and nothing else;
-   this whole paragraph doesn't apply. There is no "skip the integration
-   run" flag: a project that finds the push too slow leaves the key unset,
-   rather than carrying a switch that gets turned off once and never back
-   on.
+   `<healthCheck>` is `tests.integration.healthCheck` as written;
+   `<requires>` is `tests.integration.requires` with each `'` written as
+   `'\''`. No `healthCheck` → leave out the whole `if … fi` block. The
+   message is exactly one line: the human should see which command to run,
+   not a stack.
+
+   Order matters and this is the order: coverage, the services check,
+   integration, audit. The integration run is the slow one — a project puts
+   its tests behind a second script precisely because they need a database
+   or a running server — so the faster check gets to fail first, and the
+   services are checked right before the link that needs them.
+
+   The note (`.claude/.last-pre-push.json`) is written on every exit — a
+   passed run, a failed link, Ctrl+C — so `opsx-apply-git` §4 can log how
+   the integration tests ended (`pass`, `fail`, `services-down`, or
+   `not-reached` when coverage failed first) without the hook touching the
+   tracked log, which would leave the working tree dirty after every push.
+   Add `.claude/.last-pre-push.json` to the project's `.gitignore` (append
+   the line if missing). A push the first block lets through writes no note.
+
+   No integration script in the manifest (the common case) → the two-link
+   chain and no note; the integration paragraphs don't apply. There is no
+   "skip the integration run" flag: a project that finds the push too slow
+   leaves the key unset, rather than carrying a switch that gets turned off
+   once and never back on.
    The audit command's spelling depends on the detected package manager —
    and, for yarn, on its major version, since the command changed between
    yarn 1 (Classic) and yarn 2+ (Berry):

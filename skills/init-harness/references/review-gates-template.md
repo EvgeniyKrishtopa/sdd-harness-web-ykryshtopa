@@ -61,7 +61,11 @@ change as a whole — not any one of them in isolation:
    equivalent, blocking on a high-or-above severity finding). Runs on every
    push. The integration link exists only when `.claude/harness.json` has an
    optional `tests.integration.script`; a project whose integration tests run
-   in the same command as the rest has no second link and needs none. The audit is blocking, not informational: an install command can't
+   in the same command as the rest has no second link and needs none. With
+   `tests.integration.healthCheck` set, the services are checked right before
+   that link, and a stopped stack blocks the push with one line naming the
+   command that starts it. A push that changes only the harness log is let
+   through untested. The audit is blocking, not informational: an install command can't
    add a vulnerable package in the first place (`permissions.deny` blocks
    every package manager's install commands), so this is the check for what
    was already in the lockfile, including transitively.

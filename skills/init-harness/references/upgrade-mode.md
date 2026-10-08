@@ -17,7 +17,8 @@ exists to prevent.
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
 | `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
-| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber |
+| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0): see "The 0.11.0 pre-push" below |
+| `.gitignore` (`.claude/.last-pre-push.json`) | Step 3 | append the line if missing, only when `.husky/pre-push` writes the note (0.11.0) |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/laziness-ladder.md` | Step 5 | create if absent; diff and ask if it differs |
@@ -58,6 +59,21 @@ of truth, so an upgrade moves each one and deletes the old key:
    tests.e2e.replayBeforePush: true`.
 
 A manifest with neither old key gets nothing from this section.
+
+## The 0.11.0 pre-push
+
+0.11.0 changed `.husky/pre-push` from one chain into two parts
+(`references/git-hooks.md` step 4): a block that lets a log-only push
+through untested, and — with an integration script — a short script that
+checks the services and leaves the note `opsx-apply-git` logs from.
+
+1. The hook is exactly a chain this skill wrote before — `<pm>
+   test:coverage && <audit>`, or with `<pm> <integration script> &&` in the
+   middle, nothing else but blank lines and comments → show the new hook as
+   a diff and replace it on the user's yes.
+2. Anything else (a human edited it) → don't guess where the new parts go.
+   Print both blocks, filled in, and ask the user to merge them by hand;
+   one report line says so.
 
 ## How upgrade mode runs
 

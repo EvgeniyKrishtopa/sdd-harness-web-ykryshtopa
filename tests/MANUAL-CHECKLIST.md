@@ -179,7 +179,8 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 ## 1b. Blocking dependency audit on `pre-push` (#U12)
 
 1. On a fixture already configured by the current `init-harness`, read
-   `.husky/pre-push` directly — confirm it chains `<pm> test:coverage && <audit
+   `.husky/pre-push` directly — confirm it opens with the log-only block
+   (0.11.0) and then chains `<pm> test:coverage && <audit
    command>`, with the audit command's spelling matching this fixture's
    package manager (and, for yarn, its major version — `yarn audit --level
    high` for 1.x, `yarn npm audit --severity high` for 2.x+).
@@ -208,6 +209,28 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
    and run the integration script — it stops with one line naming
    `API_URL` and the host, before any test.
+
+### Integration tests in `pre-push` (0.11.0)
+
+The template itself is run by `tests/hook-behaviour.sh`; these check it on
+a real project with a local stack:
+
+8. Stop the stack, `git push`: one line, "pre-push: local services are not
+   running — start them with: <requires>", and the push is refused.
+9. Start the stack, push again: the integration tests run against it and
+   the push goes through.
+10. With the stack up, put a wrong service address into `.env.local` for a
+    moment: the integration tests still pass — they never read `.env*`.
+    Catching that address is the environment check's job
+    (`tests.e2e.preflight`), not `pre-push`'s. Put the address back.
+11. After `init-harness`, `.gitignore` holds `.claude/.last-pre-push.json`,
+    and `git status` stays clean after a push.
+12. An `opsx-apply-git` run: the log has a `gate:"integration"` line, and
+    the push of the log commit at §4 step 6.2 prints "only the harness log
+    changed — tests skipped" and takes about a second.
+13. Upgrade mode on a project whose `pre-push` is the plain 0.10.6 chain:
+    a diff to the new hook, applied on yes. On a hand-edited `pre-push`:
+    both blocks printed for a manual merge, the file left alone.
 
 ---
 
@@ -383,6 +406,34 @@ Trivial-diff pre-filter (#36):
     delegation, proving the threshold is actually read from the manifest
     and not hardcoded.
 
+CR-14 — a new flow or service boundary with no test (0.11.0):
+
+17. On the change's last run, a diff adding a sign-in page with no scenario:
+    a PLAUSIBLE CR-14 naming the flow in words. The same diff in a project
+    with no `tests.e2e` block: nothing, and one "not applicable" line.
+18. The same diff on an early run: no flow finding, one line "scenarios are
+    recorded on the last group".
+19. A flow listed in the change's `web-qa-flows` `declinedFlows` (or
+    `recordedFlows`): not flagged. A new flow `web-qa` never offered:
+    flagged.
+20. With `tests.integration`: a new function in `lib/dal.ts` that calls the
+    stack's client, with no `*.integration.test.ts` → PLAUSIBLE naming the
+    file and function. CR-14 is never CONFIRMED anywhere.
+
+Integration tests written with the code (0.11.0, `opsx-apply-git`
+`references/integration-tests.md`):
+
+21. A group adding a function in `lib/dal.ts` that calls the stack's client
+    writes `*.integration.test.ts` for that function — not for the Server
+    Action that calls it.
+22. A new function that only talks to a hosted CMS gets no integration
+    test.
+23. Local stack stopped: the test is still written, the report has
+    "integration test <file> not verified: start <requires>", and the group
+    is not `blocked`.
+24. With `makerChecker.enabled`, step 21's file comes from `test-author`,
+    and the implementing session writes no test.
+
 ## 8. Gate 6 — harness-review
 
 1. Edit `.claude/docs/review-gates.md` by hand to say something false
@@ -512,6 +563,20 @@ these are the step's own decisions:
 21. The last group with UI: `web-qa` passed and nothing but `.md` was
     committed after that group's commit → `skipped` `replayed by web-qa`.
     Add a `code-review` fix commit to a source file → the replay runs.
+
+## 10. Live project, end to end (0.11.0)
+
+One Next.js project with a local stack, start to finish, by a human:
+
+1. `init-harness` offers the test layers: the integration layer with its
+   start command, a Playwright config without `@external`, and a printed
+   CI template. Declining leaves the repository as it was; no CI file is
+   ever written.
+2. A change with a UI flow passes `web-qa` and records a scenario.
+3. The next, unrelated run replays that scenario before push.
+4. A deliberate UI break blocks the push through `debug-loop`.
+5. A wrong service address in `.env.local` stops the replay before push as
+   an environment failure, with no `debug-loop`.
 
 ---
 
