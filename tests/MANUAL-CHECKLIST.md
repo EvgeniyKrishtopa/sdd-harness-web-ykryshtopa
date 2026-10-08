@@ -312,7 +312,7 @@ a real project with a local stack:
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
 7. No `tests.e2e.preflight` in the manifest: the report has one line, "no
-   environment check configured", and everything else runs as before.
+   environment check configured — …", and everything else runs as before.
 8. `tests.e2e.preflight` naming a script that exits 1: the report opens
    with `Environment: …`; no replay, no manual pass, no `debug-loop`; the
    dev server is gone; the log has a `confirmed` verdict line and a
@@ -581,9 +581,10 @@ these are the step's own decisions:
 One Next.js project with a local stack, start to finish, by a human:
 
 1. `init-harness` offers the test layers: the integration layer with its
-   start command, a Playwright config without `@external`, and a printed
-   CI template. Declining leaves the repository as it was; no CI file is
-   ever written.
+   start command, a Playwright config without `@external`, the environment
+   check (a drafted `scripts/qa-preflight.mjs` whose probes name variables,
+   never values), and a printed CI template. Declining leaves the
+   repository as it was; no CI file is ever written.
 2. A change with a UI flow passes `web-qa` and records a scenario.
 3. The next, unrelated run replays that scenario before push.
 4. A deliberate UI break blocks the push through `debug-loop`.

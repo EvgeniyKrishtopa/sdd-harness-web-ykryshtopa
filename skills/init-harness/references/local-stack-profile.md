@@ -113,8 +113,9 @@ The opposite job to section 2: talk to a service *the way the app is
 configured to*, and check the answer has the expected shape. It is what
 catches a wrong service address in the app's settings — the thing
 integration tests deliberately can't see. A package script, e.g.
-`"qa:preflight": "node scripts/qa-preflight.mjs"`; `init-harness` never
-writes the `preflight` key itself (`references/test-layers.md`).
+`"qa:preflight": "node scripts/qa-preflight.mjs"`. `init-harness` offers it
+with the end-to-end layer and writes the `preflight` key only for the
+script it wrote itself (`references/test-layers.md`).
 
 ```js
 // scripts/qa-preflight.mjs — one probe per external service the app uses

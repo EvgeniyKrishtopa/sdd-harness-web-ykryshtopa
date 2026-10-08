@@ -45,8 +45,10 @@ fallback, so a manifest not yet upgraded keeps working.
   fields.
 - **`init-harness` Step 1b** (`references/test-layers.md`) — one question
   per layer, asked only when its sign is found: an integration layer for a
-  local service, a Playwright config for `@playwright/test`, and a CI job
-  template that is printed, never written.
+  local service, a Playwright config for `@playwright/test` with the
+  environment check offered next to it (a drafted
+  `scripts/qa-preflight.mjs` that names variables, never values), and a CI
+  job template that is printed, never written.
 - **`init-harness/references/local-stack-profile.md`** — integration test
   config whose global setup takes addresses from `envCommand`, never from
   `.env*`, and stops on a non-local address, and which resolves `@/…`

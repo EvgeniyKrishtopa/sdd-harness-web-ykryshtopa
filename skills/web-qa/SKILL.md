@@ -69,7 +69,9 @@ Gate 4.
 
 Once the dev server answers, read `tests.e2e.preflight` from
 `.claude/harness.json`. Absent → say one line, "no environment check
-configured", and go on — that is not a failure. Present → run
+configured — a wrong service address will read as an app failure; ask
+init-harness to re-run anyway to add one", and go on — that is not a
+failure. Present → run
 `<runCmd> <preflight>` (the project's own script: it reaches each external
 service the way the app is configured to and checks the answer's shape —
 `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
