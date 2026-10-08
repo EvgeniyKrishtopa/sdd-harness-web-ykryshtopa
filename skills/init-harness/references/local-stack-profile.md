@@ -34,7 +34,9 @@ email's link as before.
 
 Written only on the user's "yes" in Step 1b, next to the main config, with
 `<healthCheck>`, `<requires>` and `<envCommand>` replaced by those
-`tests.integration` fields — the template never reads `.claude/harness.json` at run time.
+`tests.integration` fields, each as a JSON string literal (`JSON.stringify`
+of the value) so a quote inside a command can't break the file. The
+template never reads `.claude/harness.json` at run time.
 
 ```ts
 // vitest.integration.config.ts
@@ -53,15 +55,19 @@ export default defineConfig({
 import { execSync } from 'node:child_process'
 import type { TestProject } from 'vitest/node'
 
+// Each value below is written as a JSON string literal (JSON.stringify of the manifest field).
+const HEALTH_CHECK = <healthCheck>
+const REQUIRES = <requires>
+const ENV_COMMAND = <envCommand>
 const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
 
 export default function setup(project: TestProject) {
   try {
-    execSync('<healthCheck>', { stdio: 'ignore' })
+    execSync(HEALTH_CHECK, { stdio: 'ignore' })
   } catch {
-    throw new Error('Local services are not running — start them with: <requires>')
+    throw new Error(`Local services are not running — start them with: ${REQUIRES}`)
   }
-  const env: Record<string, string> = JSON.parse(execSync('<envCommand>', { encoding: 'utf8' }))
+  const env: Record<string, string> = JSON.parse(execSync(ENV_COMMAND, { encoding: 'utf8' }))
   for (const [name, value] of Object.entries(env)) {
     if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) continue
     const host = new URL(value).hostname
@@ -84,8 +90,10 @@ stack prints. Global setup runs in another process than the tests, so
 `provide`/`inject` is the way across — setting `process.env` there does not
 reach them. Never the app's `process.env`: the test checks code against
 the real service, and must not change with whatever the developer's
-machine is configured for. Every URL-shaped value is checked, so a stack
-that prints a remote address stops the run instead of quietly reaching it.
+machine is configured for. Every value shaped `scheme://host…` is checked,
+so a stack that prints a remote address stops the run instead of quietly
+reaching it; a stack that prints bare `host:port` pairs needs its own check
+added here.
 
 ## 3. Environment check (`tests.e2e.preflight`)
 
@@ -135,7 +143,10 @@ two requests here; open the catcher's web UI to see which it is.
 // <scenariosDir>/sign-up-confirm.spec.ts
 import { test, expect, type APIRequestContext } from '@playwright/test'
 
-const MAIL_CATCHER = '<mailCatcherUrl>'
+const MAIL_CATCHER = <mailCatcherUrl> // JSON string literal of the manifest field
+// Required: a part of the URL only the confirmation link has, e.g. its path. An email's
+// first link is often an unsubscribe or logo link, so the template never guesses.
+const LINK_MUST_CONTAIN = <path the confirmation link contains>
 
 async function emailLink(request: APIRequestContext, to: string, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs
@@ -143,9 +154,10 @@ async function emailLink(request: APIRequestContext, to: string, timeoutMs = 30_
     const found = await (await request.get(`${MAIL_CATCHER}/api/v1/search`, { params: { query: `to:${to}` } })).json()
     if (found.messages?.length) {
       const message = await (await request.get(`${MAIL_CATCHER}/api/v1/message/${found.messages[0].ID}`)).json()
-      // The first link in the email; narrow the pattern to the project's own template if it has several.
-      const link = message.Text.match(/https?:\/\/\S+/)?.[0]
+      const links: string[] = message.Text.match(/https?:\/\/\S+/g) ?? []
+      const link = links.find((url) => url.includes(LINK_MUST_CONTAIN))
       if (link) return link
+      throw new Error(`email for ${to} has no link containing ${LINK_MUST_CONTAIN}: ${links.join(', ')}`)
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
@@ -162,6 +174,10 @@ test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ p
   await expect(page.getByRole('banner')).toContainText(email)
 })
 ```
+
+Substitute both `<…>` as JSON string literals, as in section 2.
+`LINK_MUST_CONTAIN` has no default — `web-qa`
+fills it from the link the recorded flow actually followed.
 
 Three things the template must keep: a unique email per run (a rerun
 otherwise fails on "user already exists"); polling with a deadline, never a

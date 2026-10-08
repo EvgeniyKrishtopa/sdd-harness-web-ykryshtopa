@@ -194,6 +194,21 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    version-drift check left in the same chain would leave the hook
    permanently red on any stale minor version and train people to ignore it.
 
+### Local stack fields (0.11.0)
+
+5. A project with a local stack, `tests.integration` holding `requires`
+   and `healthCheck` but **no** `envCommand`: `init-harness` writes no
+   `tests/integration/global-setup.ts`; with no `mailCatcherUrl` either,
+   `web-qa` offers no email-flow template and `web-qa-manual-tester` asks
+   the human for an email's link.
+6. Set `healthCheck` to a command containing a single quote (e.g.
+   `docker compose ps --filter name='^db$' -q`), accept the integration
+   layer, and run `npx tsc --noEmit` on the written global setup — it
+   compiles.
+7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
+   and run the integration script — it stops with one line naming
+   `API_URL` and the host, before any test.
+
 ---
 
 ## 2. Security / permissions (independent of stack)
