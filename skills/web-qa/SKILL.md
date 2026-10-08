@@ -177,8 +177,8 @@ maintenance debt, not a safety net — see
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
    reasonable one to keep. A flow whose requests reached a non-local host
-   says so in the question: "this flow calls `<host>`; it will be recorded
-   as `@external` and left out of the replay before push."
+   names it in the question, and the human picks `@external`, untagged (an
+   incidental host) or not recorded — `references/recording-rules.md` rule 3.
 2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (kebab-case flow
    name) against `@playwright/test`'s own API (`page.goto`,
    `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —

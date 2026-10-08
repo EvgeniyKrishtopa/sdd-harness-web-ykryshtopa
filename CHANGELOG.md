@@ -78,7 +78,10 @@ fallback, so a manifest not yet upgraded keeps working.
   `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
 - **`web-qa` recording rules** (`references/recording-rules.md`) and a
   hydration marker helper (`references/hydration-helper.md`); every
-  scenario carries `@<change-slug>` and a `// pages:` line.
+  scenario carries `@<change-slug>` and a `// pages:` line. A flow is
+  `@external` only when the human says it needs the non-local host it
+  reached: one that only loads analytics, fonts or CDN files can be recorded
+  untagged, so it stays in the replay before push.
 - **`web-qa` environment check** — `tests.e2e.preflight` runs before the
   replay and the manual pass; a failure is reported as the environment, not
   the app.

@@ -26,11 +26,20 @@ app has none.
 ## Rule 3. A scenario that reaches a real external service is `@external`
 
 `web-qa-manual-tester` reports, per flow, the hosts its requests went to
-that are not `localhost`/`127.0.0.1` (`browser_network_requests`). Any such
-host during the checked steps → the flow is external. Say it in the
-recording question itself: "this flow calls `<host>`; it will be recorded
-as `@external` and left out of the replay before push." The human may
-decline.
+that are not `localhost`/`127.0.0.1` (`browser_network_requests`). A flow
+is external when it *needs* one of them to pass — a sign-in against a
+hosted auth service, a payment, a hosted API — not when a host only serves
+analytics, fonts, images or other files the checked steps don't depend on.
+Tagging every such flow would take it out of the replay before push for
+nothing.
+
+The human decides, in the recording question itself: name the hosts and
+offer three answers — record as `@external` (left out of the replay before
+push), record untagged (the hosts are incidental), or don't record. When a
+host is the app's own backend (a hosted database the app uses in
+development), add one line: scenarios that need it never run before push,
+and pointing development at a local stack (`tests.integration`) would let
+them.
 
 ## Rule 4. Three green runs before it is kept
 

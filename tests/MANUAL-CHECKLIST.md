@@ -319,6 +319,10 @@ a real project with a local stack:
    `web-qa-flows` line with `failureKind: "environment"`.
 9. The same script exiting 0: the gate goes on, and the delegation prompt
    to `web-qa-manual-tester` says "environment check passed".
+10. A flow whose page loads a font or an analytics script from another
+    host: the recording question names the host and offers `@external`,
+    untagged, or not recorded. "Untagged" writes the scenario without
+    `@external`, and the replay before push runs it.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
