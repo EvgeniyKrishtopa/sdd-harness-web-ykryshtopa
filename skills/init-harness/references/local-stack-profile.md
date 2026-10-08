@@ -156,9 +156,12 @@ Mailpit's HTTP API (`GET /api/v1/search?query=to:<address>`, then
 something else (older Supabase CLI versions shipped Inbucket) needs its own
 two requests here; open the catcher's web UI to see which it is.
 
+Written to `<scenariosDir>/sign-up-confirm.spec.ts`:
+
 ```ts
-// <scenariosDir>/sign-up-confirm.spec.ts
+// pages: /sign-up, <the paths the recorded flow actually opened>
 import { test, expect, type APIRequestContext } from '@playwright/test'
+import { waitForHydration } from './support/hydration'
 
 const MAIL_CATCHER = <mailCatcherUrl> // JSON string literal of the manifest field
 // Required: a part of the URL only the confirmation link has, e.g. its path. An email's
@@ -181,9 +184,10 @@ async function emailLink(request: APIRequestContext, to: string, timeoutMs = 30_
   throw new Error(`no email for ${to} within ${timeoutMs} ms`)
 }
 
-test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ page, request }) => {
+test('sign up, confirm by email, signed in', { tag: ['@<change-slug>', '@local-stack'] }, async ({ page, request }) => {
   const email = `e2e-${Date.now()}@example.test` // a fresh user every run
   await page.goto('/sign-up')
+  await waitForHydration(page)
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill('Correct-horse-42')
   await page.getByRole('button', { name: 'Sign up' }).click()
@@ -192,13 +196,17 @@ test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ p
 })
 ```
 
-Substitute both `<…>` as JSON string literals, as in section 2.
-`LINK_MUST_CONTAIN` has no default — `web-qa`
-fills it from the link the recorded flow actually followed.
+Substitute `<mailCatcherUrl>` and the link's path as JSON string literals,
+as in section 2. `LINK_MUST_CONTAIN` has no default — `web-qa`
+fills it from the link the recorded flow actually followed. `<change-slug>`
+and the `// pages:` line come from the recording, like any scenario's.
 
 Three things the template must keep: a unique email per run (a rerun
 otherwise fails on "user already exists"); polling with a deadline, never a
 fixed wait; the mail catcher's address from the manifest, never a guess.
+It is a recorded scenario too, so `skills/web-qa/references/recording-rules.md`
+holds for it in full: the `// pages:` line, the change tag, the hydration
+wait before the first form action, three green runs before it is kept.
 Labels, routes and the signed-in check are the project's own — the ones
 above are placeholders to replace with what the recorded flow actually used.
 
