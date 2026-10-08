@@ -21,7 +21,7 @@ Gate 4.
 ## Read the stack manifest, then run the dev server as a scoped background process
 
 1. Read `.claude/harness.json` (written by `init-harness`) for `framework`,
-   `runCmd`, `scripts.dev`, `devServerUrl`, and `webQaScenariosDir` (see
+   `runCmd`, `scripts.dev`, `devServerUrl`, and the scenarios directory (see
    "Replay recorded scenarios" below). Do not re-detect the
    framework from config files or the package manager from lockfiles — that
    duplicated logic is exactly what caused this skill to drift out of sync
@@ -72,12 +72,12 @@ Gate 4.
 
 ## Replay recorded scenarios before the manual pass
 
-Read `.claude/harness.json`'s `webQaScenariosDir` key (a repo set up by a
-version of `init-harness` older than the one that added this key won't have
-it — tell the user to re-run `init-harness` to pick it up, then continue
-without a replay this time rather than blocking the gate on it). If the
+Read the scenarios directory from `.claude/harness.json` — `tests.e2e.dir`
+first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
+`jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'
+.claude/harness.json` (call the result `<scenariosDir>`). If the
 directory exists and holds at least one recorded scenario file, run the
-accumulated suite first: `npx playwright test <webQaScenariosDir>`. Zero
+accumulated suite first: `npx playwright test <scenariosDir>`. Zero
 model tokens, seconds instead of a click pass.
 
 This is the only part of this gate that checks flows the *current* diff
@@ -164,8 +164,8 @@ maintenance debt, not a safety net — see
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
    reasonable one to keep.
-2. On accept, read `.claude/harness.json`'s `webQaScenariosDir` key for
-   where the file goes; write `<webQaScenariosDir>/<flow-slug>.spec.ts`
+2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (the directory
+   read under "Replay recorded scenarios" above)
    (kebab-case from the flow's name), authored against `@playwright/test`'s
    own API (`page.goto`, `page.getByRole(...).click()`,
    `expect(...).toBeVisible()`, …) — translate the steps the MCP session
@@ -177,7 +177,7 @@ maintenance debt, not a safety net — see
    `@playwright/test` isn't already a devDependency, stop and ask the user
    to run `<pm> add -D @playwright/test` themselves, then continue once
    they confirm; likewise, if no `playwright.config.ts`/`.js` exists yet,
-   write a minimal one with `testDir` pointing at `webQaScenariosDir` — if
+   write a minimal one with `testDir` pointing at `<scenariosDir>` — if
    one already exists, only check it covers that directory and tell the
    user if it doesn't, rather than rewriting a config they may have tuned.
 4. Run `npx playwright test <the new file>` right after writing it, before

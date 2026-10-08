@@ -45,17 +45,18 @@ of once per commit.
    ```
    <pm> test:coverage && <audit command>
    ```
-   **If — and only if — the manifest has a `scripts.testIntegration`**
-   (optional, see `references/manifest-schema.md`), chain that project's
-   integration-test command as a middle link:
+   **If — and only if — the manifest names an integration script**
+   (`tests.integration.script`, or the pre-0.11.0 `scripts.testIntegration`
+   on a manifest not yet upgraded; optional, see
+   `references/manifest-schema.md`), chain that script as a middle link:
    ```
-   <pm> test:coverage && <pm> test:integration && <audit command>
+   <pm> test:coverage && <pm> <integration script> && <audit command>
    ```
    Order matters and this is the order: coverage, integration, audit. The
    integration run is the slow one — a project puts its tests behind a
    second script precisely because they need a database or a running
    server — so the faster check gets to fail first, and the audit stays
-   last where it already was. No `scripts.testIntegration` in the manifest
+   last where it already was. No integration script in the manifest
    (the common case) → write the two-link chain above and nothing else;
    this whole paragraph doesn't apply. There is no "skip the integration
    run" flag: a project that finds the push too slow leaves the key unset,

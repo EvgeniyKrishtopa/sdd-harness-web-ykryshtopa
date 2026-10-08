@@ -60,7 +60,7 @@ change as a whole — not any one of them in isolation:
    dependency-vulnerability audit — `{{PACKAGE_MANAGER}} audit` or its
    equivalent, blocking on a high-or-above severity finding). Runs on every
    push. The integration link exists only when `.claude/harness.json` has an
-   optional `scripts.testIntegration`; a project whose integration tests run
+   optional `tests.integration.script`; a project whose integration tests run
    in the same command as the rest has no second link and needs none. The audit is blocking, not informational: an install command can't
    add a vulnerable package in the first place (`permissions.deny` blocks
    every package manager's install commands), so this is the check for what
@@ -71,7 +71,8 @@ change as a whole — not any one of them in isolation:
    backend/API-only), in which case Static and Runtime are the whole
    contract for that change. Like the first two layers, it now leaves files
    behind: a passed flow the human agreed to keep is saved as a
-   `@playwright/test` scenario under `webQaScenariosDir`, and every later
+   `@playwright/test` scenario under `tests.e2e.dir` (default
+   `tests/web-qa-scenarios`), and every later
    Gate 3 run replays the accumulated set before its own click pass.
 
 **Tests come from a different actor than the code, when this project opts

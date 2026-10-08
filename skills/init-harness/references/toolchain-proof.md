@@ -25,17 +25,21 @@ from the user's own uncommitted work would be blamed on the harness).
 
 For each of `scripts.typecheck`, `scripts.lint`, and `scripts.testCoverage`,
 confirm the name in the manifest is a real key in `package.json` — plus
-`scripts.testIntegration` when the manifest has it, since it is optional and
-most manifests won't (`references/manifest-schema.md`). The loop skips a key
-that isn't there rather than reporting it missing:
+the integration script when the manifest names one (`tests.integration.script`,
+or the pre-0.11.0 `scripts.testIntegration`), since it is optional and most
+manifests won't (`references/manifest-schema.md`). The loop skips a key that
+isn't there rather than reporting it missing:
 
 ```bash
-for key in typecheck lint testCoverage testIntegration; do
+for key in typecheck lint testCoverage; do
   name="$(jq -r --arg k "$key" '.scripts[$k] // empty' .claude/harness.json)"
-  [ -n "$name" ] || continue   # testIntegration is optional; absent is fine
+  [ -n "$name" ] || continue
   jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
     || echo "MISSING: harness.json scripts.$key = \"$name\" is not in package.json"
 done
+name="$(jq -r '.tests.integration.script // .scripts.testIntegration // empty' .claude/harness.json)"
+[ -z "$name" ] || jq -e --arg n "$name" '.scripts[$n]' package.json >/dev/null \
+  || echo "MISSING: harness.json integration script \"$name\" is not in package.json"
 ```
 
 Anything missing: stop and ask the user which script actually does that job
@@ -69,7 +73,7 @@ such and stop — a project with no tests can still use the rest of the
 harness, but the user should decide that knowingly rather than discover it
 when Gate 5 reviews coverage that was never collected.
 
-**If the manifest has `scripts.testIntegration`, run it too**, once, and
+**If the manifest names an integration script, run it too**, once, and
 read its result the same way. This step is what stands between a mapped
 script and a `.husky/pre-push` that blocks every push from day one: the
 whole reason a project keeps integration tests in a second command is that
@@ -77,7 +81,7 @@ they need something — a database, a running server — which may simply not be
 there on this machine.
 
 A non-zero exit here is **not** a reason to stop the setup, unlike the three
-scripts above. Instead: leave `scripts.testIntegration` out of the manifest,
+scripts above. Instead: leave `tests.integration` out of the manifest,
 leave the middle link out of `.husky/pre-push` (`references/git-hooks.md`
 step 4), and tell the user plainly what happened — the script exists, it
 doesn't pass in this environment, so the harness didn't wire it up. Wiring a

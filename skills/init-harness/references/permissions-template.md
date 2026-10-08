@@ -122,7 +122,7 @@ command. Do not leave literal placeholders in the written file.
   project left a dead allow rule for a script that doesn't exist while the
   one that does prompted every time. Nothing in this harness *runs* either —
   no gate needs them, and the manifest tracks only `dev`/`typecheck`/`lint`/
-  `testCoverage` plus the optional `testIntegration` — so this is
+  `testCoverage` plus the optional integration script — so this is
   convenience, not correctness. Substitute it
   from the detected framework anyway: a template that claims to detect the
   stack shouldn't ship one framework's script name to the other.
