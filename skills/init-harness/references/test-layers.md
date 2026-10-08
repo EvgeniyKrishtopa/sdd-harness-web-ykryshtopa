@@ -18,23 +18,29 @@ manifest answers it (`references/upgrade-mode.md`).
 
 **Sign: a local service this repository can start.**
 
-| Found | `requires` | `healthCheck` |
-| --- | --- | --- |
-| `supabase/config.toml` | `supabase start` | `supabase status` |
-| `docker-compose.yml` / `compose.yaml` with a database service (image `postgres`, `mysql`, `mongo`, `redis`) | `docker compose up -d` | `test -n "$(docker compose ps --status running -q <service>)"` |
+The plugin knows no stack by name at run time: everything downstream reads
+the four `tests.integration` fields (`references/local-stack-profile.md`
+section 1). This table only *proposes* values for stacks it recognizes; the
+user accepts them or types their own, and a stack missing from the table
+works the same way with the user's values.
+
+| Found | `requires` | `healthCheck` | `envCommand` | `mailCatcherUrl` |
+| --- | --- | --- | --- | --- |
+| `supabase/config.toml` | `supabase start` | `supabase status` | `supabase status -o json` | the Mailpit row of `supabase status` (default `http://127.0.0.1:54324`) |
+| `docker-compose.yml` / `compose.yaml` with a database service (image `postgres`, `mysql`, `mongo`, `redis`) | `docker compose up -d` | `test -n "$(docker compose ps --status running -q <service>)"` | none — ask, or leave out | `http://127.0.0.1:<published port>` of an `axllent/mailpit` service, if there is one |
 
 The Compose check is wrapped in `test -n` on purpose: `docker compose ps
 -q` exits 0 with empty output when nothing runs, so the bare command would
-always pass. `supabase status` reports a stack that isn't started as an
-error; confirm its exit code on the project's own CLI version once before
-writing the key, not from memory.
+always pass. Whatever the stack, confirm once that the proposed
+`healthCheck` exits non-zero with the stack stopped, before writing it —
+not from memory.
 
 Then, by what the project already has:
 
 - **An integration script exists** (`stack-detection.md` lists the names to
   look for) → write it to `tests.integration.script`, no question, as
-  before. If a sign was also found, offer `requires` and `healthCheck` from
-  the table in one question.
+  before. If a sign was also found, offer the four fields from the table in
+  one question.
 - **No script, sign found** → one question offering the whole layer:
   - a `test:integration` script in `package.json`;
   - for Vitest, a separate `vitest.integration.config.ts` with
@@ -46,9 +52,9 @@ Then, by what the project already has:
     Vitest's defaults and starts collecting `node_modules`. Show the diff of
     the main config before writing it;
   - for Jest, the same through `testMatch` and a second config;
-  - `requires` and `healthCheck` from the table.
+  - the four fields from the table, or the user's own.
 
-  For Supabase, the config and its global setup come from
+  With `envCommand` set, the config and its global setup come from
   `references/local-stack-profile.md` section 2 — it checks the services
   are up and refuses any address that isn't local.
 
@@ -59,8 +65,8 @@ Then, by what the project already has:
 - **No script, no sign** → ask nothing, write nothing.
 
 The integration tests themselves take the service's address and keys from
-the local stack's own output (`supabase status -o json`, `references/local-stack-profile.md` section 1), never from the
-project's `.env*` files or the app's `process.env`.
+the output of `envCommand` (`references/local-stack-profile.md` section 1),
+never from the project's `.env*` files or the app's `process.env`.
 
 ## End-to-end layer
 

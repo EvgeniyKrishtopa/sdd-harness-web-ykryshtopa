@@ -27,7 +27,9 @@ Merge into the file Step 2e already started (it may already contain just the
     "integration": {
       "script": "test:integration",
       "requires": "supabase start",
-      "healthCheck": "supabase status"
+      "healthCheck": "supabase status",
+      "envCommand": "supabase status -o json",
+      "mailCatcherUrl": "http://127.0.0.1:54324"
     },
     "e2e": {
       "command": "npx playwright test",
@@ -110,10 +112,20 @@ Merge into the file Step 2e already started (it may already contain just the
     The cost of filling it in is a longer push, which is the point: tests
     nothing runs are tests nobody finds out about.
   - `tests.integration.requires` — the command a human runs to start the
-    local services those tests need (`supabase start`). Text for a message
-    only; the plugin never runs it.
+    local services those tests need. Text for a message only; the plugin
+    never runs it.
   - `tests.integration.healthCheck` — a quick command that exits 0 when
-    those services are up (`supabase status`). Absent → nothing checks.
+    those services are up. Absent → nothing checks.
+  - `tests.integration.envCommand` — a command that prints one JSON object
+    of the stack's addresses and keys; the integration test template reads
+    it. Absent → that template isn't offered.
+  - `tests.integration.mailCatcherUrl` — the stack's Mailpit address.
+    Optional; absent → no email-flow scenario is offered and
+    `web-qa-manual-tester` asks the human for an email's link.
+
+  These four describe the project's local stack; the plugin knows none by
+  name. The values in the example are Supabase CLI's, one of the stacks
+  `references/test-layers.md` proposes values for.
   - `tests.e2e.command` — what runs the recorded scenarios. Default
     `npx playwright test`.
   - `tests.e2e.dir` — where `web-qa` records and replays `@playwright/test`

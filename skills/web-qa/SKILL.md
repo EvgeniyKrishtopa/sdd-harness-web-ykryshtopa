@@ -106,8 +106,8 @@ incident this closes.
    (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a
    Playwright MCP the project or the user supplies at some other version;
    the reasoning is in `agents/web-qa-manual-tester.md`. If
-   `tests.integration.healthCheck` passes, pass the mail catcher's address
-   (`local-stack-profile.md` section 4) so the agent reads emails itself. Disabled via `/mcp`
+   `tests.integration.healthCheck` passes and `mailCatcherUrl` is set, pass
+   that address so the agent reads emails itself. Disabled via `/mcp`
    → the agent refuses to launch, which is the intended loud failure. Scope
    its flows to the *whole change's* diff against the parent branch, not
    just the last group, so the final pass covers everything the change
@@ -167,7 +167,7 @@ maintenance debt, not a safety net — see
    `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —
    translating the steps the MCP session took, not a transcript of MCP tool
    calls, which don't run outside that server. A flow that sends an email
-   starts from section 4 of
+   (with `mailCatcherUrl` set) starts from section 4 of
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`,
    tagged `@local-stack`.
 3. **First scenario ever recorded in this project**: `permissions.deny`

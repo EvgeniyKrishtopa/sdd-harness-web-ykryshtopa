@@ -461,7 +461,7 @@ and a change with at least two groups.
 12. In the run that leaves step 11's entry open, the PR body's Deferred part
     lists it on one line with a working link to the entry's heading, after
     `proposal.md`'s Open Questions.
-13. Copy Poetry-Hub's `docs/deferred.md` into the test project and repeat
+13. Copy a real project's `docs/deferred.md` into the test project and repeat
     step 8 there. The new entry is appended under a new `## <change-slug>`
     heading at the end; `git diff` shows no other line changed.
 

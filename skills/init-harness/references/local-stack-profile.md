@@ -2,34 +2,39 @@
 
 Read this when `references/test-layers.md` found a local service and the
 user accepted the integration layer, when `web-qa` records a flow that sends
-an email, and when `web-qa-manual-tester` walks one. Supabase CLI is the one
-worked example; other stacks follow the same three commands, but this
-version writes no template for them.
+an email, and when `web-qa-manual-tester` walks one.
 
-Every template below takes addresses and keys from the stack's own output.
-None of them, and nothing in this plugin, reads the project's `.env*` files —
-except the environment check in section 3, which runs the project's own
-loader on the human's machine, never the agent's `Read`.
+This plugin knows no specific stack. Everything it needs is what the project
+declares in `tests.integration` (section 1); the templates below are filled
+from those fields when written, and no instruction here runs a stack's own
+command by name. `references/test-layers.md` holds the sign table that
+proposes values for known stacks.
+
+Every template takes addresses and keys from the stack's own output. None of
+them, and nothing in this plugin, reads the project's `.env*` files — except
+the environment check in section 3, which runs the project's own loader on
+the human's machine, never the agent's `Read`.
 
 ## 1. What a profile is
 
-Three things the project declares in `tests.integration`
-(`references/manifest-schema.md`):
+Four fields in `tests.integration` (`references/manifest-schema.md`):
 
-| | Supabase CLI |
-| --- | --- |
-| `requires` — start it (shown to the human, never run) | `supabase start` |
-| `healthCheck` — exits 0 when up | `supabase status` |
-| where addresses and keys come from | `supabase status -o json` |
+| Field | What it is | Who uses it |
+| --- | --- | --- |
+| `requires` | how a human starts the stack | messages only; never run |
+| `healthCheck` | exits 0 when the stack is up | `.husky/pre-push`, the templates, `web-qa`, the replay |
+| `envCommand` | prints one JSON object of addresses and keys | the integration test template |
+| `mailCatcherUrl` | the stack's Mailpit address, optional | the email-flow template, `web-qa` |
 
-`-o json` rather than `-o env`: the JSON keys (`API_URL`, `DB_URL`,
-`ANON_KEY`, `PUBLISHABLE_KEY`, …) are the ones the CLI's own tests assert
-on; the `-o env` names are not documented as stably. Read the JSON with
-`JSON.parse`, not with a shell `eval`.
+No `envCommand` → section 2's template is not offered; no `mailCatcherUrl`
+→ section 4's is not, and `web-qa-manual-tester` asks the human for an
+email's link as before.
 
 ## 2. Integration test config (Vitest)
 
-Written only on the user's "yes" in Step 1b, next to the main config.
+Written only on the user's "yes" in Step 1b, next to the main config, with
+`<healthCheck>`, `<requires>` and `<envCommand>` replaced by those
+`tests.integration` fields — the template never reads `.claude/harness.json` at run time.
 
 ```ts
 // vitest.integration.config.ts
@@ -48,38 +53,43 @@ export default defineConfig({
 import { execSync } from 'node:child_process'
 import type { TestProject } from 'vitest/node'
 
+const LOCAL_HOSTS = new Set(['localhost', '127.0.0.1'])
+
 export default function setup(project: TestProject) {
   try {
-    execSync('supabase status', { stdio: 'ignore' })
+    execSync('<healthCheck>', { stdio: 'ignore' })
   } catch {
-    throw new Error('Local services are not running — start them with: supabase start')
+    throw new Error('Local services are not running — start them with: <requires>')
   }
-  const status = JSON.parse(execSync('supabase status -o json', { encoding: 'utf8' }))
-  const host = new URL(status.API_URL).hostname
-  if (host !== 'localhost' && host !== '127.0.0.1') {
-    throw new Error(`Integration tests run only against a local stack, got ${host}`)
+  const env: Record<string, string> = JSON.parse(execSync('<envCommand>', { encoding: 'utf8' }))
+  for (const [name, value] of Object.entries(env)) {
+    if (!/^[a-z][a-z0-9+.-]*:\/\//i.test(value)) continue
+    const host = new URL(value).hostname
+    if (!LOCAL_HOSTS.has(host)) {
+      throw new Error(`Integration tests run only against a local stack, but ${name} points at ${host}`)
+    }
   }
-  project.provide('supabaseUrl', status.API_URL)
-  project.provide('supabaseKey', status.PUBLISHABLE_KEY ?? status.ANON_KEY)
+  project.provide('localStack', env)
 }
 
 declare module 'vitest' {
   export interface ProvidedContext {
-    supabaseUrl: string
-    supabaseKey: string
+    localStack: Record<string, string>
   }
 }
 ```
 
-A test reads them with `inject('supabaseUrl')` from `vitest`. Global setup
-runs in another process than the tests, so `provide`/`inject` is the way
-across — setting `process.env` there does not reach them. Never the app's
-`process.env`: the test checks code against the real service, and must not
-change with whatever the developer's machine is configured for.
+A test reads `inject('localStack')` from `vitest` and picks the keys its
+stack prints. Global setup runs in another process than the tests, so
+`provide`/`inject` is the way across — setting `process.env` there does not
+reach them. Never the app's `process.env`: the test checks code against
+the real service, and must not change with whatever the developer's
+machine is configured for. Every URL-shaped value is checked, so a stack
+that prints a remote address stops the run instead of quietly reaching it.
 
 ## 3. Environment check (`tests.e2e.preflight`)
 
-The opposite job to section 2: talk to the service *the way the app is
+The opposite job to section 2: talk to a service *the way the app is
 configured to*, and check the answer has the expected shape. It is what
 catches a wrong service address in the app's settings — the thing
 integration tests deliberately can't see. A package script, e.g.
@@ -87,65 +97,59 @@ integration tests deliberately can't see. A package script, e.g.
 writes the `preflight` key itself (`references/test-layers.md`).
 
 ```js
-// scripts/qa-preflight.mjs — Next.js + Supabase
+// scripts/qa-preflight.mjs — one probe per external service the app uses
 import { loadEnvConfig } from '@next/env'
-import { createClient } from '@supabase/supabase-js'
 
 loadEnvConfig(process.cwd(), true) // the same loading next dev does
-// Use the variable names the app's own client reads:
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-if (!url || !key) {
-  console.error('preflight: the app has no Supabase address or key configured')
-  process.exit(1)
+
+const probes = [
+  // { name, url: <the app's own setting>, init: <a request that cannot change data>, expect: <status> }
+]
+
+let failed = false
+for (const { name, url, init, expect } of probes) {
+  if (!url) { console.error(`preflight: ${name} has no address configured`); failed = true; continue }
+  const status = await fetch(url, init).then((r) => r.status, () => 'no answer')
+  if (status !== expect) { console.error(`preflight: ${name} at ${url} answered ${status}, expected ${expect}`); failed = true }
 }
-const { error } = await createClient(url, key).auth.signInWithPassword({
-  email: 'preflight@example.test',
-  password: 'not-the-password',
-})
-if (error?.code !== 'invalid_credentials') {
-  console.error(`preflight: expected invalid_credentials from ${url}, got ${error?.status ?? 'success'} ${error?.code ?? ''}`)
-  process.exit(1)
-}
+if (failed) process.exit(1)
 console.log('preflight: ok')
 ```
 
-A wrong address answers 404 or doesn't answer — either way not
-`invalid_credentials`, and the check stops before any browser pass.
+Pick a request whose answer differs between "right service, wrong input"
+and "wrong address": a sign-in with a deliberately wrong password answers
+400 from a real auth service and 404 or nothing from a wrong address —
+which was exactly the failure this check exists for. Never a request that
+writes data.
 
 ## 4. Email flow scenario (Playwright, Mailpit)
 
-Current Supabase CLI ships **Mailpit** as its mail catcher (port 54324 by
-default; the `[inbucket]` config section is now `[local_smtp]`). Older CLI
-versions shipped Inbucket, with a different HTTP API. To tell: open the
-mail UI from `supabase status` — the row is labelled Mailpit or Inbucket.
-This template supports Mailpit only.
+Offered only when `mailCatcherUrl` is set; `web-qa` replaces
+`<mailCatcherUrl>` with it when writing the file. The template speaks
+Mailpit's HTTP API (`GET /api/v1/search?query=to:<address>`, then
+`GET /api/v1/message/<ID>` → `Text`). A stack whose mail catcher is
+something else (older Supabase CLI versions shipped Inbucket) needs its own
+two requests here; open the catcher's web UI to see which it is.
 
 ```ts
 // <scenariosDir>/sign-up-confirm.spec.ts
 import { test, expect, type APIRequestContext } from '@playwright/test'
-import { execSync } from 'node:child_process'
 
-function mailCatcherUrl(): string {
-  const status = JSON.parse(execSync('supabase status -o json', { encoding: 'utf8' }))
-  // The key name for the mail UI varies by CLI version; check `supabase status -o json` once.
-  return status.MAILPIT_URL ?? status.INBUCKET_URL ?? 'http://127.0.0.1:54324'
-}
+const MAIL_CATCHER = '<mailCatcherUrl>'
 
-async function confirmationLink(request: APIRequestContext, to: string, timeoutMs = 30_000) {
-  const mail = mailCatcherUrl()
+async function emailLink(request: APIRequestContext, to: string, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs
   while (Date.now() < deadline) {
-    const found = await (await request.get(`${mail}/api/v1/search`, { params: { query: `to:${to}` } })).json()
+    const found = await (await request.get(`${MAIL_CATCHER}/api/v1/search`, { params: { query: `to:${to}` } })).json()
     if (found.messages?.length) {
-      const message = await (await request.get(`${mail}/api/v1/message/${found.messages[0].ID}`)).json()
-      // The default template links to /auth/v1/verify; adjust to the project's own email template.
-      const link = message.Text.match(/https?:\/\/\S*\/auth\/v1\/verify\S*/)?.[0]
+      const message = await (await request.get(`${MAIL_CATCHER}/api/v1/message/${found.messages[0].ID}`)).json()
+      // The first link in the email; narrow the pattern to the project's own template if it has several.
+      const link = message.Text.match(/https?:\/\/\S+/)?.[0]
       if (link) return link
     }
     await new Promise((resolve) => setTimeout(resolve, 250))
   }
-  throw new Error(`no confirmation email for ${to} within ${timeoutMs} ms`)
+  throw new Error(`no email for ${to} within ${timeoutMs} ms`)
 }
 
 test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ page, request }) => {
@@ -154,23 +158,23 @@ test('sign up, confirm by email, signed in', { tag: '@local-stack' }, async ({ p
   await page.getByLabel('Email').fill(email)
   await page.getByLabel('Password').fill('Correct-horse-42')
   await page.getByRole('button', { name: 'Sign up' }).click()
-  await page.goto(await confirmationLink(request, email))
+  await page.goto(await emailLink(request, email))
   await expect(page.getByRole('banner')).toContainText(email)
 })
 ```
 
 Three things the template must keep: a unique email per run (a rerun
 otherwise fails on "user already exists"); polling with a deadline, never a
-fixed wait; the mail catcher's address from the stack's own output. Labels,
-routes and the signed-in check are the project's own — the ones above are
-placeholders to replace with what the recorded flow actually used.
+fixed wait; the mail catcher's address from the manifest, never a guess.
+Labels, routes and the signed-in check are the project's own — the ones
+above are placeholders to replace with what the recorded flow actually used.
 
 ## 5. Tags: `@local-stack`, not `@external`
 
 An email-flow scenario only talks to the local stack, so it is **not**
 `@external` and belongs in the replay before push. It does need the stack
 up, so it is tagged `@local-stack`. The Playwright config is not changed
-for this: the replay adds `--grep-invert @local-stack` on the command line
+for this: a replay adds `--grep-invert @local-stack` on the command line
 when `tests.integration.healthCheck` is missing or fails, and reports how
 many scenarios it left out with the reason `local services down`. The
 config's own `grepInvert` for `@external` still applies — since Playwright
@@ -178,10 +182,10 @@ config's own `grepInvert` for `@external` still applies — since Playwright
 
 ## Who reads this file
 
-- `init-harness` (`references/test-layers.md`) — section 2 on a "yes" to
-  the integration layer, section 1 for `requires`/`healthCheck`.
+- `init-harness` (`references/test-layers.md`) — section 1 for the fields,
+  section 2 on a "yes" to the integration layer.
 - `web-qa` — section 4 when recording a flow that sends an email, section 5
-  for its tag.
+  for its tag and for its own replay.
 - `web-qa-manual-tester` — when walking a flow that sends an email, it opens
-  the mail catcher's web UI itself, given the address by `web-qa`, instead
-  of asking the human for the link. No local stack → it asks, as before.
+  `mailCatcherUrl`'s web UI itself, given the address by `web-qa`, instead
+  of asking the human for the link. No address → it asks, as before.

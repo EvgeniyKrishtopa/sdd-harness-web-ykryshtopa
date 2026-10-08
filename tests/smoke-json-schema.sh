@@ -484,7 +484,8 @@ else
   # keys it replaced must be gone from the example, or a run copies both.
   manifest_example="$(awk '/^```json$/{f=1;next} /^```$/{if(f)exit} f' "$MANIFEST_REF")"
   if printf '%s' "$manifest_example" | jq -e '
-      (.tests.integration | has("script") and has("requires") and has("healthCheck"))
+      (.tests.integration | has("script") and has("requires") and has("healthCheck")
+                              and has("envCommand") and has("mailCatcherUrl"))
       and (.tests.e2e | has("command") and has("dir") and has("externalTag")
                         and has("replayBeforePush") and has("preflight"))' >/dev/null 2>&1; then
     ok "$MANIFEST_REF documents every tests.* field in the manifest example"
