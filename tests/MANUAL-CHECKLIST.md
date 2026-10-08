@@ -488,6 +488,31 @@ and a change with at least two groups.
     step 8 there. The new entry is appended under a new `## <change-slug>`
     heading at the end; `git diff` shows no other line changed.
 
+Replay of recorded scenarios before push (§4 step 3a, 0.11.0). Which
+scenarios the last run picks is checked by `tests/affected-scenarios.sh`;
+these are the step's own decisions:
+
+14. A run that changed only `README.md`: the log has `e2e-replay`
+    `skipped` `docs only`, and Playwright never ran.
+15. A run that changed only `globals.css`: the replay is **not** skipped.
+16. Break a recorded scenario with a component change: the run reaches
+    `debug-loop` and does not push while the scenario is red.
+17. After step 16's fix: `code-review` runs a second time, on
+    `git diff <HEAD before step 3a>..HEAD` only, before push. A replay
+    green the first time → no second `code-review`.
+18. A scenario tagged `@external` (or the manifest's `externalTag`) never
+    runs; on an ordinary run only `@<change-slug>` scenarios run, a
+    scenario tagged `@<change-slug>-v2` does not, and the project's own e2e
+    tests outside `tests.e2e.dir` do not.
+19. Point `playwright.config`'s `testDir` away from `tests.e2e.dir`: one
+    environment line ("testDir … doesn't cover …"), `failureKind`
+    `environment`, no `debug-loop`, no push.
+20. A manifest with no `tests.e2e` block: `skipped` `e2e not configured`;
+    everything else as in 0.10.6.
+21. The last group with UI: `web-qa` passed and nothing but `.md` was
+    committed after that group's commit → `skipped` `replayed by web-qa`.
+    Add a `code-review` fix commit to a source file → the replay runs.
+
 ---
 
 ## Sign-off

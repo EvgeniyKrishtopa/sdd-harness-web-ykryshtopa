@@ -544,7 +544,7 @@ stylistic:
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
 3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh`,
-   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, and `tests/claude-md-budget.sh`) — the first fails if the version isn't
+   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, `tests/claude-md-budget.sh`, and `tests/affected-scenarios.sh`) — the first fails if the version isn't
    semver, if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push`, **after** the release branch is merged —
