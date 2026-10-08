@@ -383,6 +383,34 @@ Trivial-diff pre-filter (#36):
     delegation, proving the threshold is actually read from the manifest
     and not hardcoded.
 
+CR-14 — a new flow or service boundary with no test (0.11.0):
+
+17. On the change's last run, a diff adding a sign-in page with no scenario:
+    a PLAUSIBLE CR-14 naming the flow in words. The same diff in a project
+    with no `tests.e2e` block: nothing, and one "not applicable" line.
+18. The same diff on an early run: no flow finding, one line "scenarios are
+    recorded on the last group".
+19. A flow listed in the change's `web-qa-flows` `declinedFlows` (or
+    `recordedFlows`): not flagged. A new flow `web-qa` never offered:
+    flagged.
+20. With `tests.integration`: a new function in `lib/dal.ts` that calls the
+    stack's client, with no `*.integration.test.ts` → PLAUSIBLE naming the
+    file and function. CR-14 is never CONFIRMED anywhere.
+
+Integration tests written with the code (0.11.0, `opsx-apply-git`
+`references/integration-tests.md`):
+
+21. A group adding a function in `lib/dal.ts` that calls the stack's client
+    writes `*.integration.test.ts` for that function — not for the Server
+    Action that calls it.
+22. A new function that only talks to a hosted CMS gets no integration
+    test.
+23. Local stack stopped: the test is still written, the report has
+    "integration test <file> not verified: start <requires>", and the group
+    is not `blocked`.
+24. With `makerChecker.enabled`, step 21's file comes from `test-author`,
+    and the implementing session writes no test.
+
 ## 8. Gate 6 — harness-review
 
 1. Edit `.claude/docs/review-gates.md` by hand to say something false

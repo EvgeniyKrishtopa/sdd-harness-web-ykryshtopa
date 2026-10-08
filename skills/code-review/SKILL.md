@@ -74,6 +74,7 @@ as further context for Gate 5, alongside the diff. Nothing found (an older
 change, or one the `test-plan` skill never ran for) → tell `code-reviewer`
 explicitly there is no test plan for this change, so it falls back to its
 own requirement-ID-only path instead of silently assuming full coverage.
+Then build CR-14's context: **read `references/cr-14-context.md`**.
 
 ## Action
 
@@ -113,7 +114,7 @@ own requirement-ID-only path instead of silently assuming full coverage.
    the `code-reviewer` subagent (`Agent` tool) with that diff — text or
    file-handoff, per step 1 — plus the Gate-5-applicability note, the
    final-run status, the requirement-ID coverage result computed above, the
-   test-plan lookup result, the detected `testRunner`, `coverageThreshold`,
+   test-plan lookup result and CR-14 context, `testRunner`, `coverageThreshold`,
    and `framework` (so CR-12 only fires on Next.js), and any acceptance
    criteria as context — overriding the agent's own frontmatter default for
    this run. If the manifest or the key is missing, fall back to the
