@@ -7,7 +7,8 @@
 # route group (auth), /profile, /cart), a component shared by two of them, a
 # component only /login imports, a CSS module, a dynamic route and one
 # Pages Router page, plus scenarios with and without a page list. Each case
-# commits one change and checks the scope and the picked files.
+# commits one change and checks the scope and the picked files. A few cases
+# reshape the project into a Vite app: those must run every scenario.
 #
 # The import map runs the project's own `typescript` package; this test
 # installs typescript@6.0.3 once into a temp directory. Offline, the cases
@@ -98,7 +99,8 @@ test('a later change', { tag: ['@add-thing-v2'] }, async () => {});"
   commit base && git -C "$repo" tag base
 }
 
-run() { (cd "$repo" && node "$SCRIPT" --base base --dir tests/web-qa-scenarios --change add-thing); }
+# FW is the manifest's `framework` the call passes; unset means Next.js.
+run() { (cd "$repo" && node "$SCRIPT" --base base --dir tests/web-qa-scenarios --change add-thing --framework "${FW-next}"); }
 
 # field <json> <scope|scopeReason|files>
 field() {
@@ -188,11 +190,37 @@ printf 'module.exports = { version: "7.0.2" };\n' > "$repo/node_modules/typescri
 put components/LoginForm.tsx 'export function LoginForm() { return 1; }'; commit l
 expect "typescript 7 (no preProcessFile)" full "import map failed" "$ALL"
 
-new_next_repo vite no-ts
-git -C "$repo" rm -rq app pages next.config.js && commit "now a Vite app"
+new_next_repo next-no-routes no-ts
+git -C "$repo" rm -rq app pages next.config.js && commit "no route folders"
 git -C "$repo" tag -f base >/dev/null
 put src/main.ts 'export const x = 1;'; commit main
-expect "no app/ or pages/" full "no route structure" "$ALL"
+expect "Next.js manifest, no app/ or pages/" full "no route structure" "$ALL"
+
+new_next_repo vite-pages
+git -C "$repo" rm -rq app pages next.config.js && commit "now a Vite app"
+put vite.config.ts 'export default {};'
+put src/pages/LoginPage.tsx 'import { LoginForm } from "../components/LoginForm"; export function LoginPage() { return LoginForm; }'
+put src/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "src/pages"
+git -C "$repo" tag -f base >/dev/null
+put src/components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit l
+FW=vite
+expect "Vite app with src/pages/" full "no route structure" "$ALL"
+
+new_next_repo react-router
+git -C "$repo" rm -rq app pages next.config.js && commit "now React Router 7"
+put vite.config.ts 'export default {};'
+put app/root.tsx 'export default function Root() { return null; }'
+put app/routes/login.tsx 'import { LoginForm } from "../components/LoginForm"; export default function Login() { return LoginForm; }'
+put app/components/LoginForm.tsx 'export function LoginForm() { return null; }'; commit "app/routes"
+git -C "$repo" tag -f base >/dev/null
+put app/components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit l
+expect "React Router 7 app with app/routes/" full "no route structure" "$ALL"
+
+new_next_repo no-framework
+put components/LoginForm.tsx 'export function LoginForm() { return 1; }'; commit l
+FW=
+expect "no framework in the manifest" full "no route structure" "$ALL"
+unset FW
 
 echo "-- usage --"
 if (cd "$TMP" && node "$SCRIPT" --dir x >/dev/null 2>&1); then

@@ -21,7 +21,8 @@ From `.claude/harness.json`: `tests.e2e.command` (default
 `npx playwright test`), `tests.e2e.dir` (then the pre-0.11.0
 `webQaScenariosDir`, then `tests/web-qa-scenarios` — call it `<dir>`),
 `tests.e2e.externalTag` (default `@external`), `tests.e2e.replayBeforePush`,
-`tests.e2e.preflight`, `tests.integration.healthCheck`.
+`tests.e2e.preflight`, `tests.integration.healthCheck`, and `framework` for
+the script below.
 
 ## Two sizes of run
 
@@ -36,11 +37,14 @@ From `.claude/harness.json`: `tests.e2e.command` (default
   ```bash
   main=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
   node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/affected-scenarios.mjs" \
-    --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>"
+    --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>" \
+    --framework "$(jq -r '.framework // empty' .claude/harness.json)"
   ```
   It prints `{scope, scopeReason, files}`. `scope` `affected` → run `files`.
   `scope` `full` → run the whole `<dir>`; `scopeReason` says why
-  (`shared file changed`, `import map failed`, `no route structure`). A
+  (`shared file changed`, `import map failed`, `no route structure` — also
+  for any project that isn't Next.js by `framework`: a Vite app keeps its
+  routes in code, even with a `src/pages/` or `app/` folder). A
   scenario without a `// pages:` list is always in `files`. TypeScript 7
   dropped the JS API the script uses, so such a project always gets
   `import map failed` — that is the safe direction, not an error.

@@ -56,7 +56,9 @@ fallback, so a manifest not yet upgraded keeps working.
   tagged scenarios; the change's last run adds older scenarios whose pages
   the whole change touched, picked by
   `opsx-apply-git/scripts/affected-scenarios.mjs` from the project's import
-  graph. Shared files, TypeScript 7 (no JS API) or no route structure → all
+  graph. Shared files, TypeScript 7 (no JS API), no route structure, or a
+  project that isn't Next.js by the manifest's `framework` (a Vite app's
+  `src/pages/` or `app/` folder says nothing about its routes) → all
   scenarios, with the reason logged. Environment failures never reach
   `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
 - **`web-qa` recording rules** (`references/recording-rules.md`) and a

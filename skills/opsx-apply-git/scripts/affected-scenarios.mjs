@@ -10,12 +10,17 @@
 // guess, it says "run them all" instead, with the reason: a scenario run for
 // nothing costs seconds, a skipped one that was broken costs a broken main.
 //
+// Only Next.js routes are read. Any other framework -- a Vite app keeps its
+// routes in code, even when it has a src/pages/ or app/ folder -- runs every
+// scenario.
+//
 // Imports are parsed and resolved with the project's own `typescript`
 // package (ts.preProcessFile, ts.resolveModuleName with the project's
 // tsconfig paths). TypeScript 7 no longer ships that JS API; such a project
 // gets "import map failed" and every scenario runs.
 //
-// Usage: node affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> [--project <dir>]
+// Usage: node affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug>
+//          --framework <the manifest's framework> [--project <dir>]
 // Prints one JSON object: {scope, scopeReason, files}. scope is "affected"
 // (files = the picked list, possibly empty) or "full" (files = every
 // scenario; scopeReason says why). Exit 2 on a usage error only.
@@ -26,7 +31,7 @@ import { execFileSync } from 'node:child_process';
 
 const args = parseArgs(process.argv.slice(2));
 if (!args.base || !args.dir || !args.change) {
-  console.error('usage: affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> [--project <dir>]');
+  console.error('usage: affected-scenarios.mjs --base <rev> --dir <scenariosDir> --change <slug> --framework <framework> [--project <dir>]');
   process.exit(2);
 }
 // Real path: ts.resolveModuleName returns real paths, and a symlinked
@@ -56,6 +61,8 @@ console.log(JSON.stringify(pick()));
 function pick() {
   const scenarios = listScenarios();
   const all = (scopeReason) => ({ scope: 'full', scopeReason, files: scenarios.map((s) => s.file) });
+
+  if (!/next/i.test(args.framework || '')) return all('no route structure');
 
   let changed;
   try {
