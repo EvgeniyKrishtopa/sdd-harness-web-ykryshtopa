@@ -222,11 +222,11 @@ silently rewritten history is not.
   flow(s). A fix folds into the current group's own diff, same as before.
   Uses the blocked-marker branch of Escalate above on exhaustion.
 - **`code-review` (Gate 4/5) CONFIRMED**, once the user has chosen "fix
-  now" — the fix runs through this loop instead of a single ad hoc edit,
-  still landing as its own new commit appended to the run's branch. Uses the
-  report-only branch of Escalate above on exhaustion — every group in the
-  run is already committed by the time this call site runs, so there is no
-  open task line left to mark.
+  now" — the fix runs through this loop instead of an ad hoc edit, landing
+  as its own new commit on the run's branch. Report-only branch of Escalate
+  on exhaustion: every group is already committed, no task line to mark.
+- **Replay of recorded scenarios before push** (`opsx-apply-git` §4 step
+  3a) — a red scenario, never an environment failure. Same as `code-review`.
 - **Direct, manual invocation** by the user for a failure outside any gate.
   Uses the report-only branch of Escalate above on exhaustion.
 
@@ -238,8 +238,8 @@ one delegation rather than two.
 ## Log
 
 This skill doesn't write its own `harness-log.jsonl` line — it isn't a gate.
-The gate that invoked it (`web-qa` or `code-review`) logs as it already
-does, folding the attempt count and escalation flag this loop produces into
+The step that invoked it (`web-qa`, `code-review`, the replay before push)
+logs as it already does, folding the attempt count and escalation flag into
 that log line's `fixIterations`/`escalatedToHuman` fields (#U13) — see
 those gates' own `## Log this gate's run` sections for exactly what each
 field means at their call site.

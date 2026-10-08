@@ -306,9 +306,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    the run is already committed by this point, so there's no open task line
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
-   attempt's hypothesis to the human — don't push past it (still `rm -f
-   "$diff_file"` first if it was set, per above — stopping the run doesn't
-   exempt this step from its own cleanup). Clean/PLAUSIBLE in
+   attempt's hypothesis to the human — don't push past it (`rm -f
+   "$diff_file"` first, per above). Clean/PLAUSIBLE in
    every section → continue. Separately from that verdict, `code-reviewer` —
    and `deep-reviewer` whenever the prefilter spawned it — each report their
    own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
@@ -364,9 +363,10 @@ implement unattended is reviewed as one unit too, not group-by-group.
    `.husky/**`, `openspec/config.yaml`, plus this plugin's own
    `skills/`/`agents/` when its own repo is what's under review — e.g.
    `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
-   Every group in the run is already committed by this point (§3), so
-   there's no ordering constraint forcing this ahead of a group's own
-   commit any more — it simply lands as the next commit on the branch.
+   Every group is already committed (§3): it lands as the next commit.
+3a. **Replay the recorded scenarios — read `references/e2e-replay.md` now and
+   follow it.** Otherwise only the next `web-qa` runs them, and a change
+   with no interface never does.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
    CONFIRMED finding, print the reviewer's stated reason to the chat now
    — this is the surfacing that step 2 deferred to here. Then push the run's
