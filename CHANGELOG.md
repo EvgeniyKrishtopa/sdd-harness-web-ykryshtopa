@@ -9,6 +9,93 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.11.0
+
+Integration and end-to-end tests become a dependable, opt-in part of the
+plugin, built into the layers and steps it already has. No new numbered
+gate, and no dependence on the project's CI.
+
+What broke in real use: the integration link in `pre-push` existed but was
+never offered, so it stayed empty; recorded web-qa scenarios ran only in
+the next `web-qa`, so a broken flow could sit in `main` for weeks; the same
+three defects turned up in recorded scenarios (an `alert` matching Next's
+route announcer, a click before hydration, a Suspense fallback doubling a
+form); one scenario reached a real cloud service unmarked; and the first
+`web-qa` failure was the environment, not the app, which `debug-loop` then
+chased in the code.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository. It moves the two old keys (below), offers the test layers the
+project can have, and updates `.husky/pre-push`. The replay before push
+stays **off** for an upgraded project until you set
+`tests.e2e.replayBeforePush: true`.
+
+**Two keys moved into the new `tests` block:** `scripts.testIntegration` →
+`tests.integration.script`, `webQaScenariosDir` → `tests.e2e.dir`. Upgrade
+mode moves each value and deletes the old key, and asks when both exist
+and differ. Every reader takes the new key first and the old one as a
+fallback, so a manifest not yet upgraded keeps working.
+
+### Added
+
+- **`tests` block in `.claude/harness.json`** — `tests.integration`
+  (`script`, `requires`, `healthCheck`, `envCommand`, `mailCatcherUrl`) and
+  `tests.e2e` (`command`, `dir`, `externalTag`, `replayBeforePush`,
+  `preflight`). The plugin knows no stack by name: it reads only these
+  fields.
+- **`init-harness` Step 1b** (`references/test-layers.md`) — one question
+  per layer, asked only when its sign is found: an integration layer for a
+  local service, a Playwright config for `@playwright/test`, and a CI job
+  template that is printed, never written.
+- **`init-harness/references/local-stack-profile.md`** — integration test
+  config whose global setup takes addresses from `envCommand`, never from
+  `.env*`, and stops on a non-local address; an environment-check template;
+  an email-flow scenario through Mailpit; the `@local-stack` tag.
+- **Replay before push** — `opsx-apply-git` §4 step 3a
+  (`references/e2e-replay.md`). An ordinary run replays this change's
+  tagged scenarios; the change's last run adds older scenarios whose pages
+  the whole change touched, picked by
+  `opsx-apply-git/scripts/affected-scenarios.mjs` from the project's import
+  graph. Shared files, TypeScript 7 (no JS API) or no route structure → all
+  scenarios, with the reason logged. Environment failures never reach
+  `debug-loop`; `debug-loop` fixes get a second `code-review` before push.
+- **`web-qa` recording rules** (`references/recording-rules.md`) and a
+  hydration marker helper (`references/hydration-helper.md`); every
+  scenario carries `@<change-slug>` and a `// pages:` line.
+- **`web-qa` environment check** — `tests.e2e.preflight` runs before the
+  replay and the manual pass; a failure is reported as the environment, not
+  the app.
+- **Integration tests written with the code** —
+  `opsx-apply-git/references/integration-tests.md`: a group adding a new
+  boundary to a local-stack service writes its `*.integration.test.ts`
+  (`test-author` does it under `makerChecker`). Services down → the test is
+  written and reported as not verified; the group goes on.
+- **`CR-14`** (`code-reviewer`, PLAUSIBLE only) — a new user flow with no
+  scenario on the change's last run, unless the human already recorded or
+  declined it in `web-qa`; a new service boundary with no integration
+  test.
+- **Log lines** — `gate:"e2e-replay"` (with `scope`, `scopeReason`,
+  `scenarios`), `gate:"integration"` from the pre-push note,
+  `kind:"web-qa-flows"` (`recordedFlows`, `declinedFlows`), and the
+  `failureKind` field (`app` / `environment`).
+- **`tests/affected-scenarios.sh`** for the import map; pre-push template
+  cases in `tests/hook-behaviour.sh`.
+
+### Changed
+
+- **`.husky/pre-push`** — a push whose commits change only
+  `.claude/harness-log.jsonl` is let through untested (the run's log-commit
+  push used to re-run every test). With an integration script, the
+  services are checked right before that link — one line naming
+  `requires` when they are down — and the hook leaves
+  `.claude/.last-pre-push.json` (gitignored) for the log.
+- **`web-qa`'s replay** excludes `tests.e2e.externalTag` on the command
+  line instead of trusting the project's Playwright config.
+- **`harness-stats`** shows the two test steps, all their skip reasons, and
+  the share of environment failures among `confirmed`.
+- **`test-plan`** marks a criterion crossing a new local-stack boundary
+  `integration`.
+
 ## 0.10.6
 
 The budget for a project's root `CLAUDE.md`/`AGENTS.md` was "roughly 200

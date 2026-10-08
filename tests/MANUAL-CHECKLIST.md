@@ -564,6 +564,20 @@ these are the step's own decisions:
     committed after that group's commit → `skipped` `replayed by web-qa`.
     Add a `code-review` fix commit to a source file → the replay runs.
 
+## 10. Live project, end to end (0.11.0)
+
+One Next.js project with a local stack, start to finish, by a human:
+
+1. `init-harness` offers the test layers: the integration layer with its
+   start command, a Playwright config without `@external`, and a printed
+   CI template. Declining leaves the repository as it was; no CI file is
+   ever written.
+2. A change with a UI flow passes `web-qa` and records a scenario.
+3. The next, unrelated run replays that scenario before push.
+4. A deliberate UI break blocks the push through `debug-loop`.
+5. A wrong service address in `.env.local` stops the replay before push as
+   an environment failure, with no `debug-loop`.
+
 ---
 
 ## Sign-off

@@ -328,6 +328,31 @@ The next `opsx-apply-git` re-syncs from your merge.
 **6. On the last group**, `opsx-apply-git` archives the change via its own
 PR.
 
+## Test layers
+
+Integration and end-to-end tests are optional, per project: `init-harness`
+offers each layer only when it finds the sign for it (a local service,
+`@playwright/test`) and writes the `tests` block of `.claude/harness.json`
+on your yes. Without that block everything below the first two rows behaves
+as in 0.10.6.
+
+| When | Where | What runs |
+| --- | --- | --- |
+| `git commit` | `.husky/pre-commit` (Static) | typecheck + lint |
+| `git push` | `.husky/pre-push` (Runtime) | unit tests with coverage, then integration tests (`tests.integration`, local services checked first), then the dependency audit. A push that changes only the harness log is not tested |
+| before every push of a run | `opsx-apply-git` §4 step 3a | replay of recorded scenarios, 0 tokens (`tests.e2e`): this change's on an ordinary run, plus the ones whose pages the change touched on its last run |
+| last group with a UI change | Gate 3, `web-qa` | environment check → replay → manual pass in a real browser → recording the flows you keep |
+| every run's review | Gate 5, `code-review` | `CR-14`: a new flow with no scenario, or a new service boundary with no integration test (PLAUSIBLE) |
+
+Integration tests only ever talk to the local stack, never to a cloud
+service: they take addresses from `tests.integration.envCommand`, not from
+`.env*`. A wrong address in `.env.local` is the environment check's to
+catch (`tests.e2e.preflight`), not theirs.
+
+**CI stays the project's.** The plugin never writes or edits a CI file. At
+most, `init-harness` prints a CI job template into its report for you to
+copy.
+
 ---
 
 ## Components
