@@ -63,11 +63,16 @@ cmd=$(printf '%s' "$input" | json_get tool_input.command)
 # real text back translate it.
 find_parts() {
   printf '%s\n' "$cmd" | awk -v want=" $* " '
-    function emit(seg,   t, n, k) {
+    function emit(seg,   t, n, k, off) {
       n = split(seg, t, /[ \t]+/)
       k = 1
       while (k <= n && t[k] == "") k++
-      while (k <= n && (t[k] ~ /^[A-Za-z_][A-Za-z0-9_]*=/ || t[k] ~ /^(!|\{|if|then|elif|else|do|while|until|time)$/)) k++
+      # HUSKY=0 before git, or git -c core.hooksPath=..., skips the git hooks
+      # just as --no-verify does, so the part carries that flag for the guards.
+      while (k <= n && (t[k] ~ /^[A-Za-z_][A-Za-z0-9_]*=/ || t[k] ~ /^(!|\{|if|then|elif|else|do|while|until|time)$/)) {
+        if (t[k] == "HUSKY=0") off = 1
+        k++
+      }
       if (want == " gh-api ") {
         if (t[k] != "gh" || t[k + 1] != "api") return
         out = "gh-api"; k += 2
@@ -75,13 +80,17 @@ find_parts() {
         if (t[k] != "git") return
         k++
         while (k <= n && t[k] ~ /^-/) {
-          if (t[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--config-env)$/) k++
+          if (t[k] ~ /^(-C|-c|--git-dir|--work-tree|--namespace|--config-env)$/) {
+            if (t[k] == "-c" && tolower(t[k + 1]) ~ /^core\.hookspath=/) off = 1
+            k++
+          }
           k++
         }
         if (k > n || index(want, " " t[k] " ") == 0) return
         out = t[k]; k++
       }
       for (; k <= n; k++) if (t[k] != "") out = out " " t[k]
+      if (off) out = out " --no-verify"
       print out
     }
     {
@@ -193,6 +202,11 @@ push)
   if printf '%s\n' "$args" | grep -qE -- '^(--force|--force-with-lease(=.*)?|\+.+|-[a-zA-Z]*f[a-zA-Z]*)$'; then
     decide ask "Force-push requires confirmation."
   fi
+  # Skipping .husky/pre-push skips its tests, services check and audit; the
+  # harness forbids it (opsx-apply-git references/ci-probes.md).
+  if printf '%s\n' "$args" | grep -qxF -- --no-verify; then
+    decide ask "This push skips .husky/pre-push (--no-verify, HUSKY=0 or core.hooksPath): its tests and audit won't run. Confirm."
+  fi
   # Destination of each refspec: drop a leading +, everything up to the last
   # colon, and refs/heads/. Options and their values never equal a branch.
   refs=$(printf '%s\n' "$args" | grep -v '^-' | sed -e 's@^+@@' -e 's@^.*:@@' -e 's@^refs/heads/@@')
@@ -224,19 +238,29 @@ commit)
     done
   fi
   # -a / --all / a combined short flag with `a` before any value-taking
-  # letter (-am yes, -mall no) commits tracked changes, staged or not.
+  # letter (-am yes, -mall no) commits tracked changes, staged or not; `n`
+  # the same way (-n, -nm) is --no-verify.
   against=--cached
+  no_verify=
   for w in $(words "$mine"); do
     case "$w" in
       --all) against=HEAD ;;
+      --no-verify) no_verify=1 ;;
       --*) ;;
       -*) f=${w#-}
           while [ -n "$f" ]; do
-            case "$f" in a*) against=HEAD; break ;; [mFCct]*) break ;; esac
+            case "$f" in
+              a*) against=HEAD ;;
+              n*) no_verify=1 ;;
+              [mFCctuS]*) break ;;
+            esac
             f=${f#?}
           done ;;
     esac
   done
+  # Skipping .husky/pre-commit skips its typecheck and lint; the harness
+  # forbids it (opsx-apply-git references/ci-probes.md).
+  [ -n "$no_verify" ] && decide ask "This commit skips .husky/pre-commit (--no-verify, -n, HUSKY=0 or core.hooksPath): typecheck and lint won't run. Confirm."
   diff=$(git diff $against)
   # Unreadable command: keep the old fallback to the whole tree when nothing
   # is staged, rather than allow what used to be asked about.

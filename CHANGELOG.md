@@ -112,6 +112,11 @@ fallback, so a manifest not yet upgraded keeps working.
   the share of environment failures among `confirmed`.
 - **`test-plan`** marks a criterion crossing a new local-stack boundary
   `integration`.
+- **The git guards** ask before a commit or push that skips the git hooks:
+  `--no-verify` (and `-n` on commit), `HUSKY=0`, or a `git -c
+  core.hooksPath=…` override. The harness already forbade `--no-verify`,
+  but nothing checked it, and with this version `pre-push` carries the
+  integration tests too.
 
 ## 0.10.6
 

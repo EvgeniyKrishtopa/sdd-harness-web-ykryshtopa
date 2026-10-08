@@ -327,6 +327,25 @@ for c in 'echo "git push origin main"' 'git commit -m "merge main into feature"'
 done
 echo
 
+echo "-- PreToolUse: skipping the git hooks asks first --"
+# The harness forbids --no-verify (ci-probes.md); HUSKY=0 and a
+# core.hooksPath override skip the same hooks.
+for c in 'git push --no-verify -u origin feature/x' 'npm test && git push --no-verify' \
+         'HUSKY=0 git push -u origin feature/x' 'git -c core.hooksPath=/dev/null push -u origin feature/x'; do
+  verdict "$c -> ask" 'skips .husky/pre-push' "$(bash_json "$c" | sh "$CMD/push.sh")"
+done
+for c in 'git commit --no-verify -m x' 'git commit -nm x' 'git commit -m x -n' \
+         'HUSKY=0 git commit -m x' 'git -c core.HooksPath=/dev/null commit -m x'; do
+  verdict "$c -> ask" 'skips .husky/pre-commit' "$(bash_json "$c" | sh "$CMD/commit.sh")"
+done
+verdict 'git push -n (a dry run) -> allow' '"permissionDecision":"allow"' \
+  "$(bash_json 'git push -n -u origin feature/x' | sh "$CMD/push.sh")"
+for c in 'git commit -m "no verify needed"' 'git commit -uno -m x' 'git commit -mnote' \
+         'echo "git commit --no-verify"'; do
+  verdict_absent "$c -> not a hook skip" 'skips .husky' "$(bash_json "$c" | sh "$CMD/commit.sh")"
+done
+echo
+
 echo "-- PreToolUse: commit guard, size and scope --"
 lines src/big.ts && git add src/big.ts
 verdict_absent "staged 600 lines + jq/mv, no commit -> no Large commit" '"ask"' \

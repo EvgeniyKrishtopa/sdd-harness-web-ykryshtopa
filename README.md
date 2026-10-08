@@ -217,8 +217,9 @@ log` alone can't. That banner also carries the Claude Code version warning
 described under [Requirements](#requirements) — above the git section, and
 only when the running version is below the floor. The guards are plain shell, no model call: they prompt for
 confirmation on a protected-branch commit, a secret-shaped or unusually
-large staged diff, a force-push, or a commit/ref created through `gh api`,
-and stay out of the way otherwise. Each one reads the command and decides
+large staged diff, a force-push, a commit or push that skips the git hooks
+(`--no-verify`, `-n` on commit, `HUSKY=0`, a `core.hooksPath` override), or
+a commit/ref created through `gh api`, and stay out of the way otherwise. Each one reads the command and decides
 only from the parts that really run its git subcommand, so a heredoc
 mentioning `main` or an `rm -f` next to a push doesn't trigger it
 (`hooks/git-guard.sh` lists what it deliberately doesn't parse).
