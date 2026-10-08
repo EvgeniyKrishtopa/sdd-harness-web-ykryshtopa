@@ -477,14 +477,45 @@ else
     bad "$MANIFEST_REF's manifest example is missing maxFixAttempts and/or toolchainVerifiedAt"
   fi
 
-  # scripts.testIntegration (0.9.0) is optional in a project's manifest but
+  # The tests block (0.11.0) is optional in a project's manifest but
   # mandatory in the example a run copies from: a key nobody can see in the
-  # example is a key nobody writes, and the pre-push chain that depends on it
-  # then quietly stays two links long forever.
-  if grep -q '"testIntegration"' "$MANIFEST_REF"; then
-    ok "$MANIFEST_REF documents the optional scripts.testIntegration in the manifest example"
+  # example is a key nobody writes, and the pre-push chain and the replay
+  # before push that depend on it then quietly stay off forever. The two
+  # keys it replaced must be gone from the example, or a run copies both.
+  manifest_example="$(awk '/^```json$/{f=1;next} /^```$/{if(f)exit} f' "$MANIFEST_REF")"
+  if printf '%s' "$manifest_example" | jq -e '
+      (.tests.integration | has("script") and has("requires") and has("healthCheck"))
+      and (.tests.e2e | has("command") and has("dir") and has("externalTag")
+                        and has("replayBeforePush") and has("preflight"))' >/dev/null 2>&1; then
+    ok "$MANIFEST_REF documents every tests.* field in the manifest example"
   else
-    bad "$MANIFEST_REF's manifest example is missing scripts.testIntegration"
+    bad "$MANIFEST_REF's manifest example is missing the tests block or one of its fields"
+  fi
+  if printf '%s' "$manifest_example" | jq -e '(.scripts | has("testIntegration")) or has("webQaScenariosDir")' >/dev/null 2>&1; then
+    bad "$MANIFEST_REF's manifest example still carries scripts.testIntegration or webQaScenariosDir"
+  else
+    ok "$MANIFEST_REF's manifest example carries neither pre-0.11.0 test key"
+  fi
+
+  # The readers' fallback chains, run against both manifest shapes: an
+  # upgraded one must win with the tests key, a not-yet-upgraded one must
+  # still resolve the old key, and one with neither must get the default.
+  # The expressions are taken from the docs themselves, so a typo there
+  # fails here.
+  dir_expr="$(grep -o "\.tests\.e2e\.dir // \.webQaScenariosDir // \"tests/web-qa-scenarios\"" skills/web-qa/SKILL.md | head -1)"
+  int_expr="$(grep -o '\.tests\.integration\.script // \.scripts\.testIntegration // empty' skills/init-harness/references/toolchain-proof.md | head -1)"
+  old_shape='{"scripts":{"testIntegration":"it:old"},"webQaScenariosDir":"e2e-old"}'
+  both_shape='{"scripts":{"testIntegration":"it:old"},"webQaScenariosDir":"e2e-old","tests":{"integration":{"script":"it:new"},"e2e":{"dir":"e2e-new"}}}'
+  if [ -n "$dir_expr" ] && [ -n "$int_expr" ] \
+     && [ "$(printf '%s' "$old_shape"  | jq -r "$dir_expr")" = "e2e-old" ] \
+     && [ "$(printf '%s' "$old_shape"  | jq -r "$int_expr")" = "it:old" ] \
+     && [ "$(printf '%s' "$both_shape" | jq -r "$dir_expr")" = "e2e-new" ] \
+     && [ "$(printf '%s' "$both_shape" | jq -r "$int_expr")" = "it:new" ] \
+     && [ "$(printf '%s' '{}' | jq -r "$dir_expr")" = "tests/web-qa-scenarios" ] \
+     && [ -z "$(printf '%s' '{}' | jq -r "$int_expr")" ]; then
+    ok "the tests-first, old-key-second reads resolve on new, old and empty manifests"
+  else
+    bad "a tests-first fallback read in web-qa/SKILL.md or toolchain-proof.md is missing or resolves wrongly"
   fi
 fi
 

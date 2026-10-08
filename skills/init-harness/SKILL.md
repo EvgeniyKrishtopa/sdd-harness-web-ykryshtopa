@@ -99,6 +99,10 @@ writes to the manifest's `forge` key, and the one-paragraph warning to show
 the user when it resolves to `other`; setup still finishes and the repo is
 still considered configured either way.
 
+**Step 1b — test layers.** Read `references/test-layers.md` now and follow
+it: one question per optional test layer, asked only when its sign is found
+(a local service; `@playwright/test`). Neither found → no question.
+
 ## Step 2 — install and initialize OpenSpec in Expanded (custom) profile
 
 This harness is built on OpenSpec (spec-driven development CLI) — it is not
@@ -343,19 +347,14 @@ It runs in **both** modes, on a clean tree (dirty → ask the user to commit
 or stash first; a lint failure from their own uncommitted work would be
 blamed on the harness).
 
-**Read `references/toolchain-proof.md` now and follow it.** The four checks
-it walks, in order:
-
-1. **The keys exist** — `scripts.typecheck`, `scripts.lint`,
-   `scripts.testCoverage` each name a real key in `package.json`. A mismatch
-   is corrected in *both* the manifest and the `.husky/` hook that embeds it.
-2. **Typecheck and lint pass** — both exit 0, or the harness would block
-   every commit from the moment it is installed.
-3. **The tests run and at least one passes** — read the count, not just the
-   exit code; `--passWithNoTests` makes an empty run look green.
-4. **Any of the three not satisfied → stop the whole `init-harness` run**,
-   and leave `harnessVersion` and `toolchainVerifiedAt` unwritten so the next
-   run re-attempts instead of skipping as already-current.
+**Read `references/toolchain-proof.md` now and follow it.** Its checks, in
+order: (1) `scripts.typecheck`, `scripts.lint`, `scripts.testCoverage` name
+real `package.json` keys — a mismatch is fixed in *both* the manifest and
+the `.husky/` hook; (2) typecheck and lint exit 0; (3) the tests run and at
+least one passes — read the count, `--passWithNoTests` makes an empty run
+look green; (4) any of the three not satisfied → stop the whole run, leaving
+`harnessVersion` and `toolchainVerifiedAt` unwritten. Services down for the
+integration tests: not a failure — no pre-push link, one report line.
 
 Only once all three pass does this step write `harnessVersion` and
 `toolchainVerifiedAt`. That pair is the difference between "the harness found
@@ -386,6 +385,7 @@ list, and the difference between "the harness found these names" and "the
 harness ran these commands". Also report both counts from
 `bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`;
 over budget → `references/claude-md-budget.md`'s split proposal, never applied unasked.
+Report Step 1b's test-layer lines (and the CI template, if the user asked for it).
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether

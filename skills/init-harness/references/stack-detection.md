@@ -55,12 +55,29 @@ script name that isn't there — if the mapping isn't obvious (e.g. no script
 looks like a typecheck or coverage run), ask the user which script to use,
 or whether one needs to be added first.
 
-One further role is **optional**: `testIntegration`, the separate script
-some projects use for integration tests that need a database or a running
-server. Look for a key like `test:integration`, `test:it`, `integration`, or
-`e2e:integration`. Found one → map it. Found none → write no
-`testIntegration` key at all and **don't ask**: most projects run their
-integration tests in the same command as the rest, and a question about a
-script that shouldn't exist costs the user more than the key is worth. This
-is the opposite of the four roles above, where an unclear mapping is worth a
-question.
+One further role is **optional**: the integration script, the separate
+script some projects use for integration tests that need a database or a
+running server. It goes to `tests.integration.script` (before 0.11.0,
+`scripts.testIntegration`). Look for a key like `test:integration`,
+`test:it`, `integration`, or `e2e:integration`. Found one → map it.
+
+Found none → ask **only if the repository has a local service it can
+start** (`supabase/config.toml`, or a Compose file with a database
+service), and then ask once, for the whole layer — the question and what it
+offers are in `references/test-layers.md`. No such service → write no key
+and **don't ask**, as before: without a service to run against, a question
+about a script that shouldn't exist costs the user more than the key is
+worth. With one, the tests can actually run, which is what changes the
+answer. This is still the opposite of the four roles above, where an
+unclear mapping is always worth a question.
+
+## Test layer signs
+
+Two more signs are read here and acted on in `references/test-layers.md`:
+
+- **Local service** — `supabase/config.toml`, or `docker-compose.yml` /
+  `compose.yaml` with a service on a database image (`postgres`, `mysql`,
+  `mongo`, `redis`).
+- **End-to-end runner** — `@playwright/test` in `devDependencies`.
+
+Neither found → nothing new is asked anywhere in setup.
