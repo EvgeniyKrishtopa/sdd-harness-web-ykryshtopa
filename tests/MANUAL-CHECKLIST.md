@@ -276,6 +276,14 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    specific broken flow, blocking (must-pass, not advisory).
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
+7. No `tests.e2e.preflight` in the manifest: the report has one line, "no
+   environment check configured", and everything else runs as before.
+8. `tests.e2e.preflight` naming a script that exits 1: the report opens
+   with `Environment: …`; no replay, no manual pass, no `debug-loop`; the
+   dev server is gone; the log has a `confirmed` verdict line and a
+   `web-qa-flows` line with `failureKind: "environment"`.
+9. The same script exiting 0: the gate goes on, and the delegation prompt
+   to `web-qa-manual-tester` says "environment check passed".
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 

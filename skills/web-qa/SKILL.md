@@ -65,6 +65,24 @@ Gate 4.
    never comes up hang the gate forever. If the timeout is hit, tear down
    (below) and report it as a Gate 3 failure.
 
+## Check the environment before anything runs against it
+
+Once the dev server answers, read `tests.e2e.preflight` from
+`.claude/harness.json`. Absent → say one line, "no environment check
+configured", and go on — that is not a failure. Present → run
+`<runCmd> <preflight>` (the project's own script: it reaches each external
+service the way the app is configured to and checks the answer's shape —
+`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
+section 3). Exit 0 → go on as before. Non-zero → an **environment
+failure**, kept apart from an app FAIL: report `Environment: <its output>`
+as its own line before any flow; run neither the replay nor the manual pass
+(both would fail for the same reason and blur it); do **not** start
+`debug-loop` — the fix is configuration, the human's, and "the code is
+wrong" is the false hypothesis this check exists to stop; log `verdict`
+`confirmed` with `failureKind` `environment`; tear the dev server down.
+Only when the script ran and exited 0, tell `web-qa-manual-tester`
+"environment check passed" — never when there is no script.
+
 ## Replay recorded scenarios before the manual pass
 
 Read the scenarios directory from `.claude/harness.json` — `tests.e2e.dir`
@@ -77,12 +95,9 @@ accumulated suite first: `npx playwright test <scenariosDir>`, plus
 (those scenarios need the local stack up). Zero model tokens.
 
 This is the only part of this gate that checks flows the *current* diff
-didn't touch: cart changing what it hands off to checkout doesn't necessarily
-show up in checkout's own diff, and the manual pass below stays scoped to
-this change's diff, not the whole app, so nothing else in this gate would
-ever re-open checkout on its own. See
-`harness-audit/v0.4.0-implemented/01-review-blind-spots.txt` point 3 for the
-incident this closes.
+didn't touch: cart changing what it hands off to checkout needn't show up
+in checkout's own diff, and the manual pass stays scoped to this change's
+diff, so nothing else here would re-open checkout on its own.
 
 - **Any failure here** feeds into the same fix loop as a manual-tester FAIL,
   below — a regression the replay catches is exactly as real as one the
@@ -161,13 +176,20 @@ maintenance debt, not a safety net — see
    flow that's one-off, purely cosmetic, or mostly asserted "eyeballed by the
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
-   reasonable one to keep.
+   reasonable one to keep. A flow whose requests reached a non-local host
+   says so in the question: "this flow calls `<host>`; it will be recorded
+   as `@external` and left out of the replay before push."
 2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (kebab-case flow
    name) against `@playwright/test`'s own API (`page.goto`,
    `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —
    translating the steps the MCP session took, not a transcript of MCP tool
-   calls, which don't run outside that server. A flow that sends an email
-   (with `mailCatcherUrl` set) starts from section 4 of
+   calls, which don't run outside that server. **Read
+   `references/recording-rules.md` now and follow all six rules** — scoped
+   `alert`/`status`, the hydration helper before any form action
+   (`references/hydration-helper.md`), `@external`, three green runs, the
+   `@<change-slug>` tag, the `// pages:` line — plus its Suspense note: a
+   doubled form is an app FAIL, never a `.first()`. A flow that sends an
+   email (with `mailCatcherUrl` set) starts from section 4 of
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`,
    tagged `@local-stack`.
 3. **First scenario ever recorded in this project**: `permissions.deny`
@@ -179,12 +201,13 @@ maintenance debt, not a safety net — see
    write a minimal one with `testDir` pointing at `<scenariosDir>` — if
    one already exists, only check it covers that directory and tell the
    user if it doesn't, rather than rewriting a config they may have tuned.
-4. Run `npx playwright test <the new file>` right after writing it, before
-   calling the scenario recorded. A file that doesn't pass standalone
-   protects nothing — it just looks like coverage. Fix it or don't keep it;
-   don't leave a red spec file behind silently.
+4. Run `npx playwright test <the new file> --repeat-each=3` (once for an
+   `@external` one) before calling the scenario recorded — rule 4. One red
+   run and the file isn't kept: a file that doesn't pass protects nothing,
+   it just looks like coverage. Never leave a red spec file behind.
 5. Tell the user plainly what got recorded and what got declined this run —
-   the report from step 1's per-flow answers, not a single aggregate line.
+   the report from step 1's per-flow answers, not a single aggregate line;
+   what was actually written fills the `kind:"web-qa-flows"` log line below.
 
 ## Tear down the dev server whenever this gate exits
 
@@ -199,9 +222,9 @@ same port.
 
 ## Log this gate's run
 
-After the fix loop settles (all-PASS, or an explicit human override), append
-one line to `.claude/harness-log.jsonl` in the target repo (create the file
-if it doesn't exist yet) — a plain shell append, 0 model tokens:
+After the fix loop settles (all-PASS, or an explicit human override), or right
+after an environment failure stopped the gate, append
+one line to `.claude/harness-log.jsonl` (create it if absent), 0 model tokens:
 
 ```bash
 mkdir -p .claude
@@ -222,28 +245,6 @@ printf '%s\n' "$(jq -nc \
   >> .claude/harness-log.jsonl
 ```
 
-Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
-any FAIL found along the way (even if later fixed and re-passed), or
-`skipped` when this gate wasn't applicable; the wall-clock time across the
-whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
-this gate covers the whole change, triggered on the last group). `skipReason`
-is the closed-list reason matching this gate's own applicability check —
-`UI not touched` exactly when `verdict` is `skipped`, empty
-otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
-`tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
-environment appends after the `web-qa-manual-tester` delegation returns
-(point 5, `harness-audit/v0.4.0-implemented/03-log-fields.txt`), `0` when
-skipped — never estimate it from a proxy.
-Write the line only once `<usage>` has arrived — a background delegation
-reports first. If it never arrives, `tokensTotal` is `null` and
-`tokensNote` says why; never `0`, which `harness-stats` reads as a free run.
-`fixIterations` is the attempt count `debug-loop` itself reports back (phase
-4's "report success and the number of attempts it took"), summed if more
-than one flow needed its own invocation this run; `0` when every flow
-passed on the first try or the gate was skipped. `escalatedToHuman` is
-`true` only if `debug-loop` reached `maxFixAttempts` on this run without
-resolving a failure — the same run that then wrote a `blocked` marker
-instead of proceeding. If `jq`
-isn't available, construct the equivalent JSON line with `printf` instead.
-A failed log write never blocks the gate — note it in the report and move
-on; this is a diagnostic aid, not part of the pass/fail logic.
+Field by field — what fills each one, when it is `null`, and the second
+line this gate writes right after (`kind:"web-qa-flows"`, recorded and
+declined flows) — is in `references/log-fields.md`; read it now and follow it.

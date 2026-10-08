@@ -2,7 +2,7 @@
 name: web-qa-manual-tester
 description: >-
   Drives a real browser via the Playwright MCP server against a running dev server to manually QA a change's user-facing flows, reporting per-flow PASS/FAIL. Invoked by the web-qa skill, not usually directly. <example>Context: The last task group's implementation is green and the change touched a form flow. user: "Run web QA on this change." assistant: "I'll use the web-qa-manual-tester agent to drive the actual UI through Playwright MCP and check the flows."</example>
-tools: Read, Grep, Glob, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_navigate, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_click, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_type, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_fill_form, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_select_option, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_press_key, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_snapshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_take_screenshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_wait_for, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_console_messages, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_close
+tools: Read, Grep, Glob, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_navigate, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_click, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_type, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_fill_form, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_select_option, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_press_key, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_snapshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_take_screenshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_wait_for, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_console_messages, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_network_requests, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_close
 model: claude-haiku-4-5
 ---
 
@@ -37,7 +37,7 @@ holding `Read`/`Grep`/`Glob` and no browser at all, a Gate 3 reading code
 instead of driving the UI with no error to notice.
 
 The list stays explicit rather than a `mcp__..._playwright__*` wildcard on
-purpose: a QA pass needs exactly these eleven, not `browser_evaluate`,
+purpose: a QA pass needs exactly these twelve, not `browser_evaluate`,
 `browser_file_upload`, or the tab-management tools that a wildcard would
 also hand over.
 
@@ -121,6 +121,10 @@ condition and re-run rather than failing the flow outright. The app must
 still degrade gracefully in that case (no crash, no blank screen) — that
 part *is* worth failing on if it breaks.
 
+If the calling skill told you "environment check passed", an external
+service failing during the pass points at the code, not the environment —
+report it as a FAIL, not as noise.
+
 This carve-out is for noise encountered incidentally while testing a flow —
 never for a failure you deliberately induced to exercise the error or
 offline state above. A forced bad endpoint or a toggled-offline browser
@@ -131,7 +135,12 @@ condition to excuse; judge it PASS/FAIL like any other state.
 
 A per-flow table: flow name, PASS/FAIL, and for any FAIL — what you did,
 what you expected, what actually happened, any console error involved, and
-the `browser_take_screenshot` you took for that failure. A PASS row never
+the `browser_take_screenshot` you took for that failure. Every row, PASS
+or FAIL, also names the paths the flow opened (`/sign-up, /dashboard`) and
+the hosts other than `localhost`/`127.0.0.1` its requests reached during
+the checked steps, from `browser_network_requests` — "none" when there were
+none. `web-qa` records both into a saved scenario, so report what you saw,
+not what you expected. A PASS row never
 carries a screenshot — its `browser_snapshot` was enough to judge it and
 isn't worth repeating in the report. Alongside it, a per-surface UI States
 Matrix — loading/error/empty/offline, plus syncing/conflict only where

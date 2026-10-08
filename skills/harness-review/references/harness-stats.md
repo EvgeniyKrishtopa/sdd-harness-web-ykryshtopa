@@ -161,7 +161,7 @@ if command -v jq >/dev/null 2>&1; then
   # whole slurp with a parse error — the python3/node branches below already
   # skip bad lines the same way, via their own try/except and try/catch.
   jq -R 'fromjson?' "$LOG" | jq -s -r --arg since "$clockin" '
-    (map(select(.kind != "finding"))) as $runs |
+    (map(select(has("kind") | not))) as $runs |
     (map(select(.kind == "finding"))) as $findings |
     ($runs | group_by(.gate)[] | {
       gate: .[0].gate, runs: length,
@@ -222,7 +222,7 @@ with open(log_path) as f:
         except json.JSONDecodeError:
             continue
 
-runs = [r for r in all_rows if r.get("kind") != "finding"]
+runs = [r for r in all_rows if "kind" not in r]
 findings = [r for r in all_rows if r.get("kind") == "finding"]
 
 by_gate = defaultdict(list)
@@ -304,7 +304,7 @@ const allRows = fs.readFileSync(logPath, 'utf8').split('\n').filter(Boolean).map
   try { return JSON.parse(l); } catch { return null; }
 }).filter(Boolean);
 
-const runs = allRows.filter(r => r.kind !== 'finding');
+const runs = allRows.filter(r => !('kind' in r));
 const findings = allRows.filter(r => r.kind === 'finding');
 
 const byGate = {};
