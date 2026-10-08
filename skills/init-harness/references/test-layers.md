@@ -48,6 +48,10 @@ Then, by what the project already has:
   - for Jest, the same through `testMatch` and a second config;
   - `requires` and `healthCheck` from the table.
 
+  For Supabase, the config and its global setup come from
+  `references/local-stack-profile.md` section 2 — it checks the services
+  are up and refuses any address that isn't local.
+
   `--passWithNoTests` is deliberate here and nowhere else: the layer is
   new and has no tests yet, and an empty layer must not block every push
   until the first one lands. Step 8b reads this run's script with that in

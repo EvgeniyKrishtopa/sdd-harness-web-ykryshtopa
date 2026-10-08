@@ -41,6 +41,14 @@ purpose: a QA pass needs exactly these eleven, not `browser_evaluate`,
 `browser_file_upload`, or the tab-management tools that a wildcard would
 also hand over.
 
+## Flows that send an email
+
+When `web-qa` passed you a mail catcher address (a local stack is running),
+read the email yourself: `browser_navigate` to that address, find the
+message to the address the flow just used, open it, and follow its link —
+never ask the human for it. No address passed → ask for the link, as
+before. Details: `skills/init-harness/references/local-stack-profile.md`.
+
 ## How you work
 
 1. Confirm the dev server is reachable (navigate to its root URL first).
