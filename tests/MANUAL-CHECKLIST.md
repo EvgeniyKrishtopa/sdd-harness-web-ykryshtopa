@@ -179,7 +179,8 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 ## 1b. Blocking dependency audit on `pre-push` (#U12)
 
 1. On a fixture already configured by the current `init-harness`, read
-   `.husky/pre-push` directly — confirm it chains `<pm> test:coverage && <audit
+   `.husky/pre-push` directly — confirm it opens with the log-only block
+   (0.11.0) and then chains `<pm> test:coverage && <audit
    command>`, with the audit command's spelling matching this fixture's
    package manager (and, for yarn, its major version — `yarn audit --level
    high` for 1.x, `yarn npm audit --severity high` for 2.x+).
@@ -208,6 +209,28 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
    and run the integration script — it stops with one line naming
    `API_URL` and the host, before any test.
+
+### Integration tests in `pre-push` (0.11.0)
+
+The template itself is run by `tests/hook-behaviour.sh`; these check it on
+a real project with a local stack:
+
+8. Stop the stack, `git push`: one line, "pre-push: local services are not
+   running — start them with: <requires>", and the push is refused.
+9. Start the stack, push again: the integration tests run against it and
+   the push goes through.
+10. With the stack up, put a wrong service address into `.env.local` for a
+    moment: the integration tests still pass — they never read `.env*`.
+    Catching that address is the environment check's job
+    (`tests.e2e.preflight`), not `pre-push`'s. Put the address back.
+11. After `init-harness`, `.gitignore` holds `.claude/.last-pre-push.json`,
+    and `git status` stays clean after a push.
+12. An `opsx-apply-git` run: the log has a `gate:"integration"` line, and
+    the push of the log commit at §4 step 6.2 prints "only the harness log
+    changed — tests skipped" and takes about a second.
+13. Upgrade mode on a project whose `pre-push` is the plain 0.10.6 chain:
+    a diff to the new hook, applied on yes. On a hand-edited `pre-push`:
+    both blocks printed for a manual merge, the file left alone.
 
 ---
 

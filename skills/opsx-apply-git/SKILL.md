@@ -285,10 +285,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    fix-and-continue path below, the clean/PLAUSIBLE continue path, and the
    `maxFixAttempts`-exhausted stop path (a stopped run still ends this step;
    it doesn't get to skip cleanup because it stopped early). Subagent
-   reports themselves stay inline in the response either way — they're
-   short findings lists, and this controller needs them immediately to
-   decide pause-or-continue; wrapping a short report in a file would add a
-   round-trip for nothing.
+   reports stay inline either way — short lists, needed at once to decide
+   pause-or-continue; a file would add a round-trip for nothing.
    Skip the Gate 5 section only if that cumulative diff is docs/config-only
    (no source or test files touched anywhere in the run) — a run that
    shipped source changes with no tests anywhere in it is exactly what that
@@ -369,8 +367,9 @@ implement unattended is reviewed as one unit too, not group-by-group.
    with no interface never does.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
    CONFIRMED finding, print the reviewer's stated reason to the chat now
-   — this is the surfacing that step 2 deferred to here. Then push the run's
-   branch (`git push -u origin <branch>`, on its own: never piped, see `references/command-hygiene.md`).
+   (step 2 deferred it here). Then push the run's branch (`git push -u
+   origin <branch>`, on its own: never piped, see `references/command-hygiene.md`)
+   — **read `references/pre-push-note.md` before it**: the integration tests' log line.
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
 6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain
