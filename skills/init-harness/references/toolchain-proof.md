@@ -80,6 +80,14 @@ whole reason a project keeps integration tests in a second command is that
 they need something — a database, a running server — which may simply not be
 there on this machine.
 
+**Check the services first.** When `tests.integration.healthCheck` is set,
+run it before the script. Non-zero → the services aren't up, which says
+nothing about the setup: don't run the script, keep `tests.integration` as
+written, and put one line in the report — `services not running,
+integration tests not verified; start them with <requires>` — then go on.
+A script this run just added (`references/test-layers.md`) has no tests
+yet; it passes on zero tests by design, so skip the count rule for it.
+
 A non-zero exit here is **not** a reason to stop the setup, unlike the three
 scripts above. Instead: leave `tests.integration` out of the manifest,
 leave the middle link out of `.husky/pre-push` (`references/git-hooks.md`

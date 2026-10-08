@@ -12,7 +12,8 @@ Vite, `start` for Next.js), `{{LOCKFILE}}` with the detected lockfile
 (`yarn.lock`/`package-lock.json`/`pnpm-lock.yaml`), and `{{TEST_RUNNER_CMD}}`
 with the detected `testRunner`'s single-run command (`vitest run` for vitest,
 `jest` for jest). For any other runner, drop that line rather than guessing a
-command. Do not leave literal placeholders in the written file.
+command. Write the `npx playwright test` line only when `@playwright/test` is
+in `devDependencies`; otherwise drop it. Do not leave literal placeholders in the written file.
 
 ```json
 {
@@ -27,6 +28,7 @@ command. Do not leave literal placeholders in the written file.
       "Bash({{PACKAGE_MANAGER}} test:run:*)",
       "Bash({{PACKAGE_MANAGER}} test:coverage:*)",
       "Bash(npx {{TEST_RUNNER_CMD}}:*)",
+      "Bash(npx playwright test:*)",
       "Bash(npm info *)",
       "Bash(npx openspec:*)",
       "Bash(openspec:*)",
@@ -140,6 +142,10 @@ command. Do not leave literal placeholders in the written file.
   runner's own single-run form is allowed, never `npx:*`, which would allow
   any package on the registry. An unknown runner gets no line, by the same
   "never invent a script name" rule as `{{SERVE_SCRIPT}}`.
+- `Bash(npx playwright test:*)` (0.11.0) lets the scenario replay run
+  without a prompt on every push. It is `test` only, never
+  `npx playwright:*`: `npx playwright install` downloads browsers onto the
+  user's machine, and that stays the user's call.
 - `Bash(cd:*)` does not make `cd <repo> && <write>` run without a prompt.
   Claude Code checks a compound command that combines `cd` with a write
   operation itself, before any allow rule, and always asks ("Compound command
