@@ -89,10 +89,10 @@ Read the scenarios directory from `.claude/harness.json` — `tests.e2e.dir`
 first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
 `jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'
 .claude/harness.json` (call the result `<scenariosDir>`). If the
-directory exists and holds at least one recorded scenario file, run the
-accumulated suite first: `npx playwright test <scenariosDir>`, plus
-`--grep-invert @local-stack` unless `tests.integration.healthCheck` passes
-(those scenarios need the local stack up). Zero model tokens.
+directory holds a recorded scenario file, run them first (0 tokens): `npx playwright test
+<scenariosDir> --grep-invert "(<externalTag>|@local-stack)(?![\w-])"` —
+`tests.e2e.externalTag` (default `@external`), the config may lack its own
+filter; drop `|@local-stack` when `tests.integration.healthCheck` passes.
 
 This is the only part of this gate that checks flows the *current* diff
 didn't touch: cart changing what it hands off to checkout needn't show up
