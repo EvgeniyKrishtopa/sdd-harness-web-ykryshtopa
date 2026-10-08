@@ -67,8 +67,9 @@ the first scenario, as it does today.
 Present → one question: turn on the replay of recorded scenarios before
 push. Yes → write `tests.e2e` with `dir` (default
 `tests/web-qa-scenarios`), `command: "npx playwright test"`,
-`externalTag: "@external"`, and `replayBeforePush: true`; add `preflight`
-only if the project already has an environment-check script. No → no
+`externalTag: "@external"`, and `replayBeforePush: true`. Never write
+`preflight` here: no detection rule for an environment-check script exists
+yet, and a guessed script name is the one thing this skill never writes. No → no
 `tests.e2e` block; the replay stays off.
 
 The same question covers the Playwright config:
