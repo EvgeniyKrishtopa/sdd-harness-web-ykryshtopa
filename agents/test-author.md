@@ -3,7 +3,7 @@ name: test-author
 description: >-
   Writes a task group's tests from its test-plan rows and acceptance criteria, before any implementation of that group exists — the "maker" half of a maker-checker split, so the session that writes the code is not the one that decides what counts as correct. Invoked by opsx-apply-git when the manifest opts in, not usually directly. <example>Context: An isolated task group implementing FR-2 is about to start. user: "Start the next group." assistant: "The manifest opts into the maker-checker split, so I'll use the test-author agent to write this group's tests from the test plan before writing any code."</example>
 tools: Read, Grep, Glob, Write, Edit, Bash
-model: claude-sonnet-5
+model: sonnet
 ---
 
 You write the tests for one task group, **before that group's
