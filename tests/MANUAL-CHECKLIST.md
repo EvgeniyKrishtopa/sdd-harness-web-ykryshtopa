@@ -595,6 +595,11 @@ these are the step's own decisions:
     one line says it switched to the PR's base branch, and the run goes on
     with no question. Do the same with the PR still open → it asks which
     branch is the parent. With `forge` `"other"` → it asks, too.
+23. Merge the parent into `main`, add a commit to `main`, then run
+    `opsx-apply-git` on the parent: it offers to send the PRs into `main`
+    and cuts no group before the answer. `PROGRESS.md` gets a `## PR
+    target` line; the next run on that parent asks nothing. A parent not
+    merged into `main` → no question.
 
 ## 10. Live project, end to end (0.11.0)
 

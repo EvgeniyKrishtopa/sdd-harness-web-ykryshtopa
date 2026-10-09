@@ -147,6 +147,24 @@ cp "$F" "$WORK/before"
 if node "$P" clock-out --file "$F" --change x 2>/dev/null; then bad "missing values accepted"; else ok "exit non-zero"; fi
 if cmp -s "$F" "$WORK/before"; then ok "file untouched"; else bad "file changed on a failed call"; fi
 
+echo "-- pr-target: one line per parent, a new answer replaces it, clock-out keeps it --"
+T="$WORK/target.md"
+node "$P" pr-target --file "$T" --parent feature/a --target main --date 2026-10-09 >/dev/null
+node "$P" pr-target --file "$T" --parent feature/ab --target feature/ab --date 2026-10-09 >/dev/null
+cp "$T" "$WORK/target1"
+node "$P" pr-target --file "$T" --parent feature/ab --target feature/ab --date 2026-10-09 >/dev/null
+if cmp -s "$T" "$WORK/target1"; then ok "same answer twice, same file"; else bad "file changed on a repeated pr-target"; fi
+node "$P" pr-target --file "$T" --parent feature/a --target feature/a --date 2026-10-10 >/dev/null
+node "$P" clock-out --file "$T" --change c --branch b --last-commit "a — b" --done 1 \
+  --in-progress none --blocked none --clock-in t1 --clock-out t2 >/dev/null
+targets=$(awk '/^## PR target$/{f=1;next} /^## /{f=0} f && NF' "$T" | tr '\n' '|')
+if [ "$targets" = "- feature/ab → feature/ab — chosen 2026-10-09|- feature/a → feature/a — chosen 2026-10-10|" ]; then
+  ok "feature/a replaced, the prefix-sharing feature/ab kept, clock-out left both"
+else
+  bad "PR target: $targets"
+fi
+if node "$P" pr-target --file "$T" --parent feature/a --date 2026-10-10 2>/dev/null; then bad "missing --target accepted"; else ok "missing --target fails"; fi
+
 echo
 echo "Passed: $pass  Failed: $fail"
 [ "$fail" -eq 0 ]
