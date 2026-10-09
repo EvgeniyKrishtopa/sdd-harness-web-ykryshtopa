@@ -110,9 +110,12 @@ uses for JSON parsing.
 10. **Findings outcomes** — for every `kind:"finding"` line
     (`skills/opsx-apply-git/references/log-findings.md`, #U17 point 7), a
     per-gate count of `fixed`/`rejected`/`deferred`. This is the one number
-    that says whether a gate's CONFIRMED findings are trustworthy or noise —
+    that says whether a gate's findings are trustworthy or noise —
     without it, "gate said confirmed" and "gate was right" are
-    indistinguishable. These lines carry no `verdict`/`durationMs`, so they
+    indistinguishable. The counts mix CONFIRMED findings with PLAUSIBLE ones
+    a human was asked about (a Case B run since 0.12.0), so a high
+    `rejected` share can mean PLAUSIBLE notes the human waved off, not
+    wrong CONFIRMED ones. These lines carry no `verdict`/`durationMs`, so they
     are excluded from every metric above (1-9) and counted here instead.
 11. **Environment failures among `confirmed`** (0.11.0) — for `e2e-replay`,
     `integration` and `web-qa`: how many `confirmed` runs had `failureKind`
