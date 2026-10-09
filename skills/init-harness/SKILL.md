@@ -249,7 +249,7 @@ rather than merge targets. If a file already exists, read it first:
   file the user may have customized without them seeing what would change.
 - Only write straight over the file with no confirmation when it doesn't exist yet.
 
-Also seed this repo's continuity files — new in both first-install and
+Also seed this repo's continuity files and their `.gitignore` lines — new in both first-install and
 upgrade mode, since a repo set up by an earlier version never got them:
 
 - Write `CONTEXT.md` from `references/context-template.md` if absent — create-if-missing only, never diffed or touched on a re-run; starts empty, fills in as terms come up.
@@ -258,9 +258,11 @@ upgrade mode, since a repo set up by an earlier version never got them:
   never-overwrite rule as above. A fresh file starts with no current change,
   no next steps, and a clock-in of "now"; after this point only
   `opsx-apply-git` touches it, at its own run boundaries. It is local to
-  this machine (0.12.0): append `PROGRESS.md` to `.gitignore`; in upgrade
+  this machine (0.12.0): append `PROGRESS.md` to `.gitignore` if missing; in upgrade
   mode also `git rm --cached PROGRESS.md` (see
   `references/progress-template.md`).
+- Append `.playwright-mcp/` to `.gitignore` unless a line already ignores it (with or without `/`), on a new line (0.12.0):
+  the plugin's Playwright MCP server writes its snapshots and screenshots there.
 - Write no `merge=union` line into `.gitattributes` (0.12.0). The harness
   log is one file per branch under `.claude/harness-log/`, `PROGRESS.md` is
   not in git at all, and GitHub ignores merge drivers anyway. `docs/decisions/` never needed one either: two branches
@@ -384,7 +386,7 @@ list, and the difference between "the harness found these names" and "the
 harness ran these commands". Also report both counts from
 `bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`;
 over budget → `references/claude-md-budget.md`'s split proposal, never applied unasked.
-Report Step 1b's test-layer lines (and the CI and audit job templates the user asked for).
+Report Step 1b's test-layer lines (and the CI and audit job templates the user asked for), and each line appended to `.gitignore`.
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether

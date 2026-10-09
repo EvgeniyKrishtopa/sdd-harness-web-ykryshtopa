@@ -163,7 +163,8 @@ It detects your framework, package manager and test runner, then:
   rules, and asks for your coverage threshold;
 - **writes the project docs** — `.claude/docs/git-conventions.md`,
   `review-gates.md`, `laziness-ladder.md` — plus `CONTEXT.md` and
-  `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored;
+  `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored,
+  as is `.playwright-mcp/` (the Playwright MCP server's snapshots);
   the harness log is one file per branch under `.claude/harness-log/`, so
   task-group branches never commit the same file.
   `docs/decisions/` is *not* created here — it appears on demand, the first

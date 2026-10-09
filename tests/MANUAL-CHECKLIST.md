@@ -168,6 +168,8 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    - `PROGRESS.md` is in `.gitignore`; on a project set up before 0.12.0,
      `git status` shows it deleted from the index while the file is still
      on disk (`git rm --cached`);
+   - `.playwright-mcp/` is in `.gitignore`, on a fresh install and after an
+     upgrade; a second run adds no duplicate line;
    - on a 0.11.0 project, `.husky/pre-push`'s log-only check is offered as
      a one-line diff to the per-branch pattern;
    - `.claude/harness.json` gains `harnessVersion`, `maxFixAttempts`, and
@@ -655,8 +657,9 @@ One Next.js project with a local stack, start to finish, by a human:
 1. `init-harness` offers the test layers: the integration layer with its
    start command, a Playwright config without `@external`, the environment
    check (a drafted `scripts/qa-preflight.mjs` whose probes name variables,
-   never values), and a printed CI template. Declining leaves the
-   repository as it was; no CI file is ever written.
+   never values, and no `Read` of any `.env*` file while drafting), and a
+   printed CI template. Declining leaves the repository as it was; no CI
+   file is ever written.
 2. A change with a UI flow passes `web-qa` and records a scenario.
 3. A later change that touches that scenario's page replays it before the
    push of its last run. A later change that doesn't touch the page leaves
