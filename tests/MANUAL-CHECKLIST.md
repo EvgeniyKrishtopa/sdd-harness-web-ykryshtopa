@@ -632,6 +632,11 @@ these are the step's own decisions:
     fix: every suggested JSON/YAML edit in the report parses (paste it and
     run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
     as words only, marked as not parsed.
+30. A judgement-heavy run whose review returns two PLAUSIBLE findings: one
+    multi-select question "Fix before push?" lists both. Pick one: it lands
+    as its own commit, the other changes nothing, and the log has one
+    `fixed` and one `rejected` finding line. An isolated run with the same
+    findings asks nothing.
 
 ## 10. Live project, end to end (0.11.0)
 

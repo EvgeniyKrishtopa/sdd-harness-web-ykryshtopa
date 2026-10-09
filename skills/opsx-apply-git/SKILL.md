@@ -306,8 +306,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
    attempt's hypothesis to the human — don't push past it (`rm -f
-   "$diff_file"` first, per above). Clean/PLAUSIBLE in
-   every section → continue. Separately from that verdict, `code-reviewer` —
+   "$diff_file"` first, per above). Clean/PLAUSIBLE → continue; Case B with
+   any PLAUSIBLE → **read `references/plausible-fix.md` first**. Separately, `code-reviewer` —
    and `deep-reviewer` whenever the prefilter spawned it — each report their
    own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
    CONFIRMED finding but `reviewConfidence: low` from *either* continues —

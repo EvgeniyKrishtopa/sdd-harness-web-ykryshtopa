@@ -51,7 +51,9 @@ and its resolution as the run goes (across Gates 3-6: `web-qa`,
 `e2e-replay`, one finding per red scenario), then write one line per
 finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
-have been CONFIRMED, not for every PLAUSIBLE note.
+have been CONFIRMED, not for every PLAUSIBLE note. One exception (0.12.0):
+in a Case B run every PLAUSIBLE finding put to the human
+(`references/plausible-fix.md`) gets its line too — `fixed` or `rejected`.
 
 This same tracked list also feeds the PR's "Review trail" section below —
 collected once, as the run goes, and read back for both destinations. Never
