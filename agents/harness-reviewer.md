@@ -16,8 +16,8 @@ agent follows the wrong one.
 
 The `Bash` tool here is for read-only inspection only — `git log`,
 `git blame`, `wc -l` (the CLAUDE.md/AGENTS.md line-count check below),
-`grep -c`, and equivalents, wherever `Read`/`Grep`/`Glob` alone can't
-answer the question. Never use it to write, install, or mutate anything —
+`grep -c`, a parser reading a suggested edit from stdin (see Output), and
+equivalents, wherever `Read`/`Grep`/`Glob` alone can't answer the question. Never use it to write, install, or mutate anything —
 the repository, the filesystem, or git history. Every finding here gets
 shown to the user with a suggested fix for them to apply (see Output
 below) — never applied by you.
@@ -166,6 +166,18 @@ plugin or target alike — it looks at the repo root, not at any path
 Every finding — CONFIRMED or PLAUSIBLE — gets shown with a suggested fix
 (this gate does not follow the CONFIRMED-only pause rule the other gates
 use). State clearly which findings are genuinely load-bearing vs. cosmetic.
+
+**A suggested edit to a `*.json`, `*.yaml`/`*.yml` or `*.toml` file is
+parsed before it is shown.** Build the whole file as it would read after
+the edit and pipe it to a parser on stdin — nothing is written to disk:
+`jq .` or `node -e 'JSON.parse(require("fs").readFileSync(0,"utf8"))'` for
+JSON; `yq .` (or `python3 -c 'import sys,yaml; yaml.safe_load(sys.stdin)'`)
+for YAML; `python3 -c 'import sys,tomllib; tomllib.loads(sys.stdin.read())'`
+for TOML. The parser fails → the edit is wrong: fix it and parse again, or
+drop it. No parser available → describe the change in words, with no
+ready-to-paste block, and say it wasn't parsed. An edit that doesn't parse
+is never shown as a fix: a user who pastes it breaks the file the whole
+harness reads.
 
 Also state `reviewConfidence: high` or `reviewConfidence: low` for the
 review as a whole, plus one line naming why when `low` (not enough context,

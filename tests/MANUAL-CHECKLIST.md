@@ -628,6 +628,10 @@ these are the step's own decisions:
     says `library behaviour not confirmed` with one concrete check, and is
     PLAUSIBLE at most. No report suggests reading `node_modules`. The
     `code-review` and `deep-review` log lines carry `context7Lookups`.
+29. Give `harness-review` a project whose `.claude/harness.json` needs a
+    fix: every suggested JSON/YAML edit in the report parses (paste it and
+    run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
+    as words only, marked as not parsed.
 
 ## 10. Live project, end to end (0.11.0)
 
