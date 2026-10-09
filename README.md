@@ -477,7 +477,10 @@ rule.
   plugin's own server therefore doesn't fall back to yours; it leaves the
   agent with nothing that resolves, so it refuses to launch, which is the
   failure you want to see rather than a browser pass on an unverified
-  version.
+  version. The server starts with `--caps=storage` so the agent can list
+  and delete cookies (an expired login is checked by deleting its
+  `HttpOnly` cookie); it is not given `browser_cookie_set` or
+  `browser_cookie_clear`.
 - **context7** (`@upstash/context7-mcp`) — mandatory since 0.6.0. Used by
   `opsx-apply-git` before writing framework-specific code, and by
   `code-review` when a diff touches a library that wasn't checked at

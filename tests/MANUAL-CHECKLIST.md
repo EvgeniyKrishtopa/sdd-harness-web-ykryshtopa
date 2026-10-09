@@ -331,6 +331,12 @@ a real project with a local stack:
     host: the recording question names the host and offers `@external`,
     untagged, or not recorded. "Untagged" writes the scenario without
     `@external`, and the replay before push runs it.
+11. A change with a sign-in and a page that sends an expired login back to
+    `/sign-in`: the agent finds the login cookie with `browser_cookie_list`,
+    deletes it with `browser_cookie_delete`, reloads, and judges the
+    redirect itself — no help from the calling session. That flow's row
+    names both calls. The Keyboard Pass row for tab order lists the
+    recorded order (`Email → Password → Sign in`), not just PASS.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
