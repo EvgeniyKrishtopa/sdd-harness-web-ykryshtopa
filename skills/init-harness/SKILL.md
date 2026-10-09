@@ -259,11 +259,11 @@ upgrade mode, since a repo set up by an earlier version never got them:
   no next steps, and a clock-in of "now"; after this point only
   `opsx-apply-git` touches it, at its own run boundaries (see
   `references/progress-template.md`).
-- Write `.gitattributes` with `PROGRESS.md merge=union` and
-  `.claude/harness-log.jsonl merge=union` — append whichever line is
-  missing, leave everything else alone. Both are append-only files every
-  task-group branch can touch, so without this every group's PR would
-  conflict on either one. Nothing else here needs `merge=union` — in
+- Write `.gitattributes` with `PROGRESS.md merge=union` — append the line
+  if missing, leave everything else alone. The harness log needs no line
+  (0.12.0): it is one file per branch under `.claude/harness-log/`, so two
+  branches never write the same file (see "Where the log lives" in
+  `opsx-apply-git`'s log-findings reference). Nothing else needs it — in
   particular not `docs/decisions/`, whose whole design point is that two
   branches produce two different files instead of contending for one (see
   `references/decision-template.md`).

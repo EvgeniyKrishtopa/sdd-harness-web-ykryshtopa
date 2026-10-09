@@ -165,13 +165,13 @@ and is fixed through the same single `debug-loop` invocation.
 ## Log this gate's run
 
 After delivering the verdict above, append **three** lines to
-`.claude/harness-log.jsonl` in the target repo (create the file if it
+this branch's log file, `.claude/harness-log/<branch>.jsonl` in the target repo (create the file if it
 doesn't exist yet) — one per gate, since downstream cost analysis (#43)
 tracks them separately even though this session merged them into a single
 delegation. Plain shell appends, 0 model tokens:
 
 ```bash
-mkdir -p .claude
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -186,7 +186,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations <total debug-loop attempts across every CONFIRMED finding fixed this run, 0 if none> \
   --argjson escalatedToHuman <true iff debug-loop hit maxFixAttempts on this run> \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -201,7 +201,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -216,7 +216,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 The `deep-review` line is written on **every** run, including the far more

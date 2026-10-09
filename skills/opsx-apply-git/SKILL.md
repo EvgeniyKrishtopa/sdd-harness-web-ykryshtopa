@@ -243,13 +243,13 @@ implement unattended is reviewed as one unit too, not group-by-group.
    three log lines yourself (same shape `code-review` would write, all
    `verdict:"skipped"`) — nobody else writes `deep-review`'s line either:
    ```bash
-   mkdir -p .claude
+   mkdir -p .claude/harness-log
    for g in code-review test-coverage deep-review; do
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
        '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",skipReason:"small change",durationMs:0,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
-       >> .claude/harness-log.jsonl
+       >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
    done
    ```
    Then skip straight to step 3 (Gate 6's own precondition, #35 — evaluated
@@ -337,15 +337,15 @@ implement unattended is reviewed as one unit too, not group-by-group.
    as this project's hooks.) Most runs touch neither — a run that never
    touched the harness has nothing for this gate to find. In that case,
    skip the `harness-review` delegation
-   entirely and append the skip directly to `.claude/harness-log.jsonl`
+   entirely and append the skip directly to this branch's log file, `.claude/harness-log/<branch>.jsonl`
    yourself (create the file if it doesn't exist), since the skill that
    normally writes that line never ran:
    ```bash
-   mkdir -p .claude
+   mkdir -p .claude/harness-log
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
      '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",skipReason:"harness config unchanged",durationMs:0,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
-     >> .claude/harness-log.jsonl
+     >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
    ```
    If `jq` isn't available, construct the equivalent line with `printf`
    instead, matching `harness-review`'s own log format. If either
@@ -371,7 +371,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    origin <branch>`, on its own: never piped, see `references/command-hygiene.md`)
    — **read `references/pre-push-note.md` before it**: the integration tests' log line.
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
-6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
+6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing the log folder `.claude/harness-log/` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain
       language covering what this run actually did and why, in terms a
       human who hasn't read the diff can follow. This is *not* satisfied by
@@ -380,7 +380,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
       process, and the point of this section is to force the run to be
       stated in words, which is only possible once it's actually
       understood.
-   2. Commit and push `.claude/harness-log.jsonl` (per `log-findings.md`),
+   2. Commit and push `.claude/harness-log/` (per `log-findings.md`),
       then print both sections — before step 6.3 opens or prints the PR, the
       one point in an autonomous batch where a human sees the run in prose
       instead of tool output, with a chance to intervene.

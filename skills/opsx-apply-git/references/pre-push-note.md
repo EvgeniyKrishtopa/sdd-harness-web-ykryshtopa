@@ -5,7 +5,7 @@ Referenced from `SKILL.md` §4 step 4. Background:
 
 The integration tests run inside `.husky/pre-push`, where this skill only
 sees whether the push went through — not how those tests ended. The hook
-can't write the log itself: `.claude/harness-log.jsonl` is tracked, and a
+can't write the log itself: the log under `.claude/harness-log/` is tracked, and a
 line written after the commit would leave the working tree dirty. So the
 hook leaves a note in `.claude/.last-pre-push.json` (ignored by git) on
 every exit, and this step turns it into a log line
@@ -57,13 +57,14 @@ and goes out with this run's log commit once the push is repeated.
 ## The line
 
 ```bash
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" --arg group "<group-number-or-range>" \
   --arg verdict "<clean|confirmed|skipped>" --arg skipReason "<reason, or empty>" \
   --argjson durationMs <the note's durationMs, or 0> \
   --arg failureKind "<app|environment, only for confirmed>" \
   '{ts:$ts,change:$change,group:$group,gate:"integration",verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false,failureKind:$failureKind}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 `tokensTotal` is `0`: a shell command, so 0 is the truth here. A failed log

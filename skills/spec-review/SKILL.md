@@ -113,11 +113,11 @@ before implementation ever starts. Don't conflate the two when reading
 ## Log this gate's run
 
 After delivering the verdict above, append one line to
-`.claude/harness-log.jsonl` in the target repo (create the file if it
+this branch's log file, `.claude/harness-log/<branch>.jsonl` in the target repo (create the file if it
 doesn't exist yet) — a plain shell append, 0 model tokens:
 
 ```bash
-mkdir -p .claude
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -132,7 +132,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 Fill in the change slug, the verdict this run resolved to (per "Handling

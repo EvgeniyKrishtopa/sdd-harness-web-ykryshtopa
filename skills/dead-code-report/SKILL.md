@@ -6,7 +6,7 @@ description: Finds unused files, exports, types, and dependencies with knip plus
 Find code nothing references anymore, and hand the result to the normal
 change process. This is **not** one of this project's seven review gates —
 it runs on demand, not on every task, and it does not write to
-`.claude/harness-log.jsonl` (see "Not a gate" below).
+the harness log (see "Not a gate" below).
 
 ## Why this exists
 
@@ -148,7 +148,7 @@ by hand instead of attempting to edit executable config.
 ## Not a gate
 
 This command is not one of the seven review gates and does not append to
-`.claude/harness-log.jsonl` — adding a line here would distort the log's
+the harness log — adding a line here would distort the log's
 skip-rate accounting for a command that, by design, doesn't run on every
 task the way a gate does. Run it by hand, roughly monthly, alongside the
 harness-diet review in `review-gates.md`.

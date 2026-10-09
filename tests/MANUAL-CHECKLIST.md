@@ -340,7 +340,7 @@ of looping forever.
    each visibly structured as its four phases (reproduce, isolate, diagnose,
    fix-and-reverify), and then **escalates to a human** with a clear message
    naming the failure — not a third silent attempt, not a generic timeout.
-3. Confirm `.claude/harness-log.jsonl`'s line for that run records
+3. Confirm the line in `.claude/harness-log/<branch>.jsonl` for that run records
    `fixIterations: 2` and `escalatedToHuman: true`.
 4. Repeat with a CONFIRMED `code-review` finding whose suggested fix, once
    applied, still fails re-verification — confirm the same cap and
@@ -408,7 +408,7 @@ Review-depth-by-classification (#34):
 Trivial-diff pre-filter (#36):
 
 13. Make a run whose entire cumulative diff is a 3-line `.md` edit — confirm
-    `code-review` never spawns at all, and `.claude/harness-log.jsonl` gets
+    `code-review` never spawns at all, and the harness log (`.claude/harness-log/<branch>.jsonl`) gets
     both the `code-review` and `test-coverage` lines written directly by
     `opsx-apply-git` with `"verdict":"skipped"`.
 14. Make a run that's still `.md`-only but exceeds `trivialDiffThreshold`
@@ -468,7 +468,7 @@ Precondition (#35):
    nothing under `CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, no
    `openspec/config.yaml` edit, no `package.json` script/dependency change —
    confirm `harness-reviewer`
-   never spawns for it, and `.claude/harness-log.jsonl` gets a
+   never spawns for it, and the harness log (`.claude/harness-log/<branch>.jsonl`) gets a
    `"gate":"harness-review","verdict":"skipped"` line written directly by
    `opsx-apply-git` (not by the harness-review skill, which never ran).
 5. Run a change that only adds a `package.json` script (no `.claude/`/
@@ -522,7 +522,7 @@ Precondition (#35):
    hand-written `## Shell` section ("don't `cd` into the repo") in its
    `CLAUDE.md` first and confirm the bullet is skipped.
 7. Make a run log a skip (a `.md`-only diff): the PR body's Review trail and
-   `.claude/harness-log.jsonl` show the reason in English (`small change`).
+   the harness log (`.claude/harness-log/<branch>.jsonl`) show the reason in English (`small change`).
 
 Steps 8-13 check `docs/deferred.md` (0.10.5). They are manual: the eval set
 under `evals/` covers skill routing and review misses, not a multi-step

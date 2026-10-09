@@ -17,7 +17,7 @@ exists to prevent.
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
 | `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
-| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0): see "The 0.11.0 pre-push" below |
+| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0, 0.12.0): see "The 0.11.0 pre-push" and "The 0.12.0 log-only check" below |
 | `.gitignore` (`.claude/.last-pre-push.json`) | Step 3 | append the line if missing, only when `.husky/pre-push` writes the note (0.11.0) |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
@@ -33,7 +33,7 @@ exists to prevent.
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
 | `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
-| `.gitattributes` (`.claude/harness-log.jsonl merge=union`) | Step 5 | append the line if missing; never touch other lines (0.6.0) |
+| `.gitattributes` (`.claude/harness-log.jsonl merge=union`) | Step 5 | no longer written (0.12.0): **remove** this one line if present; never touch other lines. The old `.claude/harness-log.jsonl` itself is never moved or deleted — `harness-stats` still reads it |
 | `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case A or B, or `record-decision`, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead (0.5.0: Case A and `record-decision` both added as writers alongside Case B) |
 | `docs/deferred.md` | `opsx-apply-git` §3 and §5, on demand | never created here, on first install or on upgrade: `opsx-apply-git` creates it the first time a group leaves something blocked, skipped or obsolete, so a project with nothing deferred has no empty file. Upgrade only appends the pointer bullet (0.10.5) |
 | *(none — reads only, writes nothing)* linter ruleset check | Step 8b | recommendation, not a merge target: compares the project's linter config against `references/linter-ruleset.md`, reported every upgrade run, never installs or edits config (0.6.0) |
@@ -75,6 +75,28 @@ checks the services and leaves the note `opsx-apply-git` logs from.
 2. Anything else (a human edited it) → don't guess where the new parts go.
    Print both blocks, filled in, and ask the user to merge them by hand;
    one report line says so.
+
+## The 0.12.0 log-only check
+
+0.12.0 moved the harness log into one file per branch, so the first block
+of `.husky/pre-push` (`references/git-hooks.md` step 4) matches a new
+pattern. Find the line that still names the old file only:
+
+```sh
+grep -n "grep -vxF .claude/harness-log.jsonl" .husky/pre-push
+```
+
+1. Found, and the block around it is the one this skill wrote → show the
+   one-line change as a diff (`grep -vxF .claude/harness-log.jsonl` →
+   `grep -vxE '\.claude/harness-log(\.jsonl|/[^/]+\.jsonl)'`, and the
+   comment line above the loop) and apply it on the user's yes.
+2. Not found and no `only_log` block at all → the hook predates 0.11.0;
+   "The 0.11.0 pre-push" above already brings in the new block.
+3. Anything else → print the new block and ask the user to merge it by
+   hand; one report line says so.
+
+Skipping this costs time, not safety: the old pattern doesn't recognise a
+push of the new log files as log-only, so that push runs every test.
 
 ## How upgrade mode runs
 

@@ -290,7 +290,7 @@ c7='cd . && for p in react vite; do npm view $p version | head -20; done'
 verdict_absent "incident 7: read-only loop on main is not a merge" '"ask"' \
   "$(bash_json "$c7" | sh "$CMD/merge.sh")"
 c8=$(cat <<'CMD'
-for f in a b; do printf '%s\n' "$(jq -nc --arg f "$f" '{f:$f}')" >> .claude/harness-log.jsonl; done
+for f in a b; do printf '%s\n' "$(jq -nc --arg f "$f" '{f:$f}')" >> .claude/harness-log/main.jsonl; done
 CMD
 )
 verdict_absent "incident 8: appending to a log on main is not a commit" '"ask"' \
@@ -499,6 +499,13 @@ echo '{"gate":"x"}' > "$PR/.claude/harness-log.jsonl"; git -C "$PR" add -A; git 
 logonly=$(git -C "$PR" rev-parse HEAD)
 echo b > "$PR/app.ts"; git -C "$PR" add -A; git -C "$PR" commit -qm code
 code=$(git -C "$PR" rev-parse HEAD)
+# 0.12.0: the log is one file per branch under .claude/harness-log/.
+mkdir -p "$PR/.claude/harness-log"
+echo '{"gate":"y"}' > "$PR/.claude/harness-log/feature--a.jsonl"
+echo '{"gate":"z"}' > "$PR/.claude/harness-log/main.jsonl"; git -C "$PR" add -A; git -C "$PR" commit -qm newlog
+newlog=$(git -C "$PR" rev-parse HEAD)
+echo 'not a log' > "$PR/.claude/harness-log/notes.txt"; git -C "$PR" add -A; git -C "$PR" commit -qm notlog
+notlog=$(git -C "$PR" rev-parse HEAD)
 zero=0000000000000000000000000000000000000000
 
 # push <hook> <local sha> <remote sha> -- runs it, prints output + trace + note + exit code.
@@ -513,6 +520,11 @@ verdict "only the log changed -> exit 0" "EXIT=0" "$r"
 verdict "only the log changed -> says so in one line" "only the harness log changed" "$r"
 verdict "only the log changed -> no test ran" "TRACE=$" "$r"
 verdict "only the log changed -> no note" "NOTE=$" "$r"
+r=$(push hook-int.sh "$newlog" "$code")
+verdict "only per-branch log files changed -> not tested" "TRACE=$" "$r"
+verdict "only per-branch log files changed -> says so" "only the harness log changed" "$r"
+r=$(push hook-int.sh "$notlog" "$newlog")
+verdict "a non-.jsonl file in the log folder -> tested" "TRACE=cov hc integ audit" "$r"
 r=$(push hook-int.sh "$code" "$logonly")
 verdict "code changed -> every link ran, in order" "TRACE=cov hc integ audit $" "$r"
 verdict "code changed -> note says pass" '"integration":"pass"' "$r"
