@@ -12,6 +12,7 @@
 //        --last-commit "<hash> — <subject>" --done "<groups|none>"
 //        --in-progress "<group|none>" --blocked "<group/task — reason|none>"
 //        [--next "<step>"]... --clock-in <ISO> --clock-out <ISO> [--file PROGRESS.md]
+//   (a value starting with "-" is passed as --name=-value)
 //   node progress.mjs pause --change <slug> --date <YYYY-MM-DD> --reason "<one line>" [--file ...]
 //
 // clock-out rewrites Current change, Status and Next steps, removes the
@@ -20,7 +21,8 @@
 // already the last one -- so running the same clock-out twice changes
 // nothing. pause adds one line under Paused changes, once.
 
-import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
+import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
+import { parseArgs as parseCli } from 'node:util';
 
 const ORDER = ['Current change', 'Status', 'Next steps', 'Paused changes', 'Session log'];
 
@@ -29,18 +31,22 @@ function fail(msg) {
   process.exit(2);
 }
 
+const OPTIONS = Object.fromEntries(
+  ['file', 'change', 'branch', 'last-commit', 'done', 'in-progress', 'blocked', 'clock-in', 'clock-out', 'date', 'reason']
+    .map((name) => [name, { type: 'string' }]),
+);
+OPTIONS.next = { type: 'string', multiple: true, default: [] };
+
+// util.parseArgs rejects a flag whose value is missing ("--blocked --next x")
+// instead of silently shifting every later pair. A value that itself starts
+// with a dash is passed as --name=-value.
 function parseArgs(argv) {
-  const [command, ...rest] = argv;
-  const args = { next: [] };
-  for (let i = 0; i < rest.length; i += 2) {
-    const key = rest[i];
-    const value = rest[i + 1];
-    if (!key?.startsWith('--') || value === undefined) fail(`expected --key value pairs, got "${key}"`);
-    const name = key.slice(2);
-    if (name === 'next') args.next.push(value);
-    else args[name] = value;
+  try {
+    const { values, positionals } = parseCli({ args: argv, options: OPTIONS, allowPositionals: true, strict: true });
+    return { command: positionals[0], args: values };
+  } catch (err) {
+    fail(err.message.split('\n')[0]);
   }
-  return { command, args };
 }
 
 // One physical line per value: the SessionStart hook reads these line by line.
@@ -49,20 +55,25 @@ function oneLine(value, name) {
   return String(value).replace(/\s*\n\s*/g, ' ').trim();
 }
 
+// Lines before the first "## " heading (the "# Progress" title, any note
+// under it) are kept as the file's preamble, untouched.
 function parse(text) {
   const sections = new Map();
+  const preamble = [];
   let current = null;
-  for (const line of text.split('\n')) {
+  for (const line of text.split(/\r?\n/)) {
     const heading = line.match(/^## (.+?)\s*$/);
     if (heading) {
       current = heading[1];
       sections.set(current, []);
     } else if (current) {
       sections.get(current).push(line);
+    } else {
+      preamble.push(line);
     }
   }
   for (const [name, lines] of sections) sections.set(name, trimBlank(lines));
-  return sections;
+  return { preamble: trimBlank(preamble), sections };
 }
 
 function trimBlank(lines) {
@@ -73,9 +84,9 @@ function trimBlank(lines) {
   return lines.slice(start, end);
 }
 
-function render(sections) {
+function render({ preamble, sections }) {
   const names = [...ORDER.filter((n) => sections.has(n)), ...[...sections.keys()].filter((n) => !ORDER.includes(n))];
-  const parts = ['# Progress'];
+  const parts = [preamble.length ? preamble.join('\n') : '# Progress'];
   for (const name of names) {
     const lines = sections.get(name);
     // An empty Paused changes section is omitted, never left as a bare heading.
@@ -86,13 +97,25 @@ function render(sections) {
 }
 
 function load(file) {
-  return existsSync(file) ? parse(readFileSync(file, 'utf8')) : new Map();
+  try {
+    return parse(readFileSync(file, 'utf8'));
+  } catch (err) {
+    if (err.code === 'ENOENT') return { preamble: [], sections: new Map() };
+    fail(`cannot read ${file}: ${err.message}`);
+  }
 }
 
-function save(file, sections) {
+// Write to a temporary file and rename, so an interrupted write never leaves
+// half a PROGRESS.md; on failure, remove the temporary file too.
+function save(file, doc) {
   const tmp = `${file}.tmp-${process.pid}`;
-  writeFileSync(tmp, render(sections));
-  renameSync(tmp, file);
+  try {
+    writeFileSync(tmp, render(doc));
+    renameSync(tmp, file);
+  } catch (err) {
+    try { unlinkSync(tmp); } catch { /* never created */ }
+    fail(`cannot write ${file}: ${err.message}`);
+  }
 }
 
 function pausedLineFor(change) {
@@ -101,7 +124,8 @@ function pausedLineFor(change) {
 
 function clockOut(file, a) {
   const change = oneLine(a.change, 'change');
-  const sections = load(file);
+  const doc = load(file);
+  const { sections } = doc;
   sections.set('Current change', [
     `- Change: ${change}`,
     `- Branch: ${oneLine(a.branch, 'branch')}`,
@@ -112,7 +136,7 @@ function clockOut(file, a) {
     `- In progress: ${oneLine(a['in-progress'], 'in-progress')}`,
     `- Blocked: ${oneLine(a.blocked, 'blocked')}`,
   ]);
-  const steps = a.next.map((s) => oneLine(s, 'next')).filter(Boolean);
+  const steps = a.next.map((s) => oneLine(s, 'next'));
   sections.set('Next steps', steps.length ? steps.map((s, i) => `${i + 1}. ${s}`) : ['None.']);
   if (sections.has('Paused changes')) {
     sections.set('Paused changes', sections.get('Paused changes').filter((l) => !pausedLineFor(change)(l)));
@@ -121,18 +145,21 @@ function clockOut(file, a) {
   const log = sections.get('Session log') ?? [];
   if (log[log.length - 1] !== session) log.push(session);
   sections.set('Session log', log);
-  save(file, sections);
+  save(file, doc);
+  console.log(`progress.mjs: clock-out for ${change} written to ${file}`);
 }
 
 function pause(file, a) {
   const change = oneLine(a.change, 'change');
-  const sections = load(file);
+  const doc = load(file);
+  const { sections } = doc;
   const paused = sections.get('Paused changes') ?? [];
   if (!paused.some(pausedLineFor(change))) {
     paused.push(`- ${change} — paused ${oneLine(a.date, 'date')}: ${oneLine(a.reason, 'reason')}`);
   }
   sections.set('Paused changes', paused);
-  save(file, sections);
+  save(file, doc);
+  console.log(`progress.mjs: ${change} paused in ${file}`);
 }
 
 const { command, args } = parseArgs(process.argv.slice(2));
