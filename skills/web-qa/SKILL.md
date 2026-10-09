@@ -110,18 +110,12 @@ diff, so nothing else here would re-open checkout on its own.
 
 ## Action
 
-1. List the flows first: one per screen the change reaches — `ui-plan.md`'s
-   screen rows when it exists, else one per page or route file in the
-   change's diff against the parent branch. Pass the list to the subagent
-   as its starting point. Then pick the model from
-   `.claude/harness.json`'s `models.webQa` (written by `init-harness`):
-   `haiku`, or the key missing, and **more than three flows** → `sonnet`;
-   otherwise `models.webQa` as it is (missing → the agent's own default,
-   never a block on a missing override). Many flows in one run is where
-   the cheaper model lost track before; three or fewer stay cheap. A
-   human who set `sonnet` or `opus` keeps it. Say it in one line, e.g.
-   `5 flows → sonnet`, and pass it as the `model` parameter when delegating
-   to the `web-qa-manual-tester` subagent (`Agent` tool). The subagent drives the **Playwright MCP server**
+1. List the flows (one per `ui-plan.md` screen row, else per page/route
+   file in the diff) and pass the list to the `web-qa-manual-tester`
+   subagent (`Agent` tool) as its start. Its `model`: `models.webQa` is
+   `haiku` or missing and there are **more than three flows** → `sonnet`;
+   otherwise `models.webQa` as set, missing → the agent's own default.
+   Say it in one line: `5 flows → sonnet`. The subagent drives the **Playwright MCP server**
    (navigate, click, fill, snapshot via the accessibility tree, screenshot)
    against the running dev server — this plugin's own pinned server only
    (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a
