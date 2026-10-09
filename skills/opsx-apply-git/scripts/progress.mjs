@@ -14,17 +14,20 @@
 //        [--next "<step>"]... --clock-in <ISO> --clock-out <ISO> [--file PROGRESS.md]
 //   (a value starting with "-" is passed as --name=-value)
 //   node progress.mjs pause --change <slug> --date <YYYY-MM-DD> --reason "<one line>" [--file ...]
+//   node progress.mjs pr-target --parent <branch> --target <branch> --date <YYYY-MM-DD> [--file ...]
 //
 // clock-out rewrites Current change, Status and Next steps, removes the
 // change's own line from Paused changes (working on it means it isn't
 // paused), and appends one Session log line unless that exact line is
 // already the last one -- so running the same clock-out twice changes
-// nothing. pause adds one line under Paused changes, once.
+// nothing. pause adds one line under Paused changes, once. pr-target
+// records where PRs go for a parent already merged into the main branch
+// (opsx-apply-git §1 step 3): one line per parent, replaced on a new answer.
 
 import { readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { parseArgs as parseCli } from 'node:util';
 
-const ORDER = ['Current change', 'Status', 'Next steps', 'Paused changes', 'Session log'];
+const ORDER = ['Current change', 'Status', 'Next steps', 'Paused changes', 'PR target', 'Session log'];
 
 function fail(msg) {
   console.error(`progress.mjs: ${msg}`);
@@ -32,7 +35,7 @@ function fail(msg) {
 }
 
 const OPTIONS = Object.fromEntries(
-  ['file', 'change', 'branch', 'last-commit', 'done', 'in-progress', 'blocked', 'clock-in', 'clock-out', 'date', 'reason']
+  ['file', 'change', 'branch', 'last-commit', 'done', 'in-progress', 'blocked', 'clock-in', 'clock-out', 'date', 'reason', 'parent', 'target']
     .map((name) => [name, { type: 'string' }]),
 );
 OPTIONS.next = { type: 'string', multiple: true, default: [] };
@@ -162,8 +165,19 @@ function pause(file, a) {
   console.log(`progress.mjs: ${change} paused in ${file}`);
 }
 
+function prTarget(file, a) {
+  const parent = oneLine(a.parent, 'parent');
+  const line = `- ${parent} → ${oneLine(a.target, 'target')} — chosen ${oneLine(a.date, 'date')}`;
+  const doc = load(file);
+  const kept = (doc.sections.get('PR target') ?? []).filter((l) => !l.startsWith(`- ${parent} → `));
+  doc.sections.set('PR target', [...kept, line]);
+  save(file, doc);
+  console.log(`progress.mjs: PR target for ${parent} written to ${file}`);
+}
+
 const { command, args } = parseArgs(process.argv.slice(2));
 const file = args.file ?? 'PROGRESS.md';
 if (command === 'clock-out') clockOut(file, args);
 else if (command === 'pause') pause(file, args);
-else fail('usage: progress.mjs clock-out|pause --key value ... (see the header of this file)');
+else if (command === 'pr-target') prTarget(file, args);
+else fail('usage: progress.mjs clock-out|pause|pr-target --key value ... (see the header of this file)');

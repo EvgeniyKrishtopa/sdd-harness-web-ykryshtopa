@@ -74,6 +74,10 @@ together with the rest of the upgrade.
 
 - <change-slug> — paused <YYYY-MM-DD>: <reason, one line>
 
+## PR target
+
+- <parent-branch> → <branch PRs go into> — chosen <YYYY-MM-DD>
+
 ## Session log
 
 - Clock-in: <ISO-8601 UTC> — Clock-out: <ISO-8601 UTC>
@@ -99,8 +103,14 @@ touched by anything but a new file: this is the one part of `PROGRESS.md`
 that falls outside the single-writer/run-boundary rule above, precisely
 because it describes a change that isn't the one currently running.
 
+The `PR target` section is absent until `opsx-apply-git` §1 step 3 finds
+a parent that is already merged into the main branch and asks where this
+change's PRs should go. `progress.mjs pr-target` writes the answer — one
+line per parent, a new answer replaces the old one — so the next run on
+that parent follows it without asking again. `clock-out` never touches it.
+
 Keep section headings exactly as shown (`## Current change`, `## Status`,
-`## Next steps`, `## Session log`, `## Paused changes`) — the `SessionStart`
+`## Next steps`, `## Session log`, `## Paused changes`, `## PR target`) — the `SessionStart`
 hook locates `## Status`/`## Next steps` by these literal marker strings
 with `awk`, not by parsing markdown generally, and `progress.mjs` finds
 every section by its heading the same way. Renaming a

@@ -24,9 +24,9 @@ read `references/ci-probes.md` before any task that must push failing code.
 
 ## 1. Determine the parent branch and read the stack manifest
 
-1. `git branch --show-current` — this should be the parent feature branch
-   already active, never `main`/`master`. If it looks like a leftover group
-   branch, stop and ask which branch is the real parent.
+1. `git branch --show-current` — the parent, never `main`/`master` unless
+   `PROGRESS.md`'s `## PR target` points to it. A leftover group branch →
+   **read `references/parent-branch.md`**.
 2. Read `.claude/harness.json` (written by `init-harness`) for
    `packageManager`, `runCmd`, `framework`, `testRunner`, `buildDir`,
    `scripts`, `devServerUrl`, and `coverageThreshold` — every verification
@@ -35,6 +35,7 @@ read `references/ci-probes.md` before any task that must push failing code.
    missing, stop and tell the user to run `init-harness` first — see
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
    for what it detects and why this skill doesn't duplicate that logic.
+3. Parent already merged into main? **Read `references/parent-branch.md`.**
 
 ## 2. Standard OpenSpec selection and context
 
