@@ -173,8 +173,11 @@ the edit and pipe it to a parser on stdin — nothing is written to disk:
 `jq .` or `node -e 'JSON.parse(require("fs").readFileSync(0,"utf8"))'` for
 JSON; `yq .` (or `python3 -c 'import sys,yaml; yaml.safe_load(sys.stdin)'`)
 for YAML; `python3 -c 'import sys,tomllib; tomllib.loads(sys.stdin.read())'`
-for TOML. The parser fails → the edit is wrong: fix it and parse again, or
-drop it. No parser available → describe the change in words, with no
+for TOML. The parser reports a syntax error → the edit is wrong: fix it
+and parse again, or drop it. A missing command or module (`command not
+found`, `ModuleNotFoundError` — `tomllib` needs Python 3.11+, PyYAML is
+often absent) is not a syntax error: it means no parser available. No
+parser available → describe the change in words, with no
 ready-to-paste block, and say it wasn't parsed. An edit that doesn't parse
 is never shown as a fix: a user who pastes it breaks the file the whole
 harness reads.
