@@ -609,6 +609,12 @@ these are the step's own decisions:
     four-step way out is offered and nothing of it is done, and the log has
     a `gate:"audit"` line with `failureKind` `unrelated`. Change the
     lockfile in the run instead → `failureKind` `app`, no way out offered.
+25. `init-harness` on a fresh project: it asks plain audit or the script.
+    Script → `scripts/deps-audit.mjs`, `scripts/audit-allowlist.json` (`[]`)
+    and the hook calls `node scripts/deps-audit.mjs <pm audit> --json`;
+    `depsAudit` is `"script"`. An allowlist entry with a past `expires`
+    fails the push again. Upgrade a 0.11.0 project: the question comes once,
+    and the hook's audit line is replaced only after the diff is shown.
 
 ## 10. Live project, end to end (0.11.0)
 

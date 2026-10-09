@@ -72,6 +72,10 @@ git diff --quiet "$base...HEAD" -- package.json "<lockfile from .claude/harness.
   2. its PR merged into the main branch;
   3. the main branch merged into this run's branch;
   4. the push repeated.
+
+  `depsAudit` is `"script"` → name the other way too: an entry in
+  `scripts/audit-allowlist.json` with a reason and an end date. Adding it
+  is the human's decision, never this skill's.
 - Exit `1` → this run changed its dependencies; the vulnerability may be
   its own. Report the audit's findings as a failed push, nothing more.
 

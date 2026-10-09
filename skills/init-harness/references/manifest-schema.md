@@ -15,6 +15,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "testRunner": "vitest",
   "buildDir": "dist",
   "lockfile": "yarn.lock",
+  "depsAudit": "script",
   "coverageThreshold": 80,
   "scripts": {
     "dev": "dev",
@@ -92,6 +93,11 @@ Merge into the file Step 2e already started (it may already contain just the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
   `pnpm-lock.yaml` was found).
+- `depsAudit` (0.12.0) — how `.husky/pre-push` runs the dependency audit:
+  `"script"` (`scripts/deps-audit.mjs` with an allowlist) or `"plain"` (the
+  package manager's own audit command). The user's answer to
+  `references/deps-audit.md`'s question; absent → the question hasn't been
+  asked yet, and upgrade mode asks it once.
 - `runCmd` — the command prefix used to invoke a `package.json` script
   (`yarn`, `npm run`, or `pnpm`).
 - `scripts.*` — the actual script **keys** that exist in this project's

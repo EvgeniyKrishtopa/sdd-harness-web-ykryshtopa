@@ -18,6 +18,7 @@ exists to prevent.
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
 | `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
 | `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0, 0.12.0): see "The 0.11.0 pre-push" and "The 0.12.0 log-only check" below |
+| `scripts/deps-audit.mjs`, `scripts/audit-allowlist.json` (`references/deps-audit.md`) | Step 3, on a "yes" only (0.12.0) | copied only when `depsAudit` is `"script"`; an existing script or allowlist is never overwritten — the allowlist's entries are the project's decisions. See "The 0.12.0 audit script" below |
 | `.gitignore` (`.claude/.last-pre-push.json`) | Step 3 | append the line if missing, only when `.husky/pre-push` writes the note (0.11.0) |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
@@ -28,7 +29,7 @@ exists to prevent.
 | `package.json` `test:integration` script, `vitest.integration.config.ts` with `tests/integration/global-setup.ts` (`references/local-stack-profile.md`; or a second Jest config), the main test config's exclude | Step 1b, on a "yes" only | created only when the project has a local service, no integration script, and the user accepts (`references/test-layers.md`); the main config's change is shown as a diff first |
 | `scripts/qa-preflight.mjs` and the `package.json` `qa:preflight` script (`references/local-stack-profile.md` section 3) | Step 1b, on a "yes" only | drafted with probes that name variables, never values, and written only on a second "yes", when `tests.e2e` has no `preflight` yet; an existing file is never overwritten (`references/test-layers.md`) |
 | *(none — printed, never written)* CI job template | Step 10, on a "yes" only | printed into the report; no file is written, in `.github/workflows/` or anywhere else |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; `depsAudit`, added 0.12.0 — written only from the user's answer; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only, inside the existing `## Harness (...)` block. The two-line Shell bullet (0.10.2) is skipped when the file already says the same thing in the user's own words anywhere: a `## Shell` section or any line telling the agent not to prefix commands with `cd` into the repo counts. Two versions of one rule are a maintenance problem, and the user's version is the one they chose |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade |
@@ -97,6 +98,18 @@ grep -n "grep -vxF .claude/harness-log.jsonl" .husky/pre-push
 
 Skipping this costs time, not safety: the old pattern doesn't recognise a
 push of the new log files as log-only, so that push runs every test.
+
+## The 0.12.0 audit script
+
+`.claude/harness.json` has no `depsAudit` → ask `references/deps-audit.md`'s
+question once and record the answer, whichever it is.
+
+1. `"plain"` → nothing else changes.
+2. `"script"` → copy the two files as that reference says. Then find the
+   plain audit command in `.husky/pre-push`: found exactly once → show the
+   one-line change to the script call as a diff and apply it on the user's
+   yes. Not found, or found more than once → print the script call and ask
+   the user to put it in by hand; one report line says so.
 
 ## How upgrade mode runs
 

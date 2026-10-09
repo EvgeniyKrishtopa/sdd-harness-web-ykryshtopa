@@ -135,6 +135,10 @@ of once per commit.
    - `yarn` → run `yarn --version` to tell which spelling applies: `1.x` →
      `yarn audit --level high`; `2.x` or higher → `yarn npm audit --severity high`
 
+   That is the plain form. **Read `references/deps-audit.md` first**: the
+   user may choose the audit script with an allowlist instead, and then
+   `<audit command>` is the script call written there.
+
    Do not add `<pm> outdated` alongside the audit — it reports version drift,
    not vulnerabilities, and would leave the hook permanently red on any
    stale minor version. A check that's always red trains whoever runs it to
