@@ -654,8 +654,12 @@ these are the step's own decisions:
     `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
     `change: "<slug>"`; the PR goes into the main branch with "What changed
     and why" and a "Review trail" whose Change line reads `No OpenSpec
-    change — chore run <slug>.` A chore run that edits only a `.md` file
-    writes `code-review` as `skipped`.
+    change — chore run <slug>.` and whose base is `main`, not
+    `origin/main`. A chore run that edits only a few lines of a `.md` file
+    writes `code-review` as `skipped`, `small change`; one that edits
+    `.github/workflows/` or `vercel.json` still runs `code-review`. A
+    project whose `git-conventions.md` has no chore line gets asked before
+    the commit.
 
 ## 10. Live project, end to end (0.11.0)
 

@@ -1,6 +1,6 @@
 ---
 name: opsx-apply-git
-description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change (a chore run).
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change — a chore run: "bump a dependency", "small fix without a spec", "chore: ...".
 ---
 
 Implement the next run from an OpenSpec change inside this project's git
@@ -16,11 +16,11 @@ first (see below).
 
 ## 0. Read the harness docs first
 
-Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in
-the target repo (written by `init-harness`) before touching any code — they
+Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in the target repo (written by `init-harness`) before touching any code — they
 are the source of truth for branch naming, commit format, and gate order.
 Then **read `references/command-hygiene.md`**, before the first Bash call;
 read `references/ci-probes.md` before any task that must push failing code.
+**No OpenSpec change** (a small task) → read `references/chore-run.md` instead of §1-§5.
 
 ## 1. Determine the parent branch and read the stack manifest
 
@@ -448,7 +448,7 @@ numbered as below; other skills cite these numbers, so they stay listed here:
 
 ## Exceptions
 
-- An unrelated fix found mid-task can land as its own focused commit. A small task with no OpenSpec change at all → **read `references/chore-run.md`**.
+- An unrelated fix found mid-task can land as its own focused commit.
 - Destructive/history-rewriting git operations are never part of this flow
   — stop and ask if something goes wrong. The **only** exception is the
   confirmed `git reset --hard origin/<parent>` in the squash/rebase-merge

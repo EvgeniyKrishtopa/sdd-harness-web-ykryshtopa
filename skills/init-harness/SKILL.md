@@ -401,7 +401,7 @@ permissions/`.claudeignore` distinction from Steps 6-7 (what
 covers), that `.claude/harness.json` (Step 8) is now the source every other
 skill reads for stack details, and whether `CLAUDE.md`/`AGENTS.md` (Step 9)
 was created or appended to — say plainly that this is required for the
-auto-commit override at group/archive boundaries to apply. Tell the user
+auto-commit override at group/archive boundaries (and a chore run's end) to apply. Tell the user
 their harness is ready and that `opsx-propose-review` is next.
 
 Either mode: mention that after a future `/plugin update`, running this skill
