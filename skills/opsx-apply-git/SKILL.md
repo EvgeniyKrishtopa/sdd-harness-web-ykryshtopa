@@ -396,20 +396,20 @@ implement unattended is reviewed as one unit too, not group-by-group.
       `⚠️ Judgement-heavy: needs careful human review` marker still leads the
       body, ahead of both sections. Leave the PR open — the human owns the
       merge.
-7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
-   current change and branch, last commit, done/in-progress/blocked groups
-   (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
-   the moment it stopped the run — see §3's Blocked tasks section — and
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`'s
-   self-check: re-read what you wrote
-   and reconcile it against `tasks.md`'s real state before moving on) and
-   numbered next steps for whatever remains in this change. If `PROGRESS.md`
-   has a `## Paused changes` section and one of its lines names *this*
-   change, remove that line — this run means the change is active again,
-   not paused — and leave every other line in that section untouched; if no
-   line names this change, leave the whole section exactly as found (it
-   belongs to `opsx-propose-review`, see
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`).
+7. **Tasks remain** → clock out in `PROGRESS.md` with the script, never by
+   hand (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`):
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs" clock-out \
+     --change "<change-slug>" --branch "<this run's branch>" \
+     --last-commit "<short-hash> — <subject>" --done "<groups done, or none>" \
+     --in-progress "<group, or none>" --blocked "<group/task — reason, or none>" \
+     --next "<step>" --next "<step>" \
+     --clock-in "<this session's start, ISO-8601 UTC>" --clock-out "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+   ```
+   One `--next` per remaining step; the script numbers them and drops this
+   change's `## Paused changes` line. Blocked reason = the task's
+   `<!-- blocked: ... -->` marker. Re-read the file against `tasks.md`; on a
+   mismatch, rerun with corrected values. Leave it uncommitted (§5 commits it).
    Report progress and stop, calling out any blocked task by name and reason
    as its own line in the report rather than folding it into the general
    summary — the next `opsx-apply-git` invocation re-syncs the parent from
@@ -441,9 +441,10 @@ numbered as below; other skills cite these numbers, so they stay listed here:
 4. Push the archive branch. Same `forge` branch as step 6.3 above: `"other"`
    → print the archive branch name and the parent branch instead of a PR
    call; otherwise open a PR into the parent (`gh pr create`). Leave it open.
-5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
-   no current change and no next steps remain for it, noting the archive
-   location and archive PR URL. Then report the full session.
+5. **Clock out in `PROGRESS.md` one final time** for this change, with the
+   same script call as §4 step 7 (`--change none`, no `--next`), and commit
+   it on the archive branch — the only branch that ever commits this file.
+   Then report the full session.
 
 ## Exceptions
 

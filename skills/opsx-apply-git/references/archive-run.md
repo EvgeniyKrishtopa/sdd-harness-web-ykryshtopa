@@ -45,11 +45,14 @@ a change that was never actually accepted (#19).
    print the archive branch name and the parent branch instead of opening a
    PR; otherwise (`"github"`, or absent) open a PR into the parent
    (`gh pr create`). Leave it open.
-5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
-   current change and no next steps remain for it, noting the archive
-   location and archive PR URL — the same self-checking regeneration as §4
-   step 7, just for a change that's now fully done rather than paused,
-   including the same `## Paused changes` prune-this-change-only-if-present
-   rule from §4 step 7. Then report the full session: every group completed
-   with PR URLs, final `N/N tasks complete`, archive location, archive PR
-   URL.
+5. Clock out in `PROGRESS.md` one final time for this change, with
+   `SKILL.md` §4 step 7's script call: `--change none`, `--branch` the
+   archive branch, `--last-commit` the archive commit, `--done` every group,
+   no `--next`. The script prunes this change's `## Paused changes` line the
+   same way. Then commit it on the archive branch (`chore: progress after
+   archiving <change-name>`) and push — the open archive PR picks it up.
+   This is the only commit `PROGRESS.md` ever gets after `init-harness`:
+   group and run branches never commit it, so no two branches carry
+   different versions of it. Then report the full session: every group
+   completed with PR URLs, final `N/N tasks complete`, archive location,
+   archive PR URL.
