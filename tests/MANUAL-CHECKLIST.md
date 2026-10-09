@@ -618,6 +618,11 @@ these are the step's own decisions:
 26. Answer yes to the scheduled audit job: the report prints one weekly job
     that runs the same audit call as the hook and says the project owns
     it; `.github/workflows/` and the rest of the repo have no new file.
+27. Upgrade a project whose manifest has `"code": "claude-sonnet-5"` and
+    `"webQa": "claude-haiku-4-5"`: afterwards they read `sonnet` and
+    `haiku`, and the report lists both changes. Put `"deep": "gpt-5"` in
+    instead: the upgrade stops with a message naming `models.deep` and the
+    four allowed names, nothing is written and `harnessVersion` stays.
 
 ## 10. Live project, end to end (0.11.0)
 

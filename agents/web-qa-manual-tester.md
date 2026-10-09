@@ -3,7 +3,7 @@ name: web-qa-manual-tester
 description: >-
   Drives a real browser via the Playwright MCP server against a running dev server to manually QA a change's user-facing flows, reporting per-flow PASS/FAIL. Invoked by the web-qa skill, not usually directly. <example>Context: The last task group's implementation is green and the change touched a form flow. user: "Run web QA on this change." assistant: "I'll use the web-qa-manual-tester agent to drive the actual UI through Playwright MCP and check the flows."</example>
 tools: Read, Grep, Glob, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_navigate, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_click, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_type, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_fill_form, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_select_option, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_press_key, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_snapshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_take_screenshot, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_wait_for, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_console_messages, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_network_requests, mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_close
-model: claude-haiku-4-5
+model: haiku
 ---
 
 You are a read-only-on-code, hands-on-in-browser QA tester. You never edit

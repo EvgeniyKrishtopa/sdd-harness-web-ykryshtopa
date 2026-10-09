@@ -50,15 +50,15 @@ Merge into the file Step 2e already started (it may already contain just the
   "makerChecker": { "enabled": false },
   "designSystem": { "enabled": false },
   "models": {
-    "architecture": "claude-opus-5",
-    "spec": "claude-sonnet-5",
-    "webQa": "claude-haiku-4-5",
-    "code": "claude-sonnet-5",
-    "deep": "claude-opus-5",
-    "harness": "claude-haiku-4-5",
-    "testAuthor": "claude-sonnet-5",
-    "clarify": "claude-sonnet-5",
-    "default": "claude-sonnet-5"
+    "architecture": "opus",
+    "spec": "sonnet",
+    "webQa": "haiku",
+    "code": "sonnet",
+    "deep": "opus",
+    "harness": "haiku",
+    "testAuthor": "sonnet",
+    "clarify": "sonnet",
+    "default": "sonnet"
   }
 }
 ```
@@ -263,6 +263,27 @@ Merge into the file Step 2e already started (it may already contain just the
   `skills/code-review/references/deep-review.md`. Only depart from the seeded
   defaults if the user asks for a different tier or doesn't have access to
   one of these models.
+
+  **Values are short names only (0.12.0): `sonnet`, `opus`, `haiku`,
+  `fable`** — exactly what the `Agent` tool's `model` parameter accepts.
+  Skills pass the value as it is and never translate it. Each name follows
+  the newest model of its family, so the manifest doesn't go stale. Before
+  writing, check every `models.*` value: one of the four → keep it. A full
+  name from the table below → write its short name (an upgrade's case).
+  Anything else → stop Step 8 with `models.<key> is "<value>": use sonnet,
+  opus, haiku or fable` and write nothing — a name the `Agent` tool rejects
+  breaks every delegation that reads it.
+
+  | Full name | Short name |
+  | --- | --- |
+  | `claude-opus-5-5`, `claude-opus-5`, `claude-opus-4-6`, `claude-opus-4-5`, `claude-opus-4-1`, `claude-opus-4` | `opus` |
+  | `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-sonnet-4-5`, `claude-sonnet-4` | `sonnet` |
+  | `claude-haiku-5-5`, `claude-haiku-4-5` | `haiku` |
+  | `claude-fable-5-1`, `claude-fable-5` | `fable` |
+
+  A name with a date at the end (`claude-sonnet-4-5-20250929`) counts as
+  the same name without it. This table is the only place that maps full
+  names; nothing else in the plugin does.
 
 ## Two rules that hold for the whole file
 

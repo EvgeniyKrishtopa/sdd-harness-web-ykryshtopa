@@ -498,6 +498,25 @@ else
     ok "$MANIFEST_REF's manifest example carries neither pre-0.11.0 test key"
   fi
 
+  # Model names (0.12.0): the Agent tool's model parameter takes only these
+  # four. A full name in the example is copied into every new manifest and
+  # then rejected on every delegation that reads it.
+  bad_models="$(printf '%s' "$manifest_example" | jq -r '.models // {} | to_entries[] | select(.value | IN("sonnet","opus","haiku","fable") | not) | "\(.key)=\(.value)"' 2>/dev/null)"
+  if [ -z "$bad_models" ] && printf '%s' "$manifest_example" | jq -e '.models | length > 0' >/dev/null 2>&1; then
+    ok "$MANIFEST_REF's models example uses short names only"
+  else
+    bad "$MANIFEST_REF's models example has a non-short name or no models: ${bad_models:-none}"
+  fi
+  for f in agents/*.md evals/support/harness.json; do
+    if [ "${f##*.}" = json ]; then
+      vals="$(jq -r '.models // {} | .[]' "$f" 2>/dev/null)"
+    else
+      vals="$(awk 'NR>1 && /^---$/{exit} /^model:/{print $2}' "$f")"
+    fi
+    odd="$(printf '%s\n' "$vals" | grep -vxE 'sonnet|opus|haiku|fable' | grep . || true)"
+    if [ -z "$odd" ]; then ok "$f names models by short name"; else bad "$f has a full model name: $odd"; fi
+  done
+
   # The readers' fallback chains, run against both manifest shapes: an
   # upgraded one must win with the tests key, a not-yet-upgraded one must
   # still resolve the old key, and one with neither must get the default.

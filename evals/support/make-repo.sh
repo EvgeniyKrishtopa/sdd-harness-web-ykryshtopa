@@ -69,7 +69,7 @@ else
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "maxFixAttempts": 2,
   "disabledRules": [],
-  "models": {}
+  "models": { "architecture": "opus", "spec": "sonnet", "webQa": "haiku", "code": "sonnet", "deep": "opus", "harness": "haiku", "testAuthor": "sonnet", "clarify": "sonnet", "default": "sonnet" }
 }
 JSON
 fi

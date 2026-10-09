@@ -30,7 +30,7 @@ exists to prevent.
 | `scripts/qa-preflight.mjs` and the `package.json` `qa:preflight` script (`references/local-stack-profile.md` section 3) | Step 1b, on a "yes" only | drafted with probes that name variables, never values, and written only on a second "yes", when `tests.e2e` has no `preflight` yet; an existing file is never overwritten (`references/test-layers.md`) |
 | *(none — printed, never written)* CI job template | Step 10, on a "yes" only | printed into the report; no file is written, in `.github/workflows/` or anywhere else |
 | *(none — printed, never written)* scheduled audit job template (`references/deps-audit.md`) | Step 10, on a "yes" only (0.12.0) | printed into the report; no file is written, in `.github/workflows/` or anywhere else |
-| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; `depsAudit`, added 0.12.0 — written only from the user's answer; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
+| `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; `depsAudit`, added 0.12.0 — written only from the user's answer; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); `models.*` full names become short names (0.12.0, see "The 0.12.0 model names" below); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only, inside the existing `## Harness (...)` block. The two-line Shell bullet (0.10.2) is skipped when the file already says the same thing in the user's own words anywhere: a `## Shell` section or any line telling the agent not to prefix commands with `cd` into the repo counts. Two versions of one rule are a maintenance problem, and the user's version is the one they chose |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade |
@@ -114,6 +114,20 @@ question once and record the answer, whichever it is.
 
 Ask the regular-audit question from the same reference in the same run,
 whatever the answer above: the printed job works with either hook.
+
+## The 0.12.0 model names
+
+Before 0.12.0, `models.*` held full names (`claude-sonnet-5`), which the
+`Agent` tool's `model` parameter doesn't accept. Check every `models.*`
+value against `references/manifest-schema.md`'s `models` entry:
+
+1. A short name (`sonnet`, `opus`, `haiku`, `fable`) → keep it.
+2. A full name in that entry's table → replace it with its short name; one
+   report line lists each key changed, `old → new`.
+3. Anything else → stop the upgrade with `models.<key> is "<value>": use
+   sonnet, opus, haiku or fable`, before writing anything, and leave
+   `harnessVersion` as it is. Guessing a family from an unknown name could
+   send a review to a model the user never chose.
 
 ## How upgrade mode runs
 
