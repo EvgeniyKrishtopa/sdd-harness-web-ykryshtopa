@@ -1,4 +1,4 @@
-# Logging the integration tests from the pre-push note — step 4
+# The pre-push result: integration tests and a failed audit — step 4
 
 Referenced from `SKILL.md` §4 step 4. Background:
 `harness-audit/v0.11.0-planned/02-integration-pre-push.txt`.
@@ -54,6 +54,33 @@ otherwise the hook's own last line. Then stop the run, as on any failed
 push: don't retry, don't go on to step 5. The log line is already written
 and goes out with this run's log commit once the push is repeated.
 
+## The audit failed (0.12.0)
+
+The audit is the hook's last link. The push failed and its output ends in
+the audit's report, after the tests passed → check whether this run
+touched its dependencies at all, against the parent:
+
+```bash
+base=origin/<parent>; git rev-parse -q --verify "$base" >/dev/null || base=<parent>
+git diff --quiet "$base...HEAD" -- package.json "<lockfile from .claude/harness.json>"
+```
+
+- Exit `0` (neither file changed) → say in one line: `The vulnerability is
+  not related to this run: package.json and <lockfile> are unchanged from
+  <parent>.` Then offer the way out, and do none of it yourself:
+  1. a fix branch off the main branch that updates the vulnerable package;
+  2. its PR merged into the main branch;
+  3. the main branch merged into this run's branch;
+  4. the push repeated.
+- Exit `1` → this run changed its dependencies; the vulnerability may be
+  its own. Report the audit's findings as a failed push, nothing more.
+
+Either way, write one `gate:"audit"` line (`verdict` `confirmed`,
+`failureKind` `unrelated` for exit `0`, `app` for exit `1`, `durationMs`
+`0`) with the command below, and stop the run
+as on any failed push. A push that went through, or failed elsewhere,
+writes no audit line.
+
 ## The line
 
 ```bash
@@ -62,8 +89,9 @@ printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" --arg group "<group-number-or-range>" \
   --arg verdict "<clean|confirmed|skipped>" --arg skipReason "<reason, or empty>" \
   --argjson durationMs <the note's durationMs, or 0> \
-  --arg failureKind "<app|environment, only for confirmed>" \
-  '{ts:$ts,change:$change,group:$group,gate:"integration",verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false,failureKind:$failureKind}')" \
+  --arg gate "<integration|audit>" \
+  --arg failureKind "<app|environment|unrelated, only for confirmed>" \
+  '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false,failureKind:$failureKind}')" \
   >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
