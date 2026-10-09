@@ -603,6 +603,21 @@ these are the step's own decisions:
     no question either (known limit, `parent-branch.md`). Run it once with
     `origin/HEAD` unset (`git remote set-head origin -d`): same result.
     A merged archive branch → it reports the change is archived and stops.
+24. Put a package with a known high vulnerability into the parent's
+    lockfile, then run a group that changes only source files: the push
+    fails, one line says the vulnerability is not related to this run, the
+    four-step way out is offered and nothing of it is done, and the log has
+    a `gate:"audit"` line with `failureKind` `unrelated`. Change the
+    lockfile in the run instead → `failureKind` `app`, no way out offered.
+25. `init-harness` on a fresh project: it asks plain audit or the script.
+    Script → `scripts/deps-audit.mjs`, `scripts/audit-allowlist.json` (`[]`)
+    and the hook calls `node scripts/deps-audit.mjs <pm audit> --json`;
+    `depsAudit` is `"script"`. An allowlist entry with a past `expires`
+    fails the push again. Upgrade a 0.11.0 project: the question comes once,
+    and the hook's audit line is replaced only after the diff is shown.
+26. Answer yes to the scheduled audit job: the report prints one weekly job
+    that runs the same audit call as the hook and says the project owns
+    it; `.github/workflows/` and the rest of the repo have no new file.
 
 ## 10. Live project, end to end (0.11.0)
 

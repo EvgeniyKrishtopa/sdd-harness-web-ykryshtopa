@@ -3,8 +3,9 @@
 The harness log — one file per branch under `.claude/harness-log/` since
 0.12.0, plus the single `.claude/harness-log.jsonl` written before it
 (written by all seven gates, both skip-forms
-in `opsx-apply-git`, and its two test steps — `e2e-replay` and
-`integration`, 0.11.0 — see each one's own log section and #U13) is
+in `opsx-apply-git`, its two test steps — `e2e-replay` and
+`integration`, 0.11.0 — and a failed dependency audit, `audit`, 0.12.0;
+see each one's own log section and #U13) is
 appended to on every run. Until this file existed, nothing ever read it
 back. This is that read path: one deterministic snippet, callable on demand
 or as part of the monthly harness-diet ritual (`README.md`'s

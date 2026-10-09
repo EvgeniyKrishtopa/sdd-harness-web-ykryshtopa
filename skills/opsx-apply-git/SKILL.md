@@ -370,7 +370,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    CONFIRMED finding, print the reviewer's stated reason to the chat now
    (step 2 deferred it here). Then push the run's branch (`git push -u
    origin <branch>`, on its own: never piped, see `references/command-hygiene.md`)
-   — **read `references/pre-push-note.md` before it**: the integration tests' log line.
+   — **read `references/pre-push-note.md` before it**: the integration tests' log line, a failed audit.
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
 6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing the log folder `.claude/harness-log/` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain

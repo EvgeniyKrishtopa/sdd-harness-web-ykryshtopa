@@ -21,7 +21,9 @@ of their own: the replay of recorded scenarios before push (§4 step 3a,
 `references/e2e-replay.md`), `gate:"e2e-replay"`, with three more fields —
 `scope`, `scopeReason`, `scenarios`; and the integration tests in
 `.husky/pre-push` (§4 step 4, `references/pre-push-note.md`),
-`gate:"integration"`. Neither is a numbered gate: their skip reasons are
+`gate:"integration"`; and, from 0.12.0, a failed dependency audit in the
+same hook (`pre-push-note.md`), `gate:"audit"`, written only when the audit
+stopped the push. None is a numbered gate: their skip reasons are
 their own, not part of the list in "Checks" below, and the Checks part
 stays six lines.
 
@@ -30,7 +32,9 @@ the code failed, `environment` when a check stopped before the code was
 ever tried (the environment check, `testDir` not covering the scenarios, no
 server to connect to, local services not running). Set only when the verdict is `confirmed`, empty
 otherwise. `web-qa`'s flows line carries the same field, with `environment`
-as its only value. An `environment` failure
+as its only value. The `audit` line uses `app` (this run changed
+`package.json` or the lockfile) or `unrelated` (it didn't: the
+vulnerability was already in the parent). An `environment` failure
 never goes through `debug-loop`, so its `fixIterations` is `0`.
 
 ## When to write this
