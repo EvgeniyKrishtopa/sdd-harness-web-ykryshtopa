@@ -70,12 +70,12 @@ unclassified group.
 
 If a task names the `FR-`/`NFR-` identifier it implements (`rules.tasks` in
 `openspec/config.yaml`, seeded by `init-harness` Step 2f, requires this),
-leave a matching `implements <ID> of <change-name>` comment — any comment
-syntax works, `//`, `/* */`, JSDoc, a docstring — in the code or test that
-actually satisfies it, while working the task below. This is the only thing
-`code-review`'s grep-based coverage check (§4 step 2;
-`skills/code-review/SKILL.md`) has to go on: skip the comment and the
-identifier reports as uncovered even though the work happened.
+leave a matching `implements <ID> of <change-name>` comment (any comment
+syntax) in the code or test that satisfies it; several IDs go in one list —
+`implements FR-4, NFR-3 of <change-name>`, or `FR-4 and NFR-3`. This is the
+only thing `code-review`'s grep-based coverage check (§4 step 2;
+`skills/code-review/references/traceability-prefilter.md`) goes on: skip
+the comment and the identifier reports as uncovered though the work happened.
 
 ### Blocked tasks
 
