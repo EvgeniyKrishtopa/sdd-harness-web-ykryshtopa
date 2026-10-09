@@ -549,8 +549,11 @@ fi
 # seven" (#U13's own risk, named in the plan) instead of a human noticing a
 # missing field months later while reading harness-stats output.
 log_line_fields() {
-  # field names only, in order, comma-joined, from one object literal line
-  printf '%s\n' "$1" | grep -oE '[A-Za-z]+:' | tr -d ':' | tr '\n' ','
+  # field names only, in order, comma-joined, from one object literal line.
+  # context7Lookups (0.12.0) is the one per-gate extra a SKILL.md line may
+  # carry: only the two reviewers that call context7 themselves log it, and
+  # the shared fields before it are still compared in full.
+  printf '%s\n' "$1" | grep -oE '[A-Za-z0-9]+:' | tr -d ':' | grep -vx 'context7Lookups' | tr '\n' ','
 }
 
 log_lines="$(grep -rn 'ts:\$ts' skills/*/SKILL.md 2>/dev/null)"

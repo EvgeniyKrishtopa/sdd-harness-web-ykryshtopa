@@ -27,6 +27,11 @@ stopped the push. None is a numbered gate: their skip reasons are
 their own, not part of the list in "Checks" below, and the Checks part
 stays six lines.
 
+**`context7Lookups`** (0.12.0) — on the `code-review` and `deep-review`
+lines only: how many `query-docs` calls the reviewer made itself to check a
+library claim. The number that says whether giving reviewers context7 is
+costing more than it catches.
+
 **`failureKind`** (0.11.0) — on `e2e-replay`'s and `integration`'s verdict lines: `app` when
 the code failed, `environment` when a check stopped before the code was
 ever tried (the environment check, `testDir` not covering the scenarios, no
@@ -46,7 +51,9 @@ and its resolution as the run goes (across Gates 3-6: `web-qa`,
 `e2e-replay`, one finding per red scenario), then write one line per
 finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
-have been CONFIRMED, not for every PLAUSIBLE note.
+have been CONFIRMED, not for every PLAUSIBLE note. One exception (0.12.0):
+in a Case B run every PLAUSIBLE finding put to the human
+(`references/plausible-fix.md`) gets its line too — `fixed` or `rejected`.
 
 This same tracked list also feeds the PR's "Review trail" section below —
 collected once, as the run goes, and read back for both destinations. Never
@@ -86,7 +93,9 @@ minute, not a dump of the log.
    so on that gate's line rather than omitting it.
 3. **Findings** — this run's CONFIRMED findings from the tracked list above:
    rule number, one-line description, outcome. PLAUSIBLE notes never appear
-   here. More than ten → print the first ten and one closing line, "...and
+   here, except on a Case B run, where each PLAUSIBLE finding put to the
+   human (`references/plausible-fix.md`) is listed with its outcome too.
+   More than ten → print the first ten and one closing line, "...and
    `<N>` more, see `.claude/harness-log/`." No CONFIRMED findings →
    one explicit line saying so; never omit this part.
 4. **Deferred** — one line per entry currently under `proposal.md`'s

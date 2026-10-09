@@ -131,6 +131,18 @@ add_file README.md 'The release job reads GITHUB_TOKEN; set permissions: content
 and never use pull_request_target with secrets. on innerHTML too.'
 expect "README prose naming CI signals (Markdown is not content-scanned)" "risk=none"
 
+new_repo auth-docs-tests
+add_file openspec/changes/add-login/proposal.md '# Login with session token'
+add_file docs/auth/session.md 'The session cookie is HttpOnly.'
+add_file src/auth/login.test.ts 'it("stores the jwt", () => { expect(localStorage.getItem("token")).toBe("x"); });'
+add_file tests/e2e/login.spec.ts 'test("login", async () => {});'
+expect "docs, spec and tests on sign-in only (0.12.0)" "risk=none"
+
+new_repo auth-source-with-tests
+add_file src/auth/login.test.ts 'it("logs in", () => {});'
+add_file src/auth/login.ts 'export const login = () => null;'
+expect "the source next to its test still fires" "risk=path" "src/auth/login.ts"
+
 new_repo component
 add_file src/components/Button.tsx 'export function Button({ label }: { label: string }) {
   return <button type="button">{label}</button>;

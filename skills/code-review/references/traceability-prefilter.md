@@ -19,9 +19,10 @@ grep -ohE '\b(FR|NFR)-[0-9]+\b' "$proposal" 2>/dev/null | sort -u > "$ids_file"
 if [ ! -s "$ids_file" ]; then
   echo "traceability unavailable: no FR-/NFR- identifiers in $proposal"
 else
+  item='(FR|NFR)-[0-9]+'; sep='( *, *(and +)?| +and +)'
   uncovered=""
   while IFS= read -r id; do
-    grep -rlE "implements $id of $change([^A-Za-z0-9-]|\$)" \
+    grep -rlE "implements ($item$sep)*$id($sep$item)* of $change([^A-Za-z0-9-]|\$)" \
       --exclude-dir=node_modules --exclude-dir=.git --exclude-dir=openspec \
       . >/dev/null 2>&1 || uncovered="$uncovered $id"
   done < "$ids_file"
@@ -33,6 +34,12 @@ else
   fi
 fi
 ```
+
+One marker may name several identifiers (0.12.0): `implements FR-4, NFR-3
+of <change>`, `implements FR-4 and NFR-3 of <change>`, or `FR-1, FR-2, and
+NFR-3`. `$item$sep` lets any number of identifiers stand before and after
+the one being checked; each must be a whole identifier followed by a
+separator or ` of `, so `FR-1` is never found inside `FR-10`.
 
 The `([^A-Za-z0-9-]|$)` tail is load-bearing, not decoration: a plain
 `grep -F "implements $id of $change"` matches as a substring, so change

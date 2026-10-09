@@ -623,6 +623,20 @@ these are the step's own decisions:
     `haiku`, and the report lists both changes. Put `"deep": "gpt-5"` in
     instead: the upgrade stops with a message naming `models.deep` and the
     four allowed names, nothing is written and `harnessVersion` stays.
+28. A diff that relies on a library header or default (a cache header, a
+    cookie flag): the code-review finding about it either cites context7 or
+    says `library behaviour not confirmed` with one concrete check, and is
+    PLAUSIBLE at most. No report suggests reading `node_modules`. The
+    `code-review` and `deep-review` log lines carry `context7Lookups`.
+29. Give `harness-review` a project whose `.claude/harness.json` needs a
+    fix: every suggested JSON/YAML edit in the report parses (paste it and
+    run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
+    as words only, marked as not parsed.
+30. A judgement-heavy run whose review returns two PLAUSIBLE findings: one
+    multi-select question "Fix before push?" lists both. Pick one: it lands
+    as its own commit, the other changes nothing, and the log has one
+    `fixed` and one `rejected` finding line. An isolated run with the same
+    findings asks nothing.
 
 ## 10. Live project, end to end (0.11.0)
 
