@@ -480,7 +480,9 @@ rule.
   version. The server starts with `--caps=storage` so the agent can list
   and delete cookies (an expired login is checked by deleting its
   `HttpOnly` cookie); it is not given `browser_cookie_set` or
-  `browser_cookie_clear`.
+  `browser_cookie_clear`. The flag adds 17 tools for the main session too
+  (cookie, local/session storage, storage state); nothing allows them, so
+  each call asks first, and `/mcp` turns the server off.
 - **context7** (`@upstash/context7-mcp`) — mandatory since 0.6.0. Used by
   `opsx-apply-git` before writing framework-specific code, and by
   `code-review` when a diff touches a library that wasn't checked at
@@ -501,7 +503,7 @@ Both stay resident for the whole session even though each is used at one
 point only: as of Claude Code 2.1.220 there is no supported way for a
 plugin's server list to load a server per-skill or per-gate. Two things
 narrow the cost — Claude Code 2.1.x defers MCP tool schemas (`ToolSearch`)
-instead of loading them up front (24 tools for `@playwright/mcp@0.0.78`,
+instead of loading them up front (41 tools for `@playwright/mcp@0.0.78 --caps=storage`,
 measured by asking the server itself), and `npx` resolves an already-cached
 package without a registry round-trip, so installing `@playwright/mcp` as a
 devDependency avoids the network check on session start. If a session won't

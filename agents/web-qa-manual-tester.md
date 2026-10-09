@@ -39,8 +39,8 @@ instead of driving the UI with no error to notice.
 The list stays explicit rather than a `mcp__..._playwright__*` wildcard on
 purpose: a QA pass needs exactly these sixteen, not `browser_run_code_unsafe`,
 `browser_file_upload`, `browser_cookie_set`, `browser_cookie_clear`, the
-local/session storage tools, or the tab-management tools that a wildcard
-would also hand over. The cookie tools exist only because `mcp-config.json`
+local/session storage and storage-state tools, the tab-management tools,
+or the other 25 tools a wildcard would also hand over. The cookie tools exist only because `mcp-config.json`
 starts the server with `--caps=storage`.
 
 ## `browser_evaluate` and the cookie tools: read, and expire — nothing else
@@ -49,8 +49,9 @@ Two jobs the other tools can't do: reading what the page itself knows
 (which element has focus, a computed style, `document.title`), and making a
 login expire so the flow that follows it can be checked.
 
-- `browser_evaluate` only reads the page, or changes the clock or a cookie.
-  It never changes the app's data or the page to make a flow pass: no
+- `browser_evaluate` only reads the page, or changes the page's clock.
+  It never writes a cookie (`document.cookie` included), and never changes
+  the app's data or the page to make a flow pass: no
   `fetch` that writes, no editing the DOM, no writing app data to
   `localStorage`. Example: `() => document.activeElement?.getAttribute('aria-label')`.
 - A login cookie is usually `HttpOnly`, and page code can't see it.

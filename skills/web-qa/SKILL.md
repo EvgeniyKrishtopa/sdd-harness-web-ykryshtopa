@@ -111,11 +111,11 @@ diff, so nothing else here would re-open checkout on its own.
 ## Action
 
 1. List the flows (one per `ui-plan.md` screen row, else per page/route
-   file in the diff) and pass the list to the `web-qa-manual-tester`
+   file or shared component in the diff) and pass the list to the `web-qa-manual-tester`
    subagent (`Agent` tool) as its start. Its `model`: `models.webQa` is
    `haiku` or missing and there are **more than three flows** → `sonnet`;
    otherwise `models.webQa` as set, missing → the agent's own default.
-   Say it in one line: `5 flows → sonnet`. The subagent drives the **Playwright MCP server**
+   Say it in one line: `5 flows → sonnet`; fix-loop re-runs keep that model. The subagent drives the **Playwright MCP server**
    (navigate, click, fill, snapshot via the accessibility tree, screenshot)
    against the running dev server — this plugin's own pinned server only
    (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a

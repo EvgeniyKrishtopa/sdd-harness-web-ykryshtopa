@@ -261,7 +261,7 @@ Merge into the file Step 2e already started (it may already contain just the
   when its risk prefilter fires; it is seeded on a larger model than
   `code` precisely because it runs rarely — see
   `skills/code-review/references/deep-review.md`. `webQa` (0.12.0) is the
-  model for three flows or fewer: when it is `haiku` and a pass has more
+  model for three flows or fewer: when it is `haiku` (or missing) and a pass has more
   than three flows, `web-qa` runs it on `sonnet` instead — see
   `skills/web-qa/SKILL.md` "Action". Only depart from the seeded
   defaults if the user asks for a different tier or doesn't have access to
