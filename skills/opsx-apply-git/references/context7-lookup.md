@@ -35,8 +35,17 @@ approach the risk and traceability prefilters already use
 ```bash
 range="<parent>..HEAD"
 lib_re='next/navigation|next/router|next/image|next/font|next/headers|useTransition|useOptimistic|useFormState|useActionState|"use server"|"use client"|generateMetadata|generateStaticParams|revalidatePath|revalidateTag|middleware\.ts|Suspense|\buse\('
-hits=$(git diff "$range" | grep '^+' | grep -v '^+++' | grep -oiE "$lib_re" | sort -u)
+hits=$(git diff "$range" -- . ':(exclude)*.md' ':(exclude)*.markdown' \
+  | grep '^+' | grep -v '^+++' \
+  | grep -vE '^\+[[:space:]]*(//|/\*|\*|\{/\*|#)' \
+  | grep -oiE "$lib_re" | sort -u)
 ```
+
+Markdown files and comment lines don't count (0.12.0): a README or a
+comment that names `next/navigation` uses nothing, and before this the scan
+spent a context7 call on every such mention. A comment line is an added
+line that starts, after spaces, with `//`, `/*`, `*`, `{/*` or `#`. A name
+in a comment at the end of a code line still counts — that line is code.
 
 Empty `$hits` → no trigger, review continues without context7. Non-empty →
 check the mark (below) before deciding whether to call it.
