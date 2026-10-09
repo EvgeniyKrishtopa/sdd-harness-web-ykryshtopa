@@ -507,9 +507,13 @@ else
   else
     bad "$MANIFEST_REF's models example has a non-short name or no models: ${bad_models:-none}"
   fi
-  for f in agents/*.md evals/support/harness.json; do
+  for f in agents/*.md evals/support/harness.json evals/support/make-repo.sh; do
     if [ "${f##*.}" = json ]; then
       vals="$(jq -r '.models // {} | .[]' "$f" 2>/dev/null)"
+    elif [ "${f##*.}" = sh ]; then
+      # make-repo.sh writes its manifest from a heredoc: read its models line.
+      vals="$(grep -o '"models": {[^}]*}' "$f" | sed 's/^/{/; s/$/}/' | jq -r '.models[]' 2>/dev/null)"
+      [ -n "$vals" ] || vals="no models block found"
     else
       vals="$(awk 'NR>1 && /^---$/{exit} /^model:/{print $2}' "$f")"
     fi
