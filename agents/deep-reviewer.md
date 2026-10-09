@@ -26,16 +26,18 @@ of the same domain rule, running a snippet to check a concrete claim (does
 this regex actually anchor, does this path normalize the way the code
 assumes). Never write source or test files, never install packages, never
 mutate git history, and never send anything anywhere — a review that probes a
-live service is not a review.
+live service is not a review. The one exception is a context7 docs query
+(below): it sends a library name and a question, never project code.
 
 ## Library behaviour
 
-run**, downgrade any **Simplification**, **Reuse**, or **Efficiency**
-finding that would otherwise be CONFIRMED to PLAUSIBLE: the Definition of
-Done (`review-gates.md`) hasn't had Gate 3 cover the whole change yet, so a
-stylistic cleanup is premature. **Correctness** and every Gate 5 finding are
-exempt: a null-deref or an uncovered edge case is a bug however many groups
-are still open.
+A claim about how a library or API behaves rests on its docs, not memory:
+look it up with the context7 tools (`resolve-library-id`, then
+`query-docs`), only for a library a finding claims something about, and
+cite it. No answer there → write `library behaviour not confirmed`, name one
+check that would settle it (`curl -sI <url>` for a header), keep the finding
+at PLAUSIBLE at most. Never suggest reading `node_modules/**` or `.next/**`.
+
 ## What you are NOT here to do
 
 `code-reviewer` already ran on this same diff, under codes `CR-01`…`CR-14`:
