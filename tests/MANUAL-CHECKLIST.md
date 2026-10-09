@@ -623,6 +623,11 @@ these are the step's own decisions:
     `haiku`, and the report lists both changes. Put `"deep": "gpt-5"` in
     instead: the upgrade stops with a message naming `models.deep` and the
     four allowed names, nothing is written and `harnessVersion` stays.
+28. A diff that relies on a library header or default (a cache header, a
+    cookie flag): the code-review finding about it either cites context7 or
+    says `library behaviour not confirmed` with one concrete check, and is
+    PLAUSIBLE at most. No report suggests reading `node_modules`. The
+    `code-review` and `deep-review` log lines carry `context7Lookups`.
 
 ## 10. Live project, end to end (0.11.0)
 

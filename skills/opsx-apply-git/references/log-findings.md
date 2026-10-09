@@ -27,6 +27,11 @@ stopped the push. None is a numbered gate: their skip reasons are
 their own, not part of the list in "Checks" below, and the Checks part
 stays six lines.
 
+**`context7Lookups`** (0.12.0) — on the `code-review` and `deep-review`
+lines only: how many `query-docs` calls the reviewer made itself to check a
+library claim. The number that says whether giving reviewers context7 is
+costing more than it catches.
+
 **`failureKind`** (0.11.0) — on `e2e-replay`'s and `integration`'s verdict lines: `app` when
 the code failed, `environment` when a check stopped before the code was
 ever tried (the environment check, `testDir` not covering the scenarios, no
