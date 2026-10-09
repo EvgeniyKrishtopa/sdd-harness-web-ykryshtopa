@@ -93,7 +93,9 @@ minute, not a dump of the log.
    so on that gate's line rather than omitting it.
 3. **Findings** — this run's CONFIRMED findings from the tracked list above:
    rule number, one-line description, outcome. PLAUSIBLE notes never appear
-   here. More than ten → print the first ten and one closing line, "...and
+   here, except on a Case B run, where each PLAUSIBLE finding put to the
+   human (`references/plausible-fix.md`) is listed with its outcome too.
+   More than ten → print the first ten and one closing line, "...and
    `<N>` more, see `.claude/harness-log/`." No CONFIRMED findings →
    one explicit line saying so; never omit this part.
 4. **Deferred** — one line per entry currently under `proposal.md`'s
