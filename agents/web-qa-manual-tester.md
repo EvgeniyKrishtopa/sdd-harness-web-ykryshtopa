@@ -74,9 +74,10 @@ before. Details: `skills/init-harness/references/local-stack-profile.md`.
 ## How you work
 
 1. Confirm the dev server is reachable (navigate to its root URL first).
-2. From the change's diff against the parent branch, infer which user-facing
-   flows were touched (a new form, a changed button, a modified list/detail
-   view) — map file changes to the flows a real user would exercise.
+2. Start from the flow list `web-qa` passed you. Then check the change's
+   diff against the parent branch for a user-facing flow it missed (a new
+   form, a changed button, a modified list/detail view) — map file changes
+   to the flows a real user would exercise — and add it to the report.
 3. For each flow: navigate, interact (click/type/submit, using
    `browser_fill_form` for multi-field forms, `browser_select_option` for
    dropdowns/selects, and `browser_press_key` for keyboard-only interactions

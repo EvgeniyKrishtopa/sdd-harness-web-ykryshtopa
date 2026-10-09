@@ -337,6 +337,10 @@ a real project with a local stack:
     redirect itself — no help from the calling session. That flow's row
     names both calls. The Keyboard Pass row for tab order lists the
     recorded order (`Email → Password → Sign in`), not just PASS.
+12. With `"webQa": "haiku"`: a change reaching two screens runs the agent
+    on haiku; one reaching five says `5 flows → sonnet` and runs on
+    sonnet. The log line's `model` names what actually ran. With
+    `"webQa": "opus"`, five flows still run on opus.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
