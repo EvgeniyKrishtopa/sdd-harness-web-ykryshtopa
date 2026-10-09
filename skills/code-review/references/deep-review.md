@@ -18,15 +18,19 @@ range="<parent>..HEAD"   # the same range Action step 1 resolves
 path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment|billing|checkout|invoice|migrat|schema|\.env|secret|credential|upload|\.github/(workflows|actions)/|\.gitlab-ci\.ya?ml$|\.circleci/|(^|/)dockerfile[^/]*$|(^|/)vercel\.json$|(^|/)netlify\.toml$'
 content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM|permissions:|secrets\.|pull_request_target|workflow_run|GITHUB_TOKEN|id-token: *write'
 
+# Documents and tests execute nothing in production: no signal from them.
+skip_re='^(docs|openspec)/|\.(md|markdown)$|(^|/)(__tests__|__mocks__|tests?|e2e)/|\.(test|spec)\.[cm]?[jt]sx?$'
+
 paths=$(git diff --name-only "$range")
 if [ -z "$paths" ]; then
   echo "prefilter unavailable: git diff --name-only $range listed no files"
 else
+  paths=$(printf '%s\n' "$paths" | grep -viE "$skip_re")
   signal="path"
   hits=$(printf '%s\n' "$paths" | grep -iE "$path_re")
   if [ -z "$hits" ]; then
     signal="content"
-    hits=$(printf '%s\n' "$paths" | grep -viE '\.(md|markdown)$' | while IFS= read -r f; do
+    hits=$(printf '%s\n' "$paths" | grep . | while IFS= read -r f; do
       git diff "$range" -- "$f" | grep '^+' | grep -v '^+++' \
         | grep -qiE "$content_re" && printf '%s\n' "$f"
     done)
@@ -49,11 +53,16 @@ Path signals are checked before content signals. The content grep excludes
 comment tweak in `jwt-utils.ts` reports `risk=content`), and it looks only at
 added lines — a risky pattern this diff *removes* is not worth a review.
 
-Content signals skip Markdown files (`.md`, `.markdown`). A README that
-explains `GITHUB_TOKEN` or warns against `innerHTML` in prose executes
-nothing, and these words are exactly what documentation mentions. `.mdx` is
-still scanned: it compiles to components and can carry real JSX. Path
-signals still apply to Markdown — a file named `auth.md` is still a hint.
+Neither signal looks at documents or tests (`skip_re`, 0.12.0): Markdown
+anywhere, everything under `docs/` and `openspec/`, and test files
+(`*.test.*`, `*.spec.*`, and `tests/`, `test/`, `e2e/`, `__tests__/`,
+`__mocks__/`). A README that explains `GITHUB_TOKEN`, a spec for a login
+change, or a test of the session cookie executes nothing in production, and
+these words are exactly what such files mention. Before 0.12.0 path signals
+still applied to them, so a change of only documents and tests about sign-in
+spent a deep review on the larger model for nothing. `.mdx` is still
+scanned: it compiles to components and can carry real JSX. A risky change
+always comes with the source file that does it, and that one is checked.
 
 ## CI/CD signals (added 0.10.4)
 
