@@ -153,7 +153,7 @@ without asking for it separately:
 
 ```bash
 # Every per-branch file plus the pre-0.12.0 single file, if the project has one.
-log=$({ cat .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec cat {} +; } 2>/dev/null)
+log=$({ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null)
 if [ -n "$log" ] && command -v jq >/dev/null 2>&1; then
   # `fromjson?` drops any line that isn't valid JSON instead of one bad line
   # aborting the whole slurp with a parse error.

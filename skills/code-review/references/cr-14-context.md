@@ -21,7 +21,7 @@ First match wins:
    - this change's `recordedFlows` and `declinedFlows`, from every
      `web-qa-flows` line it has (a change can run `web-qa` more than once):
      ```bash
-     { cat .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec cat {} +; } 2>/dev/null \
+     { awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null \
        | jq -R 'fromjson?' | jq -sc --arg c "<change-slug>" \
        '[.[] | select(.change == $c and .kind == "web-qa-flows")]
         | {recordedFlows: (map(.recordedFlows[]?.flow) | unique),

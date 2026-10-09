@@ -141,7 +141,7 @@ been logged yet."
 # them into one temporary file so everything below reads a single path.
 LOG=$(mktemp)
 trap 'rm -f "$LOG"' EXIT
-{ cat .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec cat {} +; } 2>/dev/null > "$LOG"
+{ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null > "$LOG"
 
 echo "=== VCR (Verified Completion Rate) ==="
 if [ -f PROGRESS.md ]; then

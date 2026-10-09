@@ -69,7 +69,7 @@ minute, not a dump of the log.
    at change scope, possibly in an earlier session, so read each one's
    latest matching line instead:
    ```bash
-   { cat .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec cat {} +; } 2>/dev/null \
+   { awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null \
      | jq -R "fromjson?" | jq -sc --arg change "<change-slug>" --arg gate "<gate-name>" \
        '[.[] | select(.change == $change and .gate == $gate and has("verdict"))]
         | sort_by(.ts) | last // empty'
@@ -123,10 +123,12 @@ file, which a project upgraded from an earlier version still has and which
 is never moved or deleted:
 
 ```bash
-{ cat .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec cat {} +; } 2>/dev/null
+{ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null
 ```
 
-Lines from different files are not in time order — sort by `ts` when order
+`awk 1`, not `cat`: it adds a missing final newline, so a file that ends
+without one can't glue its last line to the next file's first. Lines from
+different files are not in time order — sort by `ts` when order
 matters ("the latest line for this gate"). The `find` form, not a
 `.claude/harness-log/*.jsonl` glob, because zsh aborts the whole command on
 a glob that matches nothing.
