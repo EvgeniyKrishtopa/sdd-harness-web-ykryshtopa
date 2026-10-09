@@ -90,8 +90,9 @@ and `debug-loop` goes looking for it in the code. Yes → draft
 `scripts/qa-preflight.mjs` from `references/local-stack-profile.md`
 section 3, one probe per external service the app's code reaches, each
 address taken from a variable *name* the code reads — never a value, and
-never from `.env.example`: `permissions.deny` blocks every `.env.*` read,
-and the code already names each variable. Show it; on a second yes write it, add a
+never from `.env.example`: `permissions.deny` blocks every `.env.*` read.
+A variable read under a computed name (`env[key]`) gets no probe; say so
+in the report. Show it; on a second yes write it, add a
 `qa:preflight` script to `package.json`, and set
 `tests.e2e.preflight: "qa:preflight"`. Never point `preflight` at a script
 this step didn't write: no rule detects an existing environment check, and
