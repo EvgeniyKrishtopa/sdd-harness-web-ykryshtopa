@@ -49,10 +49,7 @@ a change that was never actually accepted (#19).
    `SKILL.md` §4 step 7's script call: `--change none`, `--branch` the
    archive branch, `--last-commit` the archive commit, `--done` every group,
    no `--next`. The script prunes this change's `## Paused changes` line the
-   same way. Then commit it on the archive branch (`chore: progress after
-   archiving <change-name>`) and push — the open archive PR picks it up.
-   This is the only commit `PROGRESS.md` ever gets after `init-harness`:
-   group and run branches never commit it, so no two branches carry
-   different versions of it. Then report the full session: every group
+   same way. Nothing to commit: `PROGRESS.md` is gitignored, local to this
+   machine (`progress-template.md`). Then report the full session: every group
    completed with PR URLs, final `N/N tasks complete`, archive location,
    archive PR URL.

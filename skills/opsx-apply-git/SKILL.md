@@ -409,7 +409,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
    One `--next` per remaining step; the script numbers them and drops this
    change's `## Paused changes` line. Blocked reason = the task's
    `<!-- blocked: ... -->` marker. Re-read the file against `tasks.md`; on a
-   mismatch, rerun with corrected values. Leave it uncommitted (§5 commits it).
+   mismatch, rerun with corrected values. Never commit it: it is gitignored.
    Report progress and stop, calling out any blocked task by name and reason
    as its own line in the report rather than folding it into the general
    summary — the next `opsx-apply-git` invocation re-syncs the parent from
@@ -442,9 +442,8 @@ numbered as below; other skills cite these numbers, so they stay listed here:
    → print the archive branch name and the parent branch instead of a PR
    call; otherwise open a PR into the parent (`gh pr create`). Leave it open.
 5. **Clock out in `PROGRESS.md` one final time** for this change, with the
-   same script call as §4 step 7 (`--change none`, no `--next`), and commit
-   it on the archive branch — the only branch that ever commits this file.
-   Then report the full session.
+   same script call as §4 step 7 (`--change none`, no `--next`). It is
+   gitignored, so there is nothing to commit. Then report the full session.
 
 ## Exceptions
 

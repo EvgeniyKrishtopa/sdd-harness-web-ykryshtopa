@@ -30,20 +30,23 @@ changes nothing.
 The `Paused changes` section is the one exception to this single-writer
 rule — see its own note below.
 
-## Which branch commits it (0.12.0)
+## Local to this machine (0.12.0)
 
-Only the archive branch. A run's clock-out (§4 step 7) changes the file in
-the working tree and leaves it uncommitted; the file is never committed on
-a group or run branch. The change's final clock-out (§5 step 5) is committed
-on the archive branch, once per change.
+`PROGRESS.md` is in `.gitignore` and never committed. It answers "where did
+I stop" for the next session on this machine, which is all it is for.
 
-So no two branches ever commit different versions of it, and it needs no
-`merge=union` in `.gitattributes`. Earlier versions wrote that line, but it
-didn't fit this file: `merge=union` keeps the lines of both sides, which is
-right for a file that only grows and wrong for one that is rewritten — two
-`Next steps` lists would have been glued into one, silently. And GitHub
-ignores merge drivers anyway. `init-harness` no longer writes the line, and
-its upgrade mode removes it.
+Earlier versions committed it, with `merge=union` in `.gitattributes`. That
+caused three problems. `merge=union` keeps the lines of both sides — right
+for a file that only grows, wrong for one that is rewritten: two `Next
+steps` lists would be glued into one, silently. GitHub ignores merge drivers
+anyway. And a clock-out left the tracked file modified between runs, so
+`git pull` on the parent could refuse to run, and the squash-merge recovery
+(`git reset --hard`) would have thrown the clock-out away.
+
+`init-harness` appends `PROGRESS.md` to `.gitignore`. Its upgrade mode also
+runs `git rm --cached PROGRESS.md` — the file stays on disk, only git stops
+tracking it — and removes the old `merge=union` line. The user commits that
+together with the rest of the upgrade.
 
 ## Template
 

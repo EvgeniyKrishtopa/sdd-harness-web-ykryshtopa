@@ -165,6 +165,9 @@ not one that merely lacks a `harnessVersion` key by coincidence.
      up before 0.12.0, its `PROGRESS.md merge=union` and
      `.claude/harness-log.jsonl merge=union` lines are removed, every other
      line stays, and `.claude/harness-log.jsonl` itself is kept;
+   - `PROGRESS.md` is in `.gitignore`; on a project set up before 0.12.0,
+     `git status` shows it deleted from the index while the file is still
+     on disk (`git rm --cached`);
    - on a 0.11.0 project, `.husky/pre-push`'s log-only check is offered as
      a one-line diff to the per-branch pattern;
    - `.claude/harness.json` gains `harnessVersion`, `maxFixAttempts`, and

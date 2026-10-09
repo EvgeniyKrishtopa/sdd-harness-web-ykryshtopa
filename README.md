@@ -162,11 +162,10 @@ It detects your framework, package manager and test runner, then:
   `openspec/config.yaml` with your project's detected context and artifact
   rules, and asks for your coverage threshold;
 - **writes the project docs** — `.claude/docs/git-conventions.md`,
-  `review-gates.md`, `laziness-ladder.md` — plus `PROGRESS.md`,
-  `CONTEXT.md`, and a `.gitattributes` entry marking `PROGRESS.md`
-  `merge=union`. The harness log needs none: it is one file per branch
-  under `.claude/harness-log/`, so task-group branches never write the
-  same file.
+  `review-gates.md`, `laziness-ladder.md` — plus `CONTEXT.md` and
+  `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored;
+  the harness log is one file per branch under `.claude/harness-log/`, so
+  task-group branches never commit the same file.
   `docs/decisions/` is *not* created here — it appears on demand, the first
   time a decision actually outlives its change;
 - **writes `.claude/harness.json`**, the single machine-readable manifest
