@@ -158,6 +158,7 @@ push.
 One line per step 3a, written once its outcome is final:
 
 ```bash
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" --arg group "<group-number-or-range>" \
   --arg verdict "<clean|confirmed|skipped>" --arg skipReason "<reason, or empty>" \
@@ -168,7 +169,7 @@ printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg scopeReason "<only for full>" --argjson scenarios <files run, 0 when skipped> \
   --arg failureKind "<app|environment, only for confirmed>" \
   '{ts:$ts,change:$change,group:$group,gate:"e2e-replay",verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:"",reviewConfidence:"",fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman,scope:$scope,scopeReason:$scopeReason,scenarios:$scenarios,failureKind:$failureKind}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 `verdict` `confirmed` whenever a failure was found along the way, even if

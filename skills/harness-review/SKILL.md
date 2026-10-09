@@ -67,12 +67,12 @@ auto-applied.
 
 ## Log this gate's run
 
-After the outcome above, append one line to `.claude/harness-log.jsonl` in
+After the outcome above, append one line to this branch's log file in
 the target repo (create the file if it doesn't exist yet) — a plain shell
 append, 0 model tokens:
 
 ```bash
-mkdir -p .claude
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -87,7 +87,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 Fill in the change slug, the verdict this run resolved to (`confirmed` if
@@ -152,10 +152,12 @@ itself changed, and that makes it the natural place for this to surface
 without asking for it separately:
 
 ```bash
-if [ -s .claude/harness-log.jsonl ] && command -v jq >/dev/null 2>&1; then
+# Every per-branch file plus the pre-0.12.0 single file, if the project has one.
+log=$({ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null)
+if [ -n "$log" ] && command -v jq >/dev/null 2>&1; then
   # `fromjson?` drops any line that isn't valid JSON instead of one bad line
   # aborting the whole slurp with a parse error.
-  jq -R 'fromjson?' .claude/harness-log.jsonl | jq -s -r '
+  printf '%s\n' "$log" | jq -R 'fromjson?' | jq -s -r '
     (map(select(has("kind") | not))) as $runs |
     ((([$runs[] | select(.verdict=="skipped")] | length) / ($runs | length) * 100 * 10 | round) / 10) as $skippedPct |
     ([$runs[] | select(.escalatedToHuman == true)] | length) as $esc |

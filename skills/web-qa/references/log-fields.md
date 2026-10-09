@@ -38,6 +38,7 @@ skipped), append one more line — its own shape, like `opsx-apply-git`'s
 `kind:"finding"` line, so the nine verdict lines keep one field set:
 
 ```bash
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -45,7 +46,7 @@ printf '%s\n' "$(jq -nc \
   --argjson declinedFlows '<["<name>", ...] or []>' \
   --arg failureKind "<environment, when the environment check stopped the gate; empty otherwise>" \
   '{ts:$ts,change:$change,kind:"web-qa-flows",gate:"web-qa",recordedFlows:$recordedFlows,declinedFlows:$declinedFlows,failureKind:$failureKind}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 `recordedFlows` lists only flows whose file was actually written and passed

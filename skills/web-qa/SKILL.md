@@ -224,10 +224,10 @@ same port.
 
 After the fix loop settles (all-PASS, or an explicit human override), or right
 after an environment failure stopped the gate, append
-one line to `.claude/harness-log.jsonl` (create it if absent), 0 model tokens:
+one line to this branch's log file, `.claude/harness-log/<branch>.jsonl` (create it if absent), 0 model tokens:
 
 ```bash
-mkdir -p .claude
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -242,7 +242,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations <total debug-loop attempts across every FAIL this run, 0 if none> \
   --argjson escalatedToHuman <true iff any debug-loop invocation this run hit maxFixAttempts> \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 Field by field — what fills each one, when it is `null`, and the second

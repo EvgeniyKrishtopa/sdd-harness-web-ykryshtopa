@@ -556,6 +556,27 @@ LOGEOF
   fi
 fi
 
+# 0.12.0: the log is one file per branch. Every append must go to that file,
+# spelled the same way everywhere, and nothing may write the pre-0.12.0
+# single file any more -- one missed writer would quietly keep feeding the
+# old file, and GitHub would show its PRs as conflicting again.
+LOG_TARGET='>> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"'
+old_writers="$(grep -rnE '(>>|git add) *"?\.claude/harness-log\.jsonl' skills agents hooks 2>/dev/null)"
+if [ -n "$old_writers" ]; then
+  bad "something still writes the pre-0.12.0 .claude/harness-log.jsonl: $(printf '%s' "$old_writers" | cut -d: -f1,2 | tr '\n' ' ')"
+else
+  ok "nothing writes the pre-0.12.0 .claude/harness-log.jsonl"
+fi
+odd_targets="$(grep -rnE '>> *"?\.claude/harness-log/' skills agents hooks 2>/dev/null | grep -vF "$LOG_TARGET")"
+writers="$(grep -rnF "$LOG_TARGET" skills agents hooks 2>/dev/null | wc -l | tr -d ' ')"
+if [ -n "$odd_targets" ]; then
+  bad "a log append spells the per-branch path differently: $(printf '%s' "$odd_targets" | cut -d: -f1,2 | tr '\n' ' ')"
+elif [ "$writers" -lt 12 ]; then
+  bad "only $writers per-branch log appends found, expected at least 12 -- did a writer lose its target?"
+else
+  ok "all $writers log appends use the one per-branch path"
+fi
+
 # The kind:"finding" line (skills/opsx-apply-git/references/log-findings.md)
 # is deliberately a different, shorter shape than the nine verdict lines
 # above -- see that file's own note -- so it is checked against its own

@@ -1,6 +1,8 @@
 # `harness-stats` — reading the log nobody was reading
 
-`.claude/harness-log.jsonl` (written by all seven gates, both skip-forms
+The harness log — one file per branch under `.claude/harness-log/` since
+0.12.0, plus the single `.claude/harness-log.jsonl` written before it
+(written by all seven gates, both skip-forms
 in `opsx-apply-git`, and its two test steps — `e2e-replay` and
 `integration`, 0.11.0 — see each one's own log section and #U13) is
 appended to on every run. Until this file existed, nothing ever read it
@@ -122,7 +124,7 @@ uses for JSON parsing.
 
 ## Empty or missing log
 
-If `.claude/harness-log.jsonl` doesn't exist or is empty, say so in one
+If neither `.claude/harness-log/` nor `.claude/harness-log.jsonl` has a line, say so in one
 line and stop — VCR still runs on its own since it doesn't depend on the
 log. Never let a missing log surface as a shell trace (`No such file or
 directory`, a `jq` parse error) — that reads as a bug, not as "nothing's
@@ -132,9 +134,14 @@ been logged yet."
 
 ```bash
 #!/bin/sh
-# harness-stats: 0-token summary of .claude/harness-log.jsonl, PROGRESS.md,
+# harness-stats: 0-token summary of the harness log, PROGRESS.md,
 # and the current change's tasks.md. No model calls anywhere in this path.
-LOG=".claude/harness-log.jsonl"
+# The log is one file per branch under .claude/harness-log/ (0.12.0), plus
+# the single .claude/harness-log.jsonl an upgraded project still has. Gather
+# them into one temporary file so everything below reads a single path.
+LOG=$(mktemp)
+trap 'rm -f "$LOG"' EXIT
+{ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null > "$LOG"
 
 echo "=== VCR (Verified Completion Rate) ==="
 if [ -f PROGRESS.md ]; then
@@ -158,8 +165,8 @@ else
 fi
 echo
 
-if [ ! -f "$LOG" ] || [ ! -s "$LOG" ]; then
-  echo "harness-stats: $LOG is missing or empty — no gate-run stats to show yet. Run a change through opsx-apply-git first."
+if [ ! -s "$LOG" ]; then
+  echo "harness-stats: the harness log is missing or empty — no gate-run stats to show yet. Run a change through opsx-apply-git first."
   exit 0
 fi
 

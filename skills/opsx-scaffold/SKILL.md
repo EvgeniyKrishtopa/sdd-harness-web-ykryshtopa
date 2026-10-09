@@ -80,7 +80,7 @@ neighboring step, that step is scoped wrong.
      below still holds for the scaffold itself; a fix commit added after
      review is expected, not an exception to it.
    - **Clean, or PLAUSIBLE-only** — continue to the next step.
-   Then append one line to `.claude/harness-log.jsonl` (create it if
+   Then append one line to this branch's log file, `.claude/harness-log/<branch>.jsonl` (create it if
    missing), the same shape every other gate's line uses — see
    `skills/architecture-review/SKILL.md`'s own logging step for the exact
    `jq` command and field meanings — with `gate: "scaffold-review"` and

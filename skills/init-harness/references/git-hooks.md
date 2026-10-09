@@ -41,18 +41,18 @@ of once per commit.
    `package.json`.
 4. Write `.husky/pre-push` in two parts. **First, always**, the block that
    lets a push carrying nothing but the harness log through untested —
-   `opsx-apply-git` §4 pushes once more after committing
-   `.claude/harness-log.jsonl`, and re-running every test for a file no test
+   `opsx-apply-git` §4 pushes once more after committing the log under
+   `.claude/harness-log/`, and re-running every test for a file no test
    reads doubles the wait for nothing. git hands the hook one line per
    pushed ref on stdin (Husky passes stdin through):
    ```sh
-   # pre-push: a push that changes only .claude/harness-log.jsonl is not tested
+   # pre-push: a push that changes only the harness log is not tested
    only_log=yes
    while read -r _ local_sha _ remote_sha; do
      case "$local_sha" in *[!0]*) ;; *) continue ;; esac
      case "$remote_sha" in *[!0]*) ;; *) only_log=no; break ;; esac
      changed=$(git diff --name-only "$remote_sha" "$local_sha" 2>/dev/null) || { only_log=no; break; }
-     if [ -n "$(printf '%s\n' "$changed" | grep -vxF .claude/harness-log.jsonl)" ]; then only_log=no; break; fi
+     if [ -n "$(printf '%s\n' "$changed" | grep -vxE '\.claude/harness-log(\.jsonl|/[^/]+\.jsonl)')" ]; then only_log=no; break; fi
    done
    if [ "$only_log" = yes ]; then
      echo "pre-push: only the harness log changed — tests skipped"
@@ -60,7 +60,10 @@ of once per commit.
    fi
    ```
    A new branch (nothing on the remote yet) and a remote commit this clone
-   doesn't have are always tested. A deleted branch is ignored.
+   doesn't have are always tested. A deleted branch is ignored. The log
+   counts in both of its forms: the per-branch files under
+   `.claude/harness-log/` (0.12.0) and the single `.claude/harness-log.jsonl`
+   a project upgraded from an earlier version still has.
 
    **Then** the full coverage run and a blocking dependency-vulnerability
    audit, chained so a high-or-above severity finding blocks the push:

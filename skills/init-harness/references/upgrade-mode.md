@@ -17,7 +17,7 @@ exists to prevent.
 | --- | --- | --- |
 | `openspec/` workspace | Step 2b | created by `openspec init`; never re-initialized over existing work |
 | `openspec/config.yaml` | Step 2f | add missing `context`/`rules` keys **and any individual rule missing from a `rules.*` key that already exists** — a repo configured by an earlier version has `rules.proposal`, so "the key is there" is not "the rules are there" (0.5.0's Given/When/Then acceptance-criterion rule reaches configured repos only this way); never touch `schema`, never replace existing content without asking |
-| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0): see "The 0.11.0 pre-push" below |
+| `.husky/pre-commit`, `.husky/pre-push` | Step 3 | append missing checks, never clobber. `.husky/pre-push` (0.11.0, 0.12.0): see "The 0.11.0 pre-push" and "The 0.12.0 log-only check" below |
 | `.gitignore` (`.claude/.last-pre-push.json`) | Step 3 | append the line if missing, only when `.husky/pre-push` writes the note (0.11.0) |
 | `.claude/docs/git-conventions.md` | Step 5 | create if absent; diff and ask if it differs |
 | `.claude/docs/review-gates.md` | Step 5 | create if absent; diff and ask if it differs |
@@ -31,9 +31,9 @@ exists to prevent.
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only, inside the existing `## Harness (...)` block. The two-line Shell bullet (0.10.2) is skipped when the file already says the same thing in the user's own words anywhere: a `## Shell` section or any line telling the agent not to prefix commands with `cd` into the repo counts. Two versions of one rule are a maintenance problem, and the user's version is the one they chose |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
-| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, never freeform-edited |
-| `.gitattributes` (`PROGRESS.md merge=union`) | Step 5 | append the line if missing; never touch other lines |
-| `.gitattributes` (`.claude/harness-log.jsonl merge=union`) | Step 5 | append the line if missing; never touch other lines (0.6.0) |
+| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade |
+| `.gitignore` (`PROGRESS.md`) | Step 5 | append the line if missing (0.12.0) |
+| `.gitattributes` (`PROGRESS.md merge=union`, `.claude/harness-log.jsonl merge=union`) | Step 5 | no longer written (0.12.0): **remove** each of these two lines if present, and nothing else — the file itself stays, even if that leaves it empty. The old `.claude/harness-log.jsonl` itself is never moved or deleted — `harness-stats` still reads it |
 | `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case A or B, or `record-decision`, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead (0.5.0: Case A and `record-decision` both added as writers alongside Case B) |
 | `docs/deferred.md` | `opsx-apply-git` §3 and §5, on demand | never created here, on first install or on upgrade: `opsx-apply-git` creates it the first time a group leaves something blocked, skipped or obsolete, so a project with nothing deferred has no empty file. Upgrade only appends the pointer bullet (0.10.5) |
 | *(none — reads only, writes nothing)* linter ruleset check | Step 8b | recommendation, not a merge target: compares the project's linter config against `references/linter-ruleset.md`, reported every upgrade run, never installs or edits config (0.6.0) |
@@ -75,6 +75,28 @@ checks the services and leaves the note `opsx-apply-git` logs from.
 2. Anything else (a human edited it) → don't guess where the new parts go.
    Print both blocks, filled in, and ask the user to merge them by hand;
    one report line says so.
+
+## The 0.12.0 log-only check
+
+0.12.0 moved the harness log into one file per branch, so the first block
+of `.husky/pre-push` (`references/git-hooks.md` step 4) matches a new
+pattern. Find the line that still names the old file only:
+
+```sh
+grep -n "grep -vxF .claude/harness-log.jsonl" .husky/pre-push
+```
+
+1. Found, and the block around it is the one this skill wrote → show the
+   one-line change as a diff (`grep -vxF .claude/harness-log.jsonl` →
+   `grep -vxE '\.claude/harness-log(\.jsonl|/[^/]+\.jsonl)'`, and the
+   comment line above the loop) and apply it on the user's yes.
+2. Not found and no `only_log` block at all → the hook predates 0.11.0;
+   "The 0.11.0 pre-push" above already brings in the new block.
+3. Anything else → print the new block and ask the user to merge it by
+   hand; one report line says so.
+
+Skipping this costs time, not safety: the old pattern doesn't recognise a
+push of the new log files as log-only, so that push runs every test.
 
 ## How upgrade mode runs
 

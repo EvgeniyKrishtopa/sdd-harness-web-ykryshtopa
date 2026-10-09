@@ -162,10 +162,10 @@ It detects your framework, package manager and test runner, then:
   `openspec/config.yaml` with your project's detected context and artifact
   rules, and asks for your coverage threshold;
 - **writes the project docs** — `.claude/docs/git-conventions.md`,
-  `review-gates.md`, `laziness-ladder.md` — plus `PROGRESS.md`,
-  `CONTEXT.md`, and `.gitattributes` entries marking `PROGRESS.md` and
-  `.claude/harness-log.jsonl` `merge=union`, so every task-group branch in
-  the branch-per-group workflow can append to both without conflicting.
+  `review-gates.md`, `laziness-ladder.md` — plus `CONTEXT.md` and
+  `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored;
+  the harness log is one file per branch under `.claude/harness-log/`, so
+  task-group branches never commit the same file.
   `docs/decisions/` is *not* created here — it appears on demand, the first
   time a decision actually outlives its change;
 - **writes `.claude/harness.json`**, the single machine-readable manifest
@@ -322,7 +322,7 @@ line per gate with its verdict or its skip reason, this run's CONFIRMED
 findings with rule code and outcome, and any ambiguity deferred with an
 owner and a due date. A clean run prints the section too, with an explicit
 "no findings". The run's closing commit also carries
-`.claude/harness-log.jsonl`, so the record outlives the machine that made
+the log folder `.claude/harness-log/`, so the record outlives the machine that made
 it. On a non-GitHub forge the PR body is printed for you to paste instead.
 The next `opsx-apply-git` re-syncs from your merge.
 
@@ -590,7 +590,7 @@ Three things measure this plugin, and the third one is new in 0.8.0:
 | Layer | What it answers | Where |
 |---|---|---|
 | Structural tests | Are the files there and the schemas valid? | `tests/*.sh` |
-| Production telemetry | What did the pipeline actually do this month? | `.claude/harness-log.jsonl`, read by `harness-stats` |
+| Production telemetry | What did the pipeline actually do this month? | `.claude/harness-log/` (plus the old `.claude/harness-log.jsonl` in a project set up before 0.12.0), read by `harness-stats` |
 | The eval set | On a fixed list of prompts with a known right answer, did the plugin behave? | `evals/` |
 
 The first two can both look healthy while routing quietly regresses. A

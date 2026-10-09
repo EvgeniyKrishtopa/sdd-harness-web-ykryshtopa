@@ -257,16 +257,14 @@ upgrade mode, since a repo set up by an earlier version never got them:
   `references/progress-template.md` if one doesn't already exist — same
   never-overwrite rule as above. A fresh file starts with no current change,
   no next steps, and a clock-in of "now"; after this point only
-  `opsx-apply-git` touches it, at its own run boundaries (see
+  `opsx-apply-git` touches it, at its own run boundaries. It is local to
+  this machine (0.12.0): append `PROGRESS.md` to `.gitignore`; in upgrade
+  mode also `git rm --cached PROGRESS.md` (see
   `references/progress-template.md`).
-- Write `.gitattributes` with `PROGRESS.md merge=union` and
-  `.claude/harness-log.jsonl merge=union` — append whichever line is
-  missing, leave everything else alone. Both are append-only files every
-  task-group branch can touch, so without this every group's PR would
-  conflict on either one. Nothing else here needs `merge=union` — in
-  particular not `docs/decisions/`, whose whole design point is that two
-  branches produce two different files instead of contending for one (see
-  `references/decision-template.md`).
+- Write no `merge=union` line into `.gitattributes` (0.12.0). The harness
+  log is one file per branch under `.claude/harness-log/`, `PROGRESS.md` is
+  not in git at all, and GitHub ignores merge drivers anyway. `docs/decisions/` never needed one either: two branches
+  write two different files (`references/decision-template.md`).
 - Check whether the project already has a `docs/adr/` directory. If it does,
   tell the user to keep using it and don't create a competing
   `docs/decisions/` alongside it. If it doesn't, there's nothing to create

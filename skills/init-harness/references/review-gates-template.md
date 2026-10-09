@@ -132,7 +132,7 @@ gate's model via `.claude/harness.json`'s `models.*`, run the normal flow of
 changes for that stretch,
 then compare the `harness-review` skill's stats summary (the
 `references/harness-stats.md` procedure inside that skill, reading this repo's own
-`.claude/harness-log.jsonl`) from before and after. If nothing measurable
+log under `.claude/harness-log/`) from before and after. If nothing measurable
 changed — verdict distribution, escalation count, `reviewConfidence: low`
 share, `tokensTotal` sum/median (a cheaper-per-step model can still cost
 more if it needs several times the steps; `durationMs` alone won't show

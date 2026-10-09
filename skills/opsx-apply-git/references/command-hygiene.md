@@ -38,7 +38,7 @@ file with the Edit or Write tool. Never use `python3 - <<'EOF'`, `sed -i`,
   fails loudly when its anchor text isn't there.
 
 Bash is for commands that aren't file edits: the project's checks, git,
-`gh`, and the `jq ... >> .claude/harness-log.jsonl` append this skill
+`gh`, and the `jq` append to the harness log this skill
 documents.
 
 ## Never pipe `git push`
