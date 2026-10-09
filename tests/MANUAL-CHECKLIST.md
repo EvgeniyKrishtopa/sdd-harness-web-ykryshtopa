@@ -615,6 +615,9 @@ these are the step's own decisions:
     `depsAudit` is `"script"`. An allowlist entry with a past `expires`
     fails the push again. Upgrade a 0.11.0 project: the question comes once,
     and the hook's audit line is replaced only after the diff is shown.
+26. Answer yes to the scheduled audit job: the report prints one weekly job
+    that runs the same audit call as the hook and says the project owns
+    it; `.github/workflows/` and the rest of the repo have no new file.
 
 ## 10. Live project, end to end (0.11.0)
 

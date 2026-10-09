@@ -384,7 +384,7 @@ list, and the difference between "the harness found these names" and "the
 harness ran these commands". Also report both counts from
 `bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`;
 over budget → `references/claude-md-budget.md`'s split proposal, never applied unasked.
-Report Step 1b's test-layer lines (and the CI template, if the user asked for it).
+Report Step 1b's test-layer lines (and the CI and audit job templates the user asked for).
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether

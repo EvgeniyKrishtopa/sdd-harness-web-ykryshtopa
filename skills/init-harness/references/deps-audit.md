@@ -48,3 +48,12 @@ The script fails on: any high or critical advisory without a live entry, an
 expired entry whose advisory is still reported, a broken allowlist, and a
 report it can't read (an audit that didn't run is not a passed audit). It
 lists entries whose advisory is no longer reported, so they can be removed.
+
+## Regular audit — printed, never written
+
+A vulnerability published after the last push shows up only on the next
+push. Ask once whether to print a scheduled audit job template. Yes → print
+it in the report: one job on a weekly schedule that installs dependencies
+and runs the same `<audit command>` as the hook. Its first line says the
+project owns this file. **Never write it**: not to `.github/workflows/`,
+not anywhere else.
