@@ -261,6 +261,8 @@ upgrade mode, since a repo set up by an earlier version never got them:
   this machine (0.12.0): append `PROGRESS.md` to `.gitignore`; in upgrade
   mode also `git rm --cached PROGRESS.md` (see
   `references/progress-template.md`).
+- Append `.playwright-mcp/` to `.gitignore` if missing (0.12.0): the plugin's
+  Playwright MCP server writes its snapshots and screenshots there.
 - Write no `merge=union` line into `.gitattributes` (0.12.0). The harness
   log is one file per branch under `.claude/harness-log/`, `PROGRESS.md` is
   not in git at all, and GitHub ignores merge drivers anyway. `docs/decisions/` never needed one either: two branches

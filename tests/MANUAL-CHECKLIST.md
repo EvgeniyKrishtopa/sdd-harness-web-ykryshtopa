@@ -168,6 +168,8 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    - `PROGRESS.md` is in `.gitignore`; on a project set up before 0.12.0,
      `git status` shows it deleted from the index while the file is still
      on disk (`git rm --cached`);
+   - `.playwright-mcp/` is in `.gitignore`, on a fresh install and after an
+     upgrade; a second run adds no duplicate line;
    - on a 0.11.0 project, `.husky/pre-push`'s log-only check is offered as
      a one-line diff to the per-branch pattern;
    - `.claude/harness.json` gains `harnessVersion`, `maxFixAttempts`, and

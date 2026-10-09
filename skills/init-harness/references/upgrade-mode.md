@@ -35,6 +35,7 @@ exists to prevent.
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
 | `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade |
 | `.gitignore` (`PROGRESS.md`) | Step 5 | append the line if missing (0.12.0) |
+| `.gitignore` (`.playwright-mcp/`) | Step 5 | append the line if missing (0.12.0) |
 | `.gitattributes` (`PROGRESS.md merge=union`, `.claude/harness-log.jsonl merge=union`) | Step 5 | no longer written (0.12.0): **remove** each of these two lines if present, and nothing else — the file itself stays, even if that leaves it empty. The old `.claude/harness-log.jsonl` itself is never moved or deleted — `harness-stats` still reads it |
 | `docs/decisions/NNNN-*.md` | `opsx-apply-git` §3 Case A or B, or `record-decision`, on demand | one new file per decision; never edited after acceptance — superseded by a new file instead (0.5.0: Case A and `record-decision` both added as writers alongside Case B) |
 | `docs/deferred.md` | `opsx-apply-git` §3 and §5, on demand | never created here, on first install or on upgrade: `opsx-apply-git` creates it the first time a group leaves something blocked, skipped or obsolete, so a project with nothing deferred has no empty file. Upgrade only appends the pointer bullet (0.10.5) |
