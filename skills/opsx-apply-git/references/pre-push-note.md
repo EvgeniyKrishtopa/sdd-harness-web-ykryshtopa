@@ -56,9 +56,19 @@ and goes out with this run's log commit once the push is repeated.
 
 ## The audit failed (0.12.0)
 
-The audit is the hook's last link. The push failed and its output ends in
-the audit's report, after the tests passed → check whether this run
-touched its dependencies at all, against the parent:
+The audit is the hook's last link, reached only after every earlier link
+passed. The plain hook leaves no note saying which link failed, so check
+both facts, not the look of the output:
+
+1. The push output shows the test run (and, with one, the integration run)
+   passed.
+2. The audit alone fails now: run the hook's own audit line, the
+   `<audit command>` in `.husky/pre-push`, on its own. It exits `0` → the
+   audit was not what stopped the push; treat it as any failed push.
+
+Both hold → check whether this run touched its dependencies at all. Three
+dots compare from where this branch left the parent, so the parent's own
+later changes don't count as this run's:
 
 ```bash
 base=origin/<parent>; git rev-parse -q --verify "$base" >/dev/null || base=<parent>

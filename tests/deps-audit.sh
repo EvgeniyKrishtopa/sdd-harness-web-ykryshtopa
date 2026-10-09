@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # deps-audit.sh -- skills/init-harness/references/deps-audit.mjs, the audit
 # script init-harness offers for .husky/pre-push (0.12.0). The reports below
-# are real output of npm 11, pnpm 11 and yarn 4 on a project with
+# are real output of npm 11, pnpm 11, yarn 1.22 and yarn 4 on a project with
 # minimist@1.2.5 (GHSA-xvch-5gv4-984h), trimmed to the fields that matter.
 #
 # Usage: bash tests/deps-audit.sh   (from the plugin root)
@@ -27,6 +27,13 @@ EOF
 cat > yarn4.ndjson <<'EOF'
 {"value":"minimist","children":{"ID":1097678,"Issue":"Prototype Pollution in minimist","URL":"https://github.com/advisories/GHSA-xvch-5gv4-984h","Severity":"critical","Vulnerable Versions":">=1.0.0 <1.2.6","Tree Versions":["1.2.5"],"Dependents":["t@workspace:."]}}
 EOF
+cat > yarn1.ndjson <<'EOF'
+{"type":"warning","data":"package.json: No license field"}
+{"type":"auditAdvisory","data":{"resolution":{"id":1097678,"path":"minimist","dev":false,"optional":false,"bundled":false},"advisory":{"id":1097678,"title":"Prototype Pollution in minimist","module_name":"minimist","severity":"critical","github_advisory_id":"GHSA-xvch-5gv4-984h","url":"https://github.com/advisories/GHSA-xvch-5gv4-984h"}}}
+EOF
+cat > twice.json <<'EOF'
+{"a":{"severity":"moderate","url":"https://github.com/advisories/GHSA-dddd-eeee-ffff"},"b":{"severity":"high","url":"https://github.com/advisories/GHSA-dddd-eeee-ffff"}}
+EOF
 cat > moderate.json <<'EOF'
 {"auditReportVersion":2,"vulnerabilities":{"x":{"name":"x","severity":"moderate","via":[{"name":"x","url":"https://github.com/advisories/GHSA-aaaa-bbbb-cccc","severity":"moderate"}]}},"metadata":{}}
 EOF
@@ -41,9 +48,12 @@ expect() { # name, wanted exit code, text the output must contain
 allow() { printf '%s\n' "$1" > scripts/audit-allowlist.json; }
 
 echo "-- no allowlist: a critical advisory fails, for every package manager --"
-for r in npm.json pnpm.json yarn4.ndjson; do
+for r in npm.json pnpm.json yarn1.ndjson yarn4.ndjson; do
   audit "$r" 1; expect "$r fails and names the advisory" 1 "GHSA-XVCH-5GV4-984H (critical"
 done
+
+echo "-- the same advisory seen as moderate and as high: the high one counts --"
+audit twice.json 1; expect "blocking severity wins" 1 "GHSA-DDDD-EEEE-FFFF (high"
 
 echo "-- a clean report and a moderate-only report pass --"
 audit clean.json 0; expect "clean passes" 0 "no high or critical advisory"
@@ -64,6 +74,8 @@ audit clean.json 0; expect "stale entry listed, audit passes" 0 "GHSA-ZZZZ-ZZZZ-
 echo "-- a broken allowlist entry fails loudly --"
 allow '[{"id":"GHSA-xvch-5gv4-984h","expires":"2999-01-01"}]'
 audit clean.json 0; expect "entry without a reason fails" 1 'needs "id" (GHSA-...), "reason" and "expires"'
+allow '{}'
+audit clean.json 0; expect "allowlist that is not an array fails" 1 "must be a JSON array"
 allow 'not json'
 audit clean.json 0; expect "unreadable allowlist fails" 1 "cannot read scripts/audit-allowlist.json"
 allow '[]'
@@ -71,6 +83,7 @@ allow '[]'
 echo "-- an audit whose report can't be read is not a pass --"
 printf 'npm error network request failed\n' > broken.txt
 audit broken.txt 1; expect "unreadable report fails" 1 "its report could not be read"
+audit clean.json 2; expect "empty report with a failed exit fails" 1 "its report could not be read"
 if node "$A" > out 2>&1; then bad "no command accepted"; else ok "no command fails"; fi
 if node "$A" no-such-audit-command-xyz > out 2>&1; then bad "missing command accepted"; else ok "missing command fails"; fi
 
