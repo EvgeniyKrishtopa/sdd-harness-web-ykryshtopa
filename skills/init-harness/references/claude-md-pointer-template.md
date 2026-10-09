@@ -9,7 +9,7 @@ file, no session ever reads `git-conventions.md` or `review-gates.md` unless
 user's global instructions only recognize an auto-commit override ("commit
 without being asked") when it is *referenced from the project's CLAUDE.md*.
 `opsx-apply-git` §3 and §5.3 rely on `git-conventions.md` being exactly that
-override, at group and archive boundaries. Without this step, that override
+override, at group and archive boundaries and at the end of a chore run. Without this step, that override
 is undiscoverable, and a fresh session should fall back to asking before
 every commit instead of trusting it.
 
@@ -52,7 +52,8 @@ lines: they cost context in every session.
 
 - @.claude/docs/git-conventions.md — branch/commit conventions. This is
   also the documented authorization for `opsx-apply-git` to commit
-  automatically at task-group and archive boundaries (its §3/§5.3) —
+  automatically at task-group and archive boundaries (its §3/§5.3) and
+  at the end of a chore run (`references/chore-run.md`) —
   without this reference, that override isn't discoverable and shouldn't
   be assumed.
 - @.claude/docs/review-gates.md — the seven automated review gates and

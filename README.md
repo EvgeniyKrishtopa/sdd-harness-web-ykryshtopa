@@ -330,6 +330,12 @@ The next `opsx-apply-git` re-syncs from your merge.
 **6. On the last group**, `opsx-apply-git` archives the change via its own
 PR.
 
+**A small task with no OpenSpec change** (a dependency bump, a config
+tweak, a one-file fix) — ask `opsx-apply-git` for a chore run. It works on
+a `chore/<slug>` branch off the main branch, runs the same checks with the
+same skip rules, logs under `change: "<slug>"`, and opens a PR of the same
+shape (`skills/opsx-apply-git/references/chore-run.md`).
+
 ## Test layers
 
 Integration and end-to-end tests are optional, per project: `init-harness`

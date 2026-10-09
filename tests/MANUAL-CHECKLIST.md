@@ -649,6 +649,17 @@ these are the step's own decisions:
     as its own commit, the other changes nothing, and the log has one
     `fixed` and one `rejected` finding line. An isolated run with the same
     findings asks nothing.
+31. Ask for a chore run that bumps one dependency: the branch is
+    `chore/<slug>` off the main branch; the log file
+    `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
+    `change: "<slug>"`; the PR goes into the main branch with "What changed
+    and why" and a "Review trail" whose Change line reads `No OpenSpec
+    change — chore run <slug>.` and whose base is `main`, not
+    `origin/main`. A chore run that edits only a few lines of a `.md` file
+    writes `code-review` as `skipped`, `small change`; one that edits
+    `.github/workflows/` or `vercel.json` still runs `code-review`. A
+    project whose `git-conventions.md` has no chore line gets asked before
+    the commit.
 
 ## 10. Live project, end to end (0.11.0)
 
