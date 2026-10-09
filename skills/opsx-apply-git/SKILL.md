@@ -1,6 +1,6 @@
 ---
 name: opsx-apply-git
-description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks.
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change (a chore run).
 ---
 
 Implement the next run from an OpenSpec change inside this project's git
@@ -448,7 +448,7 @@ numbered as below; other skills cite these numbers, so they stay listed here:
 
 ## Exceptions
 
-- An unrelated fix found mid-task can land as its own focused commit.
+- An unrelated fix found mid-task can land as its own focused commit. A small task with no OpenSpec change at all → **read `references/chore-run.md`**.
 - Destructive/history-rewriting git operations are never part of this flow
   — stop and ask if something goes wrong. The **only** exception is the
   confirmed `git reset --hard origin/<parent>` in the squash/rebase-merge

@@ -649,6 +649,13 @@ these are the step's own decisions:
     as its own commit, the other changes nothing, and the log has one
     `fixed` and one `rejected` finding line. An isolated run with the same
     findings asks nothing.
+31. Ask for a chore run that bumps one dependency: the branch is
+    `chore/<slug>` off the main branch; the log file
+    `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
+    `change: "<slug>"`; the PR goes into the main branch with "What changed
+    and why" and a "Review trail" whose Change line reads `No OpenSpec
+    change — chore run <slug>.` A chore run that edits only a `.md` file
+    writes `code-review` as `skipped`.
 
 ## 10. Live project, end to end (0.11.0)
 

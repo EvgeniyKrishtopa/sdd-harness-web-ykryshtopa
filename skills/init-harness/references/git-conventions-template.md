@@ -16,7 +16,14 @@ validated (each gate's outcome), and remaining risks.
 Commit once per numbered group in `tasks.md`. One group = one branch = one
 session boundary for `opsx-apply-git`. This explicitly overrides the general
 "never commit without being asked" default, but only at group/archive
-boundaries — nowhere else.
+boundaries and at the end of a chore run — nowhere else.
+
+## Small tasks outside OpenSpec
+
+A small task with no OpenSpec change (a dependency bump, a config tweak, a
+one-file fix) goes on its own `chore/<slug>` branch off the main branch,
+through the same checks, log and PR shape as a normal run — see
+`opsx-apply-git`'s `references/chore-run.md`.
 
 ## AI commit discipline
 
