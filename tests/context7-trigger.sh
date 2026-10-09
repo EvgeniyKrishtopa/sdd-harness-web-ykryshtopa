@@ -37,6 +37,7 @@ quiet() { if [ -z "$2" ]; then ok "$1"; else bad "$1 (hit: $2)"; fi; }
 echo "-- code fires --"
 fires "an import" "$(scan src/page.tsx 'import { useRouter } from "next/navigation";')"
 fires "a name after code on the same line" "$(scan src/a.ts 'const x = 1; // next/navigation')"
+fires "a private class field" "$(scan src/a.ts '  #data = use(promise);')"
 
 echo "-- Markdown and comment lines don't --"
 quiet "a README" "$(scan README.md 'We use next/navigation and useTransition.')"
@@ -45,6 +46,7 @@ quiet "a // comment" "$(scan src/a.ts '  // TODO: move to next/navigation')"
 quiet "a /* comment" "$(scan src/a.ts '/* useTransition later */')"
 quiet "a JSDoc line" "$(scan src/a.ts '   * @see next/headers')"
 quiet "a JSX comment" "$(scan src/a.tsx '    {/* Suspense goes here */}')"
+quiet "a # comment" "$(scan scripts/a.sh '# calls middleware.ts')"
 
 echo
 echo "Passed: $pass  Failed: $fail"
