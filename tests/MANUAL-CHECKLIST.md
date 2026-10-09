@@ -599,7 +599,10 @@ these are the step's own decisions:
     `opsx-apply-git` on the parent: it offers to send the PRs into `main`
     and cuts no group before the answer. `PROGRESS.md` gets a `## PR
     target` line; the next run on that parent asks nothing. A parent not
-    merged into `main` → no question.
+    merged into `main` → no question. A parent squash-merged into `main` →
+    no question either (known limit, `parent-branch.md`). Run it once with
+    `origin/HEAD` unset (`git remote set-head origin -d`): same result.
+    A merged archive branch → it reports the change is archived and stops.
 
 ## 10. Live project, end to end (0.11.0)
 

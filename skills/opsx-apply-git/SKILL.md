@@ -24,21 +24,9 @@ read `references/ci-probes.md` before any task that must push failing code.
 
 ## 1. Determine the parent branch and read the stack manifest
 
-1. `git branch --show-current` — this should be the parent feature branch
-   already active, never `main`/`master` unless a line in `PROGRESS.md`'s
-   `## PR target` points to it (step 3). If it looks like a leftover group
-   branch (a batch, group or archive branch this skill cut earlier), check
-   its PR before asking anything. `.claude/harness.json`'s `forge` is
-   `"github"` or absent → `gh pr view --json state,baseRefName` on it:
-   - `MERGED` → `git checkout <baseRefName>` — that is the parent — and
-     report it in one line: `Branch <group> is merged into <baseRefName>;
-     switched to <baseRefName>.` Then go on: a change with no pending tasks
-     left goes to §5 with this PR as the run's PR.
-   - Any other state, no PR for the branch, or `forge` `"other"` → stop and
-     ask which branch is the real parent.
-   Switch only on `MERGED`: the PR's own base is the one fact that says where
-   the group's work went, and a guess would send the next run to the wrong
-   branch.
+1. `git branch --show-current` — the parent, never `main`/`master` unless
+   `PROGRESS.md`'s `## PR target` points to it. A leftover group branch →
+   **read `references/parent-branch.md`**.
 2. Read `.claude/harness.json` (written by `init-harness`) for
    `packageManager`, `runCmd`, `framework`, `testRunner`, `buildDir`,
    `scripts`, `devServerUrl`, and `coverageThreshold` — every verification
@@ -47,33 +35,7 @@ read `references/ci-probes.md` before any task that must push failing code.
    missing, stop and tell the user to run `init-harness` first — see
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
    for what it detects and why this skill doesn't duplicate that logic.
-3. **Is the parent already in the main branch?** A parent merged into main
-   and left behind keeps old code: a group cut from it builds on that. Skip
-   this step when the parent is the main branch itself.
-   ```bash
-   git fetch origin
-   main=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
-   git merge-base --is-ancestor <parent> "$main" \
-     && { ! git rev-parse -q --verify "origin/<parent>" >/dev/null \
-          || git merge-base --is-ancestor "origin/<parent>" "$main"; } \
-     && git rev-list --count "<parent>..$main"
-   ```
-   Prints nothing or `0` (or `$main` doesn't resolve) → nothing to do; go
-   on. Prints a number above 0 → the parent, local and on `origin`, is
-   all in `$main`, and `$main` has moved on:
-   - `PROGRESS.md`'s `## PR target` has a line for this parent → follow it,
-     no question.
-   - Otherwise ask (`AskUserQuestion`): send this change's group and
-     archive PRs into the main branch (recommended), or keep the parent.
-     Record the answer, never by hand:
-     ```bash
-     node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs" pr-target \
-       --parent "<parent>" --target "<chosen branch>" --date "$(date -u +%Y-%m-%d)"
-     ```
-   - No answer → stop. Never cut a group from this parent without one.
-   Main chosen → `git checkout <main, without origin/>`. From here it is the
-   parent for the rest of this flow: syncing, the group branch, the run's
-   PR, the archive PR.
+3. Parent already merged into main? **Read `references/parent-branch.md`.**
 
 ## 2. Standard OpenSpec selection and context
 
