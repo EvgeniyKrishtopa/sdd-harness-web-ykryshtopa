@@ -1,6 +1,6 @@
 ---
 name: opsx-apply-git
-description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change — a chore run: "bump a dependency", "small fix without a spec", "chore: ...".
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change — a chore run ("bump a dependency", "small fix without a spec", "do this as a chore").
 ---
 
 Implement the next run from an OpenSpec change inside this project's git
