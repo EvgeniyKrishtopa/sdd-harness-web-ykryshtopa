@@ -179,7 +179,8 @@ not one that merely lacks a `harnessVersion` key by coincidence.
 ## 1b. Blocking dependency audit on `pre-push` (#U12)
 
 1. On a fixture already configured by the current `init-harness`, read
-   `.husky/pre-push` directly — confirm it chains `<pm> test:coverage && <audit
+   `.husky/pre-push` directly — confirm it opens with the log-only block
+   (0.11.0) and then chains `<pm> test:coverage && <audit
    command>`, with the audit command's spelling matching this fixture's
    package manager (and, for yarn, its major version — `yarn audit --level
    high` for 1.x, `yarn npm audit --severity high` for 2.x+).
@@ -193,6 +194,55 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    3 item 4 of `init-harness` explicitly rules this out, since a
    version-drift check left in the same chain would leave the hook
    permanently red on any stale minor version and train people to ignore it.
+
+### Local stack fields (0.11.0)
+
+5. A project with a local stack, `tests.integration` holding `requires`
+   and `healthCheck` but **no** `envCommand`: `init-harness` writes no
+   `tests/integration/global-setup.ts`; with no `mailCatcherUrl` either,
+   `web-qa` offers no email-flow template and `web-qa-manual-tester` asks
+   the human for an email's link.
+6. Set `healthCheck` to a command containing a single quote (e.g.
+   `docker compose ps --filter name='^db$' -q`), accept the integration
+   layer, and run `npx tsc --noEmit` on the written global setup — it
+   compiles.
+7. Point `envCommand` at a stub printing `{"API_URL":"https://example.com"}`
+   and run the integration script — it stops with one line naming
+   `API_URL` and the host, before any test. With the real `envCommand` and
+   the stack up, an integration test that imports app code through `@/…`
+   passes: the written config resolves the alias the way the main test
+   config does.
+
+### Integration tests in `pre-push` (0.11.0)
+
+The template itself is run by `tests/hook-behaviour.sh`; these check it on
+a real project with a local stack:
+
+8. Stop the stack, `git push`: one line, "pre-push: local services are not
+   running — start them with: <requires>", and the push is refused.
+9. Start the stack, push again: the integration tests run against it and
+   the push goes through.
+10. With the stack up, put a wrong service address into `.env.local` for a
+    moment: the integration tests still pass — they never read `.env*`.
+    Catching that address is the environment check's job
+    (`tests.e2e.preflight`), not `pre-push`'s. Put the address back.
+11. After `init-harness`, `.gitignore` holds `.claude/.last-pre-push.json`,
+    and `git status` stays clean after a push.
+12. An `opsx-apply-git` run: the log has a `gate:"integration"` line, and
+    the push of the log commit at §4 step 6.2 prints "only the harness log
+    changed — tests skipped" and takes about a second.
+13. Upgrade mode on a project whose `pre-push` is the plain 0.10.6 chain:
+    a diff to the new hook, applied on yes. On a hand-edited `pre-push`:
+    both blocks printed for a manual merge, the file left alone.
+14. `init-harness` with the stack stopped: the report says the integration
+    tests weren't verified, `tests.integration` stays in the manifest, and
+    `.husky/pre-push` still has its integration block — the first push
+    stops with step 8's one line.
+15. Delete the integration block from `.husky/pre-push` by hand and run
+    `opsx-apply-git`: after its push, one line says the hook doesn't run
+    the integration tests, and the log line is `no fresh hook result`. A
+    group that writes an integration test with the stack stopped says the
+    same at the end of its "not verified" line.
 
 ---
 
@@ -261,6 +311,18 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    specific broken flow, blocking (must-pass, not advisory).
 6. Confirm a change with no user-facing surface (e.g. a pure utility
    function) correctly skips this gate instead of running it pointlessly.
+7. No `tests.e2e.preflight` in the manifest: the report has one line, "no
+   environment check — …", and everything else runs as before.
+8. `tests.e2e.preflight` naming a script that exits 1: the report opens
+   with `Environment: …`; no replay, no manual pass, no `debug-loop`; the
+   dev server is gone; the log has a `confirmed` verdict line and a
+   `web-qa-flows` line with `failureKind: "environment"`.
+9. The same script exiting 0: the gate goes on, and the delegation prompt
+   to `web-qa-manual-tester` says "environment check passed".
+10. A flow whose page loads a font or an analytics script from another
+    host: the recording question names the host and offers `@external`,
+    untagged, or not recorded. "Untagged" writes the scenario without
+    `@external`, and the replay before push runs it.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
@@ -359,6 +421,34 @@ Trivial-diff pre-filter (#36):
     confirm even a 1-line `.md` diff now runs the full `code-review`
     delegation, proving the threshold is actually read from the manifest
     and not hardcoded.
+
+CR-14 — a new flow or service boundary with no test (0.11.0):
+
+17. On the change's last run, a diff adding a sign-in page with no scenario:
+    a PLAUSIBLE CR-14 naming the flow in words. The same diff in a project
+    with no `tests.e2e` block: nothing, and one "not applicable" line.
+18. The same diff on an early run: no flow finding, one line "scenarios are
+    recorded on the last group".
+19. A flow listed in the change's `web-qa-flows` `declinedFlows` (or
+    `recordedFlows`): not flagged. A new flow `web-qa` never offered:
+    flagged.
+20. With `tests.integration`: a new function in `lib/dal.ts` that calls the
+    stack's client, with no `*.integration.test.ts` → PLAUSIBLE naming the
+    file and function. CR-14 is never CONFIRMED anywhere.
+
+Integration tests written with the code (0.11.0, `opsx-apply-git`
+`references/integration-tests.md`):
+
+21. A group adding a function in `lib/dal.ts` that calls the stack's client
+    writes `*.integration.test.ts` for that function — not for the Server
+    Action that calls it.
+22. A new function that only talks to a hosted CMS gets no integration
+    test.
+23. Local stack stopped: the test is still written, the report has
+    "integration test <file> not verified: start <requires>", and the group
+    is not `blocked`.
+24. With `makerChecker.enabled`, step 21's file comes from `test-author`,
+    and the implementing session writes no test.
 
 ## 8. Gate 6 — harness-review
 
@@ -461,9 +551,57 @@ and a change with at least two groups.
 12. In the run that leaves step 11's entry open, the PR body's Deferred part
     lists it on one line with a working link to the entry's heading, after
     `proposal.md`'s Open Questions.
-13. Copy Poetry-Hub's `docs/deferred.md` into the test project and repeat
+13. Copy a real project's `docs/deferred.md` into the test project and repeat
     step 8 there. The new entry is appended under a new `## <change-slug>`
     heading at the end; `git diff` shows no other line changed.
+
+Replay of recorded scenarios before push (§4 step 3a, 0.11.0). Which
+scenarios the last run picks is checked by `tests/affected-scenarios.sh`;
+these are the step's own decisions:
+
+14. A run that changed only `README.md`: the log has `e2e-replay`
+    `skipped` `docs only`, and Playwright never ran. The same `README.md`
+    run as the last run of a change whose earlier runs changed code: not
+    skipped — the affected scenarios run.
+15. A run that changed only `globals.css`: the replay is **not** skipped.
+16. Break a recorded scenario with a component change: the run reaches
+    `debug-loop` and does not push while the scenario is red.
+17. After step 16's fix: `code-review` runs a second time, on
+    `git diff <HEAD before step 3a>..HEAD` only, before push. A replay
+    green the first time → no second `code-review`.
+18. A scenario tagged `@external` (or the manifest's `externalTag`) never
+    runs; on an ordinary run only `@<change-slug>` scenarios run, a
+    scenario tagged `@<change-slug>-v2` does not, and the project's own e2e
+    tests outside `tests.e2e.dir` do not.
+19. Point `playwright.config`'s `testDir` away from `tests.e2e.dir`: one
+    environment line ("testDir … doesn't cover …"), `failureKind`
+    `environment`, no `debug-loop`, no push.
+20. A manifest with no `tests.e2e` block: `skipped` `e2e not configured`;
+    everything else as in 0.10.6.
+21. The last group with UI: `web-qa` passed and nothing but `.md` was
+    committed after that group's commit → `skipped` `replayed by web-qa`.
+    Add a `code-review` fix commit to a source file → the replay runs. A
+    `web-qa` that needed a fix along the way (verdict `confirmed`) → the
+    replay runs too.
+
+## 10. Live project, end to end (0.11.0)
+
+One Next.js project with a local stack, start to finish, by a human:
+
+1. `init-harness` offers the test layers: the integration layer with its
+   start command, a Playwright config without `@external`, the environment
+   check (a drafted `scripts/qa-preflight.mjs` whose probes name variables,
+   never values), and a printed CI template. Declining leaves the
+   repository as it was; no CI file is ever written.
+2. A change with a UI flow passes `web-qa` and records a scenario.
+3. A later change that touches that scenario's page replays it before the
+   push of its last run. A later change that doesn't touch the page leaves
+   it alone (only the change's own scenarios and the affected ones run).
+4. A deliberate break of that page, made in a new change, blocks that
+   change's push through `debug-loop`.
+5. With the environment check added (step 1), a wrong service address in
+   `.env.local` stops the replay before push as an environment failure,
+   with no `debug-loop`.
 
 ---
 

@@ -1,0 +1,119 @@
+# Step 1b — which test layers this project can have, and what to offer
+
+Read this from Step 1, after `references/stack-detection.md`. It decides the
+optional `tests` block of `.claude/harness.json`
+(`references/manifest-schema.md`). One rule holds for the whole file:
+**find and offer, never add silently.** At most one question per layer, and
+only when that layer's sign is found. A "no" leaves the repository exactly
+as it was. Installing a package is the human's job (`permissions.deny`
+blocks every install command).
+
+A project with neither sign below gets no question from this file at all,
+and no `tests` block: it behaves exactly as it did in 0.10.6.
+
+In upgrade mode, skip a layer whose half of `tests` is already there — the
+manifest answers it (`references/upgrade-mode.md`).
+
+## Integration layer
+
+**Sign: a local service this repository can start.**
+
+The plugin knows no stack by name at run time: everything downstream reads
+the four `tests.integration` fields (`references/local-stack-profile.md`
+section 1). This table only *proposes* values for stacks it recognizes; the
+user accepts them or types their own, and a stack missing from the table
+works the same way with the user's values.
+
+| Found | `requires` | `healthCheck` | `envCommand` | `mailCatcherUrl` |
+| --- | --- | --- | --- | --- |
+| `supabase/config.toml` | `supabase start` | `supabase status` | `supabase status -o json` | the Mailpit row of `supabase status` (default `http://127.0.0.1:54324`) |
+| `docker-compose.yml` / `compose.yaml` with a database service (image `postgres`, `mysql`, `mongo`, `redis`) | `docker compose up -d` | `test -n "$(docker compose ps --status running -q <service>)"` | none — ask, or leave out | `http://127.0.0.1:<published port>` of an `axllent/mailpit` service, if there is one |
+
+The Compose check is wrapped in `test -n` on purpose: `docker compose ps
+-q` exits 0 with empty output when nothing runs, so the bare command would
+always pass. Whatever the stack, confirm once that the proposed
+`healthCheck` exits non-zero with the stack stopped, before writing it —
+not from memory. Run it with its output to `/dev/null` there and everywhere
+else: only the exit code matters, and a status command can print the
+stack's keys.
+
+Then, by what the project already has:
+
+- **An integration script exists** (`stack-detection.md` lists the names to
+  look for) → write it to `tests.integration.script`, no question, as
+  before. If a sign was also found, offer the four fields from the table in
+  one question.
+- **No script, sign found** → one question offering the whole layer:
+  - a `test:integration` script in `package.json`;
+  - for Vitest, a separate `vitest.integration.config.ts` with
+    `test.include: ['**/*.integration.test.ts']`, run as
+    `vitest run --config vitest.integration.config.ts --passWithNoTests`,
+    resolving `@/…` imports the way the main test config does
+    (`references/local-stack-profile.md` section 2);
+  - the same pattern excluded from the main config so `<pm> test` doesn't
+    run them — `exclude: [...configDefaults.exclude,
+    '**/*.integration.test.ts']`, because a plain `exclude` replaces
+    Vitest's defaults and starts collecting `node_modules`. Show the diff of
+    the main config before writing it;
+  - for Jest, the same through `testMatch` and a second config;
+  - the four fields from the table, or the user's own.
+
+  With `envCommand` set, the config and its global setup come from
+  `references/local-stack-profile.md` section 2 — it checks the services
+  are up and refuses any address that isn't local.
+
+  `--passWithNoTests` is deliberate here and nowhere else: the layer is
+  new and has no tests yet, and an empty layer must not block every push
+  until the first one lands. Step 8b reads this run's script with that in
+  mind (`references/toolchain-proof.md`).
+- **No script, no sign** → ask nothing, write nothing.
+
+The integration tests themselves take the service's address and keys from
+the output of `envCommand` (`references/local-stack-profile.md` section 1),
+never from the project's `.env*` files or the app's `process.env`.
+
+## End-to-end layer
+
+**Sign: `@playwright/test` in `devDependencies`.** Absent → offer nothing;
+say one line in the report: `web-qa` offers to install it when it records
+the first scenario, as it does today.
+
+Present → one question: turn on the replay of recorded scenarios before
+push. Yes → write `tests.e2e` with `dir` (default
+`tests/web-qa-scenarios`), `command: "npx playwright test"`,
+`externalTag: "@external"`, and `replayBeforePush: true`. No → no
+`tests.e2e` block; the replay stays off.
+
+After a yes, offer the environment check in one more question: without
+it, a wrong service address in the app's settings reads as an app failure,
+and `debug-loop` goes looking for it in the code. Yes → draft
+`scripts/qa-preflight.mjs` from `references/local-stack-profile.md`
+section 3, one probe per external service the app's code reaches, each
+address taken from a variable *name* the code reads (or `.env.example`
+lists) — never a value. Show it; on a second yes write it, add a
+`qa:preflight` script to `package.json`, and set
+`tests.e2e.preflight: "qa:preflight"`. Never point `preflight` at a script
+this step didn't write: no rule detects an existing environment check, and
+a guessed script name is the one thing this skill never writes. In upgrade
+mode, ask this whenever `tests.e2e` has no `preflight`.
+
+The same question covers the Playwright config:
+
+- **No `playwright.config.*`** → offer one with `testDir` pointing at the
+  scenarios directory, `grepInvert: /@external/`, and a `webServer` with
+  `reuseExistingServer: true`. On Next.js, `webServer.command` is the
+  project's real build and start scripts (`<pm> build && <pm> start`) when
+  the build passes in reasonable time; otherwise its `dev` script, and the
+  report says so — a dev server makes replays flakier.
+- **A config exists** → never rewrite it. List only the gaps, one line
+  each: `testDir` doesn't cover the scenarios directory; no `grepInvert`
+  for the external tag; no `webServer` (the replay can't start the app on
+  its own); `reuseExistingServer` off.
+
+## CI template — printed, never written
+
+Only when at least one layer above was accepted, ask once whether to print
+a CI job template. Yes → print it in the report: one job with three steps —
+install, integration tests with the local services started, end-to-end
+tests without the external tag. Its first line says the project owns this
+file. **Never write it**: not to `.github/workflows/`, not anywhere else.

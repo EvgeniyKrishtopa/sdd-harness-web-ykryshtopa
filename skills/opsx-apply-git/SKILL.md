@@ -140,11 +140,11 @@ case it is:
 2. For each isolated group in turn: weigh what to build against
    `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
    trigger against the task's own text and acceptance criteria, before writing
-   anything new — a named library or framework-specific API there means looking
-   it up via context7 first and marking the group's commit per that file. On
-   `makerChecker.enabled`, follow `references/maker-checker.md` first: this
-   group's tests are written by another actor, before its code. Then implement
-   its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A decision the
+   anything new (a named library or framework API → context7 first, per that
+   file). On `makerChecker.enabled`, follow `references/maker-checker.md`
+   first: this group's tests are written by another actor, before its code. A
+   new service boundary with `tests.integration` set → `references/integration-tests.md`.
+   Then implement its sub-tasks (minimal, focused; mark `- [ ]` → `- [x]`). A decision the
    agent can't confidently make means the classification was wrong — stop,
    leave it uncommitted, tell the user. One it CAN make confidently: read
    `references/decision-threshold.md` — it may still need recording (Proposed)
@@ -183,7 +183,7 @@ case it is:
 2. Announce why it's judgement-heavy. Weigh what to build against
    `.claude/docs/laziness-ladder.md`, and check `references/context7-lookup.md`'s
    trigger the same way Case A's step 2 does, plus `references/maker-checker.md`
-   if the manifest opts in, before writing anything new. Then implement with the standard guardrails, but
+   and `references/integration-tests.md` when they apply, before writing anything new. Then implement with the standard guardrails, but
    pause and ask on every design decision or ambiguity. If the run ends
    (report and stop, §4 step 7) before that question is answered, write
    `<!-- blocked: <reason> -->` on the specific task line waiting on it and
@@ -285,10 +285,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    fix-and-continue path below, the clean/PLAUSIBLE continue path, and the
    `maxFixAttempts`-exhausted stop path (a stopped run still ends this step;
    it doesn't get to skip cleanup because it stopped early). Subagent
-   reports themselves stay inline in the response either way — they're
-   short findings lists, and this controller needs them immediately to
-   decide pause-or-continue; wrapping a short report in a file would add a
-   round-trip for nothing.
+   reports stay inline either way — short lists, needed at once to decide
+   pause-or-continue; a file would add a round-trip for nothing.
    Skip the Gate 5 section only if that cumulative diff is docs/config-only
    (no source or test files touched anywhere in the run) — a run that
    shipped source changes with no tests anywhere in it is exactly what that
@@ -306,9 +304,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    the run is already committed by this point, so there's no open task line
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
-   attempt's hypothesis to the human — don't push past it (still `rm -f
-   "$diff_file"` first if it was set, per above — stopping the run doesn't
-   exempt this step from its own cleanup). Clean/PLAUSIBLE in
+   attempt's hypothesis to the human — don't push past it (`rm -f
+   "$diff_file"` first, per above). Clean/PLAUSIBLE in
    every section → continue. Separately from that verdict, `code-reviewer` —
    and `deep-reviewer` whenever the prefilter spawned it — each report their
    own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
@@ -364,13 +361,15 @@ implement unattended is reviewed as one unit too, not group-by-group.
    `.husky/**`, `openspec/config.yaml`, plus this plugin's own
    `skills/`/`agents/` when its own repo is what's under review — e.g.
    `git add .husky/pre-commit && git commit -m "chore: harness review — <summary>"`.
-   Every group in the run is already committed by this point (§3), so
-   there's no ordering constraint forcing this ahead of a group's own
-   commit any more — it simply lands as the next commit on the branch.
+   Every group is already committed (§3): it lands as the next commit.
+3a. **Replay the recorded scenarios — read `references/e2e-replay.md` now and
+   follow it.** Otherwise only the next `web-qa` runs them, and a change
+   with no interface never does.
 4. If step 2 flagged a Case A run with `reviewConfidence: low` and no
    CONFIRMED finding, print the reviewer's stated reason to the chat now
-   — this is the surfacing that step 2 deferred to here. Then push the run's
-   branch (`git push -u origin <branch>`, on its own: never piped, see `references/command-hygiene.md`).
+   (step 2 deferred it here). Then push the run's branch (`git push -u
+   origin <branch>`, on its own: never piped, see `references/command-hygiene.md`)
+   — **read `references/pre-push-note.md` before it**: the integration tests' log line.
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
 6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain

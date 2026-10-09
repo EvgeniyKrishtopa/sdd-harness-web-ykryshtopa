@@ -20,11 +20,25 @@ Merge into the file Step 2e already started (it may already contain just the
     "dev": "dev",
     "typecheck": "typecheck",
     "lint": "lint",
-    "testCoverage": "test:coverage",
-    "testIntegration": "test:integration"
+    "testCoverage": "test:coverage"
   },
   "devServerUrl": "http://localhost:5173",
-  "webQaScenariosDir": "tests/web-qa-scenarios",
+  "tests": {
+    "integration": {
+      "script": "test:integration",
+      "requires": "supabase start",
+      "healthCheck": "supabase status",
+      "envCommand": "supabase status -o json",
+      "mailCatcherUrl": "http://127.0.0.1:54324"
+    },
+    "e2e": {
+      "command": "npx playwright test",
+      "dir": "tests/web-qa-scenarios",
+      "externalTag": "@external",
+      "replayBeforePush": true,
+      "preflight": "qa:preflight"
+    }
+  },
   "trivialDiffThreshold": 10,
   "trivialDiffPaths": ["*.md", "*.css", "*.svg", "public/**"],
   "maxFixAttempts": 2,
@@ -84,17 +98,65 @@ Merge into the file Step 2e already started (it may already contain just the
   `package.json` for `dev`, `typecheck`, `lint`, and the coverage-mode test
   run — never invented names. Ask the user if a mapping isn't obvious, the
   same rule Step 3's Husky hook already follows.
-- `scripts.testIntegration` (added 0.9.0) — **optional**, and the only
-  optional key in `scripts`. Write it only when this project keeps its
-  integration tests behind a *separate* `package.json` script, the common
-  arrangement when they need a database or a running server and don't
-  belong in the fast unit run. Most projects have no such script: then omit
-  the key entirely — never an empty string, and never a guessed name.
-  Without it everything behaves as it did before this key existed;
-  `.husky/pre-push` chains only the coverage run and the audit
-  (`references/git-hooks.md` step 4), and nothing else in this harness
-  looks for it. The cost of filling it in is a longer push, which is the
-  point: tests nothing runs are tests nobody finds out about.
+- `tests` (added 0.11.0) — **optional**, and both halves are optional on
+  their own. It is the one place this file says which test layers beyond
+  the unit run this project has. Write a half only when `init-harness`
+  found it, and the user said yes where Step 1 asks (`references/stack-detection.md`) —
+  never an empty object, and never a guessed name. Without `tests` at all
+  everything behaves as it did in 0.10.6.
+  - `tests.integration.script` — the `package.json` script key that runs
+    the integration tests, the common arrangement when they need a database
+    or a running server and don't belong in the fast unit run. Required
+    when `tests.integration` exists. Without it `.husky/pre-push` chains
+    only the coverage run and the audit (`references/git-hooks.md` step 4).
+    The cost of filling it in is a longer push, which is the point: tests
+    nothing runs are tests nobody finds out about.
+  - `tests.integration.requires` — the command a human runs to start the
+    local services those tests need. Text for a message only; the plugin
+    never runs it.
+  - `tests.integration.healthCheck` — a quick command that exits 0 when
+    those services are up. Absent → nothing checks.
+  - `tests.integration.envCommand` — a command that prints one JSON object
+    of the stack's addresses and keys; the integration test template reads
+    it. Absent → that template isn't offered.
+  - `tests.integration.mailCatcherUrl` — the stack's Mailpit address.
+    Optional; absent → no email-flow scenario is offered and
+    `web-qa-manual-tester` asks the human for an email's link.
+
+  Integration tests only ever talk to this local stack, never to a cloud
+  service: the template takes addresses from `envCommand`, not from `.env*`,
+  and stops on any address that isn't local.
+
+  These four describe the project's local stack; the plugin knows none by
+  name. The values in the example are Supabase CLI's, one of the stacks
+  `references/test-layers.md` proposes values for.
+  - `tests.e2e.command` — what runs the recorded scenarios. Default
+    `npx playwright test`.
+  - `tests.e2e.dir` — where `web-qa` records and replays `@playwright/test`
+    scenarios. Default `tests/web-qa-scenarios`.
+  - `tests.e2e.externalTag` — the tag on scenarios that reach a real
+    external service. Default `@external`.
+  - `tests.e2e.replayBeforePush` — turns on the scenario replay before push.
+    Default `true` when `tests.e2e` exists; an upgrade that moves the old
+    key writes `false` explicitly (`references/upgrade-mode.md`).
+  - `tests.e2e.preflight` — the `package.json` script key that checks the
+    environment before a browser pass. Optional; absent → that check is
+    skipped with a reason.
+
+  "`tests.e2e` is set up" means one thing everywhere: the block exists and
+  `replayBeforePush` is not `false`. `web-qa` itself works without the
+  block, as before — it takes the directory from `tests.e2e.dir`, or the
+  default.
+
+  **Before 0.11.0 two of these values had other names**:
+  `scripts.testIntegration` (now `tests.integration.script`) and
+  `webQaScenariosDir` (now `tests.e2e.dir`). A manifest not yet upgraded
+  still holds them, so every reader takes the new key first and the old one
+  as a fallback:
+  `jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'`
+  and `jq -r '.tests.integration.script // .scripts.testIntegration // empty'`.
+  Only the `tests.e2e` block turns the replay before push on — the old
+  `webQaScenariosDir` alone never does. Never write either old key.
 - `makerChecker` (added 0.9.0) — `{ "enabled": false }` by default, and
   seeded that way. When `true`, `opsx-apply-git` has the `test-author` agent
   write a task group's tests from the test plan **before** the group's
@@ -109,8 +171,6 @@ Merge into the file Step 2e already started (it may already contain just the
 - `devServerUrl` — the dev server's root URL: `http://localhost:3000`
   (Next.js default) or `http://localhost:5173` (Vite default), unless an
   existing `dev` script already pins a different port with `-p`/`--port`.
-- `webQaScenariosDir` — where `web-qa` records/replays Playwright scenarios;
-  same don't-ask-unless-raised treatment as `trivialDiffThreshold` below.
 - `trivialDiffThreshold` / `trivialDiffPaths` — seed with the values shown
   above; don't ask the user for these unless they raise it. `code-review`
   (Gate 4+5) skips itself, at zero model cost, for a run whose cumulative

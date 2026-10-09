@@ -10,12 +10,36 @@ verdict held up — whether a CONFIRMED finding was actually fixed, or the
 human looked at it and moved on, or it never got resolved at all. Without
 that, a noisy gate and a trustworthy one look identical in the log.
 
+Two line shapes in the log carry a `kind` field and no `verdict`: this
+file's `kind:"finding"`, and `web-qa`'s `kind:"web-qa-flows"` (0.11.0 —
+`recordedFlows`, `declinedFlows`, `failureKind`; see
+`skills/web-qa/references/log-fields.md`). Anything that counts gate runs
+counts only lines without `kind`.
+
+Besides the nine verdict lines above, two test steps write verdict lines
+of their own: the replay of recorded scenarios before push (§4 step 3a,
+`references/e2e-replay.md`), `gate:"e2e-replay"`, with three more fields —
+`scope`, `scopeReason`, `scenarios`; and the integration tests in
+`.husky/pre-push` (§4 step 4, `references/pre-push-note.md`),
+`gate:"integration"`. Neither is a numbered gate: their skip reasons are
+their own, not part of the list in "Checks" below, and the Checks part
+stays six lines.
+
+**`failureKind`** (0.11.0) — on `e2e-replay`'s and `integration`'s verdict lines: `app` when
+the code failed, `environment` when a check stopped before the code was
+ever tried (the environment check, `testDir` not covering the scenarios, no
+server to connect to, local services not running). Set only when the verdict is `confirmed`, empty
+otherwise. `web-qa`'s flows line carries the same field, with `environment`
+as its only value. An `environment` failure
+never goes through `debug-loop`, so its `fixIterations` is `0`.
+
 ## When to write this
 
 At the point `SKILL.md` §4 step 6 already forms the run's summary — not
 earlier, at the moment each finding is raised. Track each CONFIRMED finding
 and its resolution as the run goes (across Gates 3-6: `web-qa`,
-`code-review`, `test-coverage`, `deep-review`, `harness-review`), then write one line per
+`code-review`, `test-coverage`, `deep-review`, `harness-review` — plus
+`e2e-replay`, one finding per red scenario), then write one line per
 finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
 have been CONFIRMED, not for every PLAUSIBLE note.
@@ -124,7 +148,7 @@ waved off by the user).
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
-  --arg gate "<web-qa|code-review|test-coverage|deep-review|harness-review>" \
+  --arg gate "<web-qa|code-review|test-coverage|deep-review|harness-review|e2e-replay>" \
   --arg finding "<short description of what the finding was>" \
   --arg outcome "<fixed|rejected|deferred>" \
   --arg ruleNumber "<CR-nn/SR-nn/DR-nn, or empty>" \
@@ -137,7 +161,7 @@ instead. A failed log write never blocks the run — note it and move on.
 
 ## Fields
 
-- `gate` — which of the five gate names above (or `spec-clarify` /
+- `gate` — which of the five gate names above, or `e2e-replay` (or `spec-clarify` /
   `spec-review`'s readiness checklist, see above) raised the finding.
 - `finding` — a short, human-readable description (not a full diff or
   report excerpt).

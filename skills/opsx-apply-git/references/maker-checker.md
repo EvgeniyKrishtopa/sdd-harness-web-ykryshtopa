@@ -26,8 +26,12 @@ Gate 5 is satisfied. What diverged is the test and the requirement.
    `models.testAuthor`, falling back to the agent's own default). Hand it:
    the group's tasks with their requirement identifiers, the matching rows
    of `test-plan.md` (or `proposal.md`'s `## Test Plan` section), and those
-   identifiers' Given/When/Then criteria. It writes the tests, runs them,
-   and reports each one red.
+   identifiers' Given/When/Then criteria. When `tests.integration` is set,
+   also hand it `references/integration-tests.md`'s path and the block's
+   `script`, `healthCheck` and `requires`: a new service boundary gets its
+   `*.integration.test.ts` from it, not from you. It writes the tests, runs
+   them, and reports each one red — an integration test it could not run
+   because the services were down is reported as not verified instead.
 
 2. **Record what it left**, so a later edit is detectable rather than
    remembered:

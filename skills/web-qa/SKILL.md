@@ -21,7 +21,7 @@ Gate 4.
 ## Read the stack manifest, then run the dev server as a scoped background process
 
 1. Read `.claude/harness.json` (written by `init-harness`) for `framework`,
-   `runCmd`, `scripts.dev`, `devServerUrl`, and `webQaScenariosDir` (see
+   `runCmd`, `scripts.dev`, `devServerUrl`, and the scenarios directory (see
    "Replay recorded scenarios" below). Do not re-detect the
    framework from config files or the package manager from lockfiles — that
    duplicated logic is exactly what caused this skill to drift out of sync
@@ -40,11 +40,9 @@ Gate 4.
    test/browser-automation package, if the project also has that as a test
    dependency) stays resident for the whole session per `mcp-config.json`,
    regardless of whether this gate ever runs — there's no supported
-   per-gate MCP toggle in this Claude Code version. If this project runs
-   this gate often, install `@playwright/mcp` as a devDependency so `npx`
-   resolves it locally instead of doing a registry check on every session
-   start; if it rarely touches user-facing UI, the README recommends
-   disabling the server via `/mcp` for sessions that won't use it.
+   per-gate MCP toggle in this Claude Code version. Run often → install
+   `@playwright/mcp` as a devDependency so `npx` skips a registry check each
+   session; rarely → the README recommends disabling it via `/mcp`.
 3. Start the dev server **in the background** (`run_in_background` on the
    Bash tool, or the run harness's background-job equivalent) — never
    foreground, since `<runCmd> <scripts.dev>` (e.g. `yarn dev`, `npm run
@@ -57,36 +55,49 @@ Gate 4.
    taken, e.g. `5173` busy → `5174`, and print the real address to stdout on
    startup (`Local: http://localhost:5174/`). Poll the background process's
    output for that line and parse the live URL out of it, bounded to ~30s at
-   1-2s intervals. Handing the manifest's `devServerUrl` to the reviewer
-   unconditionally risks QA-ing a stale server left over from a previous
-   session on the configured port, while this change's own server sits
-   untested on the port it actually bound. If the expected startup line
-   never appears in that window (crash, unfamiliar dev-server output
-   format), stop, tear down (below), and report the captured stdout/stderr
-   as a Gate 3 failure rather than guessing at a URL.
+   1-2s intervals — trusting `devServerUrl` risks QA-ing a stale server on
+   the configured port while this change's own sits elsewhere. No such line
+   in that window (crash, unfamiliar output) → stop, tear down (below), and
+   report the captured stdout/stderr as a Gate 3 failure; never guess a URL.
 5. Poll the real URL for a `2xx`/HTML response before handing off to the
    reviewer, bounded to ~60s at 1-2s intervals — don't let the QA pass start
    against a server that's still compiling, but also don't let a server that
    never comes up hang the gate forever. If the timeout is hit, tear down
    (below) and report it as a Gate 3 failure.
 
+## Check the environment before anything runs against it
+
+Once the dev server answers, read `tests.e2e.preflight` from
+`.claude/harness.json`. Absent → one line, "no environment check — a wrong
+service address will read as an app failure; init-harness can add one", and
+go on — not a failure. Present → run `<runCmd> <preflight>` (the project's
+own script: it reaches each external service as the app is configured to —
+`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
+section 3). Exit 0 → go on as before. Non-zero → an **environment
+failure**, kept apart from an app FAIL: report `Environment: <its output>`
+as its own line before any flow; run neither the replay nor the manual pass
+(both would fail for the same reason and blur it); do **not** start
+`debug-loop` — the fix is configuration, the human's, and "the code is
+wrong" is the false hypothesis this check exists to stop; log `verdict`
+`confirmed` with `failureKind` `environment`; tear the dev server down.
+Only when the script ran and exited 0, tell `web-qa-manual-tester`
+"environment check passed" — never when there is no script.
+
 ## Replay recorded scenarios before the manual pass
 
-Read `.claude/harness.json`'s `webQaScenariosDir` key (a repo set up by a
-version of `init-harness` older than the one that added this key won't have
-it — tell the user to re-run `init-harness` to pick it up, then continue
-without a replay this time rather than blocking the gate on it). If the
-directory exists and holds at least one recorded scenario file, run the
-accumulated suite first: `npx playwright test <webQaScenariosDir>`. Zero
-model tokens, seconds instead of a click pass.
+Read the scenarios directory from `.claude/harness.json` — `tests.e2e.dir`
+first, then the pre-0.11.0 `webQaScenariosDir`, then the default:
+`jq -r '.tests.e2e.dir // .webQaScenariosDir // "tests/web-qa-scenarios"'
+.claude/harness.json` (call the result `<scenariosDir>`). If the
+directory holds a recorded scenario file, run them first (0 tokens): `npx playwright test
+<scenariosDir> --grep-invert "(<externalTag>|@local-stack)(?![\w-])"` —
+`tests.e2e.externalTag` (default `@external`), the config may lack its own
+filter; drop `|@local-stack` when `tests.integration.healthCheck` passes (its exit code only, output to `/dev/null`).
 
 This is the only part of this gate that checks flows the *current* diff
-didn't touch: cart changing what it hands off to checkout doesn't necessarily
-show up in checkout's own diff, and the manual pass below stays scoped to
-this change's diff, not the whole app, so nothing else in this gate would
-ever re-open checkout on its own. See
-`harness-audit/v0.4.0-implemented/01-review-blind-spots.txt` point 3 for the
-incident this closes.
+didn't touch: cart changing what it hands off to checkout needn't show up
+in checkout's own diff, and the manual pass stays scoped to this change's
+diff, so nothing else here would re-open checkout on its own.
 
 - **Any failure here** feeds into the same fix loop as a manual-tester FAIL,
   below — a regression the replay catches is exactly as real as one the
@@ -109,7 +120,9 @@ incident this closes.
    against the running dev server — this plugin's own pinned server only
    (`mcp__plugin_sdd-harness-web-ykryshtopa_playwright__browser_*`), never a
    Playwright MCP the project or the user supplies at some other version;
-   the reasoning is in `agents/web-qa-manual-tester.md`. Disabled via `/mcp`
+   the reasoning is in `agents/web-qa-manual-tester.md`. If
+   `tests.integration.healthCheck` passes and `mailCatcherUrl` is set, pass
+   that address so the agent reads emails itself. Disabled via `/mcp`
    → the agent refuses to launch, which is the intended loud failure. Scope
    its flows to the *whole change's* diff against the parent branch, not
    just the last group, so the final pass covers everything the change
@@ -163,29 +176,38 @@ maintenance debt, not a safety net — see
    flow that's one-off, purely cosmetic, or mostly asserted "eyeballed by the
    model" content is a reasonable one to decline; a flow worth protecting
    against exactly the March/April checkout-vs-cart regression above is a
-   reasonable one to keep.
-2. On accept, read `.claude/harness.json`'s `webQaScenariosDir` key for
-   where the file goes; write `<webQaScenariosDir>/<flow-slug>.spec.ts`
-   (kebab-case from the flow's name), authored against `@playwright/test`'s
-   own API (`page.goto`, `page.getByRole(...).click()`,
-   `expect(...).toBeVisible()`, …) — translate the steps the MCP session
-   actually took into their `@playwright/test` equivalents, not a literal
-   transcript of MCP tool calls, which don't run outside that server.
+   reasonable one to keep. A flow whose requests reached a non-local host
+   names it in the question, and the human picks `@external`, untagged (an
+   incidental host) or not recorded — `references/recording-rules.md` rule 3.
+2. On accept, write `<scenariosDir>/<flow-slug>.spec.ts` (kebab-case flow
+   name) against `@playwright/test`'s own API (`page.goto`,
+   `page.getByRole(...).click()`, `expect(...).toBeVisible()`, …) —
+   translating the steps the MCP session took, not a transcript of MCP tool
+   calls, which don't run outside that server. **Read
+   `references/recording-rules.md` now and follow all six rules** — scoped
+   `alert`/`status`, the hydration helper before any form action
+   (`references/hydration-helper.md`), `@external`, three green runs, the
+   `@<change-slug>` tag, the `// pages:` line — plus its Suspense note: a
+   doubled form is an app FAIL, never a `.first()`. A flow that sends an
+   email (with `mailCatcherUrl` set) starts from section 4 of
+   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`,
+   tagged `@local-stack`.
 3. **First scenario ever recorded in this project**: `permissions.deny`
    (written by `init-harness`) blocks every package manager's install
    command, on purpose, and this gate doesn't get an exception. If
    `@playwright/test` isn't already a devDependency, stop and ask the user
    to run `<pm> add -D @playwright/test` themselves, then continue once
    they confirm; likewise, if no `playwright.config.ts`/`.js` exists yet,
-   write a minimal one with `testDir` pointing at `webQaScenariosDir` — if
+   write a minimal one with `testDir` pointing at `<scenariosDir>` — if
    one already exists, only check it covers that directory and tell the
    user if it doesn't, rather than rewriting a config they may have tuned.
-4. Run `npx playwright test <the new file>` right after writing it, before
-   calling the scenario recorded. A file that doesn't pass standalone
-   protects nothing — it just looks like coverage. Fix it or don't keep it;
-   don't leave a red spec file behind silently.
+4. Run `npx playwright test <the new file> --repeat-each=3` (once for an
+   `@external` one) before calling the scenario recorded — rule 4. One red
+   run and the file isn't kept: a file that doesn't pass protects nothing,
+   it just looks like coverage. Never leave a red spec file behind.
 5. Tell the user plainly what got recorded and what got declined this run —
-   the report from step 1's per-flow answers, not a single aggregate line.
+   the report from step 1's per-flow answers, not a single aggregate line;
+   what was actually written fills the `kind:"web-qa-flows"` log line below.
 
 ## Tear down the dev server whenever this gate exits
 
@@ -200,9 +222,9 @@ same port.
 
 ## Log this gate's run
 
-After the fix loop settles (all-PASS, or an explicit human override), append
-one line to `.claude/harness-log.jsonl` in the target repo (create the file
-if it doesn't exist yet) — a plain shell append, 0 model tokens:
+After the fix loop settles (all-PASS, or an explicit human override), or right
+after an environment failure stopped the gate, append
+one line to `.claude/harness-log.jsonl` (create it if absent), 0 model tokens:
 
 ```bash
 mkdir -p .claude
@@ -223,28 +245,6 @@ printf '%s\n' "$(jq -nc \
   >> .claude/harness-log.jsonl
 ```
 
-Fill in the change slug, `verdict` as `clean` for all-PASS, `confirmed` for
-any FAIL found along the way (even if later fixed and re-passed), or
-`skipped` when this gate wasn't applicable; the wall-clock time across the
-whole fix loop; and the model `web-qa-manual-tester` ran on (`group` is `-`:
-this gate covers the whole change, triggered on the last group). `skipReason`
-is the closed-list reason matching this gate's own applicability check —
-`UI not touched` exactly when `verdict` is `skipped`, empty
-otherwise. Also fill in its stated `reviewConfidence`, empty when skipped.
-`tokensTotal` is the `subagent_tokens` figure from the `<usage>` block the
-environment appends after the `web-qa-manual-tester` delegation returns
-(point 5, `harness-audit/v0.4.0-implemented/03-log-fields.txt`), `0` when
-skipped — never estimate it from a proxy.
-Write the line only once `<usage>` has arrived — a background delegation
-reports first. If it never arrives, `tokensTotal` is `null` and
-`tokensNote` says why; never `0`, which `harness-stats` reads as a free run.
-`fixIterations` is the attempt count `debug-loop` itself reports back (phase
-4's "report success and the number of attempts it took"), summed if more
-than one flow needed its own invocation this run; `0` when every flow
-passed on the first try or the gate was skipped. `escalatedToHuman` is
-`true` only if `debug-loop` reached `maxFixAttempts` on this run without
-resolving a failure — the same run that then wrote a `blocked` marker
-instead of proceeding. If `jq`
-isn't available, construct the equivalent JSON line with `printf` instead.
-A failed log write never blocks the gate — note it in the report and move
-on; this is a diagnostic aid, not part of the pass/fail logic.
+Field by field — what fills each one, when it is `null`, and the second
+line this gate writes right after (`kind:"web-qa-flows"`, recorded and
+declined flows) — is in `references/log-fields.md`; read it now and follow it.

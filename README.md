@@ -217,8 +217,9 @@ log` alone can't. That banner also carries the Claude Code version warning
 described under [Requirements](#requirements) — above the git section, and
 only when the running version is below the floor. The guards are plain shell, no model call: they prompt for
 confirmation on a protected-branch commit, a secret-shaped or unusually
-large staged diff, a force-push, or a commit/ref created through `gh api`,
-and stay out of the way otherwise. Each one reads the command and decides
+large staged diff, a force-push, a commit or push that skips the git hooks
+(`--no-verify`, `-n` on commit, `HUSKY=0`, a `core.hooksPath` override), or
+a commit/ref created through `gh api`, and stay out of the way otherwise. Each one reads the command and decides
 only from the parts that really run its git subcommand, so a heredoc
 mentioning `main` or an `rm -f` next to a push doesn't trigger it
 (`hooks/git-guard.sh` lists what it deliberately doesn't parse).
@@ -327,6 +328,31 @@ The next `opsx-apply-git` re-syncs from your merge.
 
 **6. On the last group**, `opsx-apply-git` archives the change via its own
 PR.
+
+## Test layers
+
+Integration and end-to-end tests are optional, per project: `init-harness`
+offers each layer only when it finds the sign for it (a local service,
+`@playwright/test`) and writes the `tests` block of `.claude/harness.json`
+on your yes. Without that block everything below the first two rows behaves
+as in 0.10.6.
+
+| When | Where | What runs |
+| --- | --- | --- |
+| `git commit` | `.husky/pre-commit` (Static) | typecheck + lint |
+| `git push` | `.husky/pre-push` (Runtime) | unit tests with coverage, then integration tests (`tests.integration`, local services checked first), then the dependency audit. A push that changes only the harness log is not tested |
+| before every push of a run | `opsx-apply-git` §4 step 3a | replay of recorded scenarios, 0 tokens (`tests.e2e`): this change's on an ordinary run, plus the ones whose pages the change touched on its last run |
+| last group with a UI change | Gate 3, `web-qa` | environment check → replay → manual pass in a real browser → recording the flows you keep |
+| every run's review | Gate 5, `code-review` | `CR-14`: a new flow with no scenario, or a new service boundary with no integration test (PLAUSIBLE) |
+
+Integration tests only ever talk to the local stack, never to a cloud
+service: they take addresses from `tests.integration.envCommand`, not from
+`.env*`. A wrong address in `.env.local` is the environment check's to
+catch (`tests.e2e.preflight`), not theirs.
+
+**CI stays the project's.** The plugin never writes or edits a CI file. At
+most, `init-harness` prints a CI job template into its report for you to
+copy.
 
 ---
 
@@ -544,7 +570,7 @@ stylistic:
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
 3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh`,
-   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, and `tests/claude-md-budget.sh`) — the first fails if the version isn't
+   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, `tests/claude-md-budget.sh`, and `tests/affected-scenarios.sh`) — the first fails if the version isn't
    semver, if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push`, **after** the release branch is merged —
