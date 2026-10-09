@@ -25,10 +25,9 @@ a change that was never actually accepted (#19).
    - **`OPEN`** (or the human says not yet) → stop here and report — the
      change is fully implemented and its PR is open, but archiving waits on
      that merge. To resume once a human has merged it, re-invoke
-     `opsx-apply-git` on **this run's own branch** (not the parent, and not
-     a fresh checkout) so it lands back on this same archiving step rather
-     than tripping step 1's "leftover group branch" guard in §1, which fires
-     when the checked-out branch isn't the current run's own branch.
+     `opsx-apply-git` on **this run's own branch**: §1 step 1 sees its PR
+     `MERGED`, switches to the PR's base branch by itself and comes back to
+     this step.
    - **`CLOSED`** and not merged (or the human says it was rejected or
      reworked) → do **not** wait for a merge that isn't coming — stop and
      ask the human what to do with the change instead (re-open, rework, or

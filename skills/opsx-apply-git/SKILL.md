@@ -26,7 +26,18 @@ read `references/ci-probes.md` before any task that must push failing code.
 
 1. `git branch --show-current` — this should be the parent feature branch
    already active, never `main`/`master`. If it looks like a leftover group
-   branch, stop and ask which branch is the real parent.
+   branch (a batch, group or archive branch this skill cut earlier), check
+   its PR before asking anything. `.claude/harness.json`'s `forge` is
+   `"github"` or absent → `gh pr view --json state,baseRefName` on it:
+   - `MERGED` → `git checkout <baseRefName>` — that is the parent — and
+     report it in one line: `Branch <group> is merged into <baseRefName>;
+     switched to <baseRefName>.` Then go on: a change with no pending tasks
+     left goes to §5 with this PR as the run's PR.
+   - Any other state, no PR for the branch, or `forge` `"other"` → stop and
+     ask which branch is the real parent.
+   Switch only on `MERGED`: the PR's own base is the one fact that says where
+   the group's work went, and a guess would send the next run to the wrong
+   branch.
 2. Read `.claude/harness.json` (written by `init-harness`) for
    `packageManager`, `runCmd`, `framework`, `testRunner`, `buildDir`,
    `scripts`, `devServerUrl`, and `coverageThreshold` — every verification

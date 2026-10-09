@@ -591,6 +591,10 @@ these are the step's own decisions:
     Add a `code-review` fix commit to a source file → the replay runs. A
     `web-qa` that needed a fix along the way (verdict `confirmed`) → the
     replay runs too.
+22. Merge a group's PR, stay on its branch and run `opsx-apply-git` again:
+    one line says it switched to the PR's base branch, and the run goes on
+    with no question. Do the same with the PR still open → it asks which
+    branch is the parent. With `forge` `"other"` → it asks, too.
 
 ## 10. Live project, end to end (0.11.0)
 
