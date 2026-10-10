@@ -19,7 +19,7 @@ path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment
 content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM|permissions:|secrets\.|pull_request_target|workflow_run|GITHUB_TOKEN|id-token: *write'
 
 # Documents and tests execute nothing in production: no signal from them.
-skip_re='^(docs|openspec)/|\.(md|markdown)$|(^|/)(__tests__|__mocks__|tests?|e2e)/|\.(test|spec)\.[cm]?[jt]sx?$'
+skip_re='^(docs|openspec)/|\.(md|markdown)$|^(src/)?(tests?|e2e)/|(^|/)(__tests__|__mocks__)/|\.(test|spec)\.[cm]?[jt]sx?$'
 
 paths=$(git diff --name-only "$range")
 if [ -z "$paths" ]; then
