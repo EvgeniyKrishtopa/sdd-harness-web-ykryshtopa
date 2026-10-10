@@ -111,6 +111,28 @@ out=$(cd "$WORK/per-run" && bash -c "$read_line" | jq -R 'fromjson?' | jq -s len
 check "per-run file: the read sees both spec-review lines" "2" "$out"
 check "control, branch file: the second PR conflicts" "conflict" "$(scenario per-branch "$branch_writer")"
 
+# harness-stats counts the same on lines split over both file forms as on
+# the same lines in one file (requirement 3, "done when").
+STATS="$ROOT/skills/harness-review/references/harness-stats.md"
+awk '/^## The snippet/{s=1} s && /^```bash/{f=1; next} f && /^```/{exit} f' "$STATS" > "$WORK/stats.sh"
+l1='{"ts":"2026-10-01T10:00:00Z","change":"x","gate":"spec-review","verdict":"confirmed","durationMs":5,"tokensTotal":100}'
+l2='{"ts":"2026-10-01T11:00:00Z","change":"x","gate":"spec-review","verdict":"clean","durationMs":7,"tokensTotal":200}'
+l3='{"ts":"2026-10-01T12:00:00Z","change":"x","kind":"finding","gate":"spec-review","finding":"f","outcome":"fixed","ruleNumber":""}'
+l4='{"ts":"2026-10-01T13:00:00Z","change":"x","gate":"code-review","verdict":"clean","durationMs":9,"tokensTotal":300}'
+mkdir -p "$WORK/split/.claude/harness-log" "$WORK/single/.claude/harness-log"
+printf '%s\n' "$l1" > "$WORK/split/.claude/harness-log/feature--x--spec-review--20261001T100000Z.jsonl"
+printf '%s\n' "$l2" "$l3" > "$WORK/split/.claude/harness-log/feature--x--spec-review--20261001T110000Z.jsonl"
+printf '%s\n' "$l4" > "$WORK/split/.claude/harness-log/feature--x-g1.jsonl"
+printf '%s\n' "$l1" "$l2" "$l3" "$l4" > "$WORK/single/.claude/harness-log/feature--x.jsonl"
+split_out=$(cd "$WORK/split" && sh "$WORK/stats.sh" 2>&1)
+single_out=$(cd "$WORK/single" && sh "$WORK/stats.sh" 2>&1)
+if [ -n "$split_out" ] && [ "$split_out" = "$single_out" ] && printf '%s' "$split_out" | grep -q 'spec-review: 2 runs'; then
+  ok "harness-stats: split over both forms == one file"
+else
+  bad "harness-stats differs between split and single-file logs"
+  diff <(printf '%s\n' "$split_out") <(printf '%s\n' "$single_out") | head -10
+fi
+
 echo
 echo "Passed: $pass  Failed: $fail"
 [ "$fail" -eq 0 ]
