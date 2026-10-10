@@ -336,7 +336,10 @@ PR.
 tweak, a one-file fix) — ask `opsx-apply-git` for a chore run. It works on
 a `chore/<slug>` branch off the main branch, runs the same checks with the
 same skip rules, logs under `change: "<slug>"`, and opens a PR of the same
-shape (`skills/opsx-apply-git/references/chore-run.md`).
+shape (`skills/opsx-apply-git/references/chore-run.md`). Installing or
+updating a package stays yours: the agent stops, warns, and prints the
+exact command to run (`! npm install zod@4.1.0`), then carries on with the
+checks.
 
 ## Test layers
 
