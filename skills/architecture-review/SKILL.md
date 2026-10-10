@@ -84,8 +84,11 @@ runs and what happens with its verdict.
 ## Log this gate's run
 
 After delivering the verdict above, append one line to
-this branch's log file, `.claude/harness-log/<branch>.jsonl` in the target repo (create the file if it
-doesn't exist yet) — a plain shell append, 0 model tokens:
+a new log file of its own, `.claude/harness-log/<branch>--architecture-review--<UTC time>.jsonl`
+in the target repo — a plain shell append, 0 model tokens. This check runs on
+the change's parent branch, where nothing commits the log; a file of its
+own per run means two group PRs never carry the same file
+(`skills/opsx-apply-git/references/log-findings.md`, "Where the log lives"):
 
 ```bash
 mkdir -p .claude/harness-log
@@ -103,7 +106,7 @@ printf '%s\n' "$(jq -nc \
   --argjson fixIterations 0 \
   --argjson escalatedToHuman false \
   '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:$model,reviewConfidence:$reviewConfidence,fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman}')" \
-  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g")--architecture-review--$(date -u +%Y%m%dT%H%M%SZ).jsonl"
 ```
 
 Fill in the change slug, the verdict this run resolved to, the wall-clock

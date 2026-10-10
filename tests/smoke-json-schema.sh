@@ -593,14 +593,26 @@ if [ -n "$old_writers" ]; then
 else
   ok "nothing writes the pre-0.12.0 .claude/harness-log.jsonl"
 fi
-odd_targets="$(grep -rnE '>> *"?\.claude/harness-log/' skills agents hooks 2>/dev/null | grep -vF "$LOG_TARGET")"
+# The second form: the four checks that run on the change's parent branch,
+# where nothing commits the log, append to a new file per run, so two group
+# PRs never carry the same file. Only those four skills (and log-findings.md,
+# which documents it with a <check> placeholder) may use it.
+CHANGE_TARGET_RE='>> "\.claude/harness-log/\$\(git branch --show-current \| sed "s#/#--#g"\)--(architecture-review|spec-review|spec-clarify|scaffold-review|<check>)--\$\(date -u \+%Y%m%dT%H%M%SZ\)\.jsonl"'
+CHANGE_FILES_RE='^skills/(architecture-review|spec-review|spec-clarify|opsx-scaffold)/SKILL\.md:|^skills/opsx-apply-git/references/log-findings\.md:'
+change_writers="$(grep -rnE "$CHANGE_TARGET_RE" skills agents hooks 2>/dev/null)"
+misplaced="$(printf '%s\n' "$change_writers" | grep . | grep -vE "$CHANGE_FILES_RE")"
+odd_targets="$(grep -rnE '>> *"?\.claude/harness-log/' skills agents hooks 2>/dev/null | grep -vF "$LOG_TARGET" | grep -vE "$CHANGE_TARGET_RE")"
 writers="$(grep -rnF "$LOG_TARGET" skills agents hooks 2>/dev/null | wc -l | tr -d ' ')"
-if [ -n "$odd_targets" ]; then
+if [ -n "$misplaced" ]; then
+  bad "the per-run log file is only for the four change-level checks, found at: $(printf '%s' "$misplaced" | cut -d: -f1,2 | tr '\n' ' ')"
+elif [ "$(printf '%s\n' "$change_writers" | grep -cE '^skills/(architecture|spec)-review/SKILL\.md:')" -ne 2 ]; then
+  bad "architecture-review and spec-review must each append their verdict line to a per-run log file"
+elif [ -n "$odd_targets" ]; then
   bad "a log append spells the per-branch path differently: $(printf '%s' "$odd_targets" | cut -d: -f1,2 | tr '\n' ' ')"
 elif [ "$writers" -lt 12 ]; then
   bad "only $writers per-branch log appends found, expected at least 12 -- did a writer lose its target?"
 else
-  ok "all $writers log appends use the one per-branch path"
+  ok "all log appends use one of the two paths ($writers per-branch, $(printf '%s\n' "$change_writers" | grep -c .) per-run)"
 fi
 
 # The kind:"finding" line (skills/opsx-apply-git/references/log-findings.md)

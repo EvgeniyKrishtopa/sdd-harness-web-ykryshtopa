@@ -80,6 +80,12 @@ again rather than trusted from its first pass.
    - `finding`: the quoted text or a short paraphrase of it
    - `outcome`: `"fixed"` for clarify, `"deferred"` for defer
    - `ruleNumber`: empty — `devils-advocate` carries no numbered rules
+
+   Append them to a log file of this run's own, not the branch's:
+   `.claude/harness-log/<branch>--spec-clarify--<UTC time>.jsonl`, the time
+   taken at the moment of writing (`log-findings.md`, "Where the log
+   lives") — this skill runs on the parent branch, where nothing commits
+   the log.
 6. Report a one-line summary: how many findings, how many clarified, how
    many deferred.
 
