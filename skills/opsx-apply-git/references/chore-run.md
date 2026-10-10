@@ -44,7 +44,10 @@ message: what the task needs installed, why the agent doesn't run it, and
 the exact command to run in the prompt, e.g.
 `! npm install zod@4.1.0` (the project's package manager, the version the
 task names). Wait for the human; once they say it ran, check the lockfile
-changed and go on — typecheck, lint, tests. Never route around the deny: no
+changed (`git status --porcelain` lists it). Changed → go on — typecheck,
+lint, tests. Unchanged → don't go on: say so and ask again with the same
+command — the checks would fail on a missing package, and `debug-loop`
+cannot fix what only an install can. Never route around the deny: no
 other package manager, no `npm update`, no `npx`, no editing the lockfile
 by hand. The human declines → stop the chore run and say so. Once the project's typecheck, lint and tests pass:
 

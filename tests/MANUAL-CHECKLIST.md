@@ -664,6 +664,10 @@ these are the step's own decisions:
     `.github/workflows/` or `vercel.json` still runs `code-review`. A
     project whose `git-conventions.md` has no chore line gets asked before
     the commit.
+    Its install: the agent stops, warns, and prints the exact command
+    (`! npm install <pkg>@<version>`) without trying another way. Say it
+    ran without running it → it asks again, no checks. Run it → it goes on
+    to typecheck, lint, tests. Decline → the chore run stops.
 32. Upgrade a 0.11.0 project from `feature/x`, where `PROGRESS.md` is in
     git, was changed in a commit on `feature/x`, and has unsaved edits:
     the upgrade asks to confirm one commit on main
