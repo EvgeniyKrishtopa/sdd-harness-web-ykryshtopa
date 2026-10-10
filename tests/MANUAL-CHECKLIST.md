@@ -674,6 +674,8 @@ these are the step's own decisions:
     parent, records nothing in `## PR target`, and the run goes on from
     the parent. A parent whose PR into main was merged: "Send PRs into
     main" recommended. Either way no group branch is cut before the answer.
+    The same merged parent with `"forge": "other"`, or with `gh` failing:
+    the question still comes, with the three options and none recommended.
 
 ## 10. Live project, end to end (0.11.0)
 
