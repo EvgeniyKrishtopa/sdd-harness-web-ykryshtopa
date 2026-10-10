@@ -636,6 +636,8 @@ these are the step's own decisions:
     both changes. Put `"deep": "gpt-5"` in
     instead: the upgrade stops with a message naming `models.deep` and the
     four allowed names, nothing is written and `harnessVersion` stays.
+    Same with `"code": "sonnet-latest"`: the stop comes before the hooks
+    and docs steps — `git status` is empty afterwards.
 28. A diff that relies on a library header or default (a cache header, a
     cookie flag): the code-review finding about it either cites context7 or
     says `library behaviour not confirmed` with one concrete check, and is

@@ -136,6 +136,14 @@ value against `references/manifest-schema.md`'s `models` entry:
 Run only the steps that create or extend files, and only for what is
 actually missing. Concretely:
 
+- **Check the model names first, before any write.** Run "The 0.12.0
+  model names" above on `.claude/harness.json` before Step 1b, Step 3 or
+  anything else that touches a file. Step 8 writes the manifest late, after
+  the hooks (Step 3) and the docs (Step 5); a check left to Step 8 stopped
+  the upgrade with those already rewritten. An unknown name stops here,
+  with the same message: no file changed, `harnessVersion` as it was. The
+  conversion of a full name is only decided here — it is written at Step 8
+  with the rest of the manifest.
 - **Skip every question the manifest already answers.** The coverage
   threshold (Step 4), the detected framework, package manager, test runner,
   build dir, lockfile, and script names (Step 1) are all in
