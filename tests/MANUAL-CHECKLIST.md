@@ -647,11 +647,12 @@ these are the step's own decisions:
     fix: every suggested JSON/YAML edit in the report parses (paste it and
     run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
     as words only, marked as not parsed.
-30. A judgement-heavy run whose review returns two PLAUSIBLE findings: one
-    multi-select question "Fix before push?" lists both. Pick one: it lands
-    as its own commit, the other changes nothing, and the log has one
-    `fixed` and one `rejected` finding line. An isolated run with the same
-    findings asks nothing.
+30. A judgement-heavy run whose review returns two PLAUSIBLE findings: two
+    questions in one call, each "<rule code>: … — fix before push?" with
+    "Fix" and "Keep as is". Fix one: it lands as its own commit, the other
+    changes nothing, and the log has one `fixed` and one `rejected` finding
+    line. One finding → one valid question; five → four, then one. An
+    isolated run with the same findings asks nothing.
 31. Ask for a chore run that bumps one dependency: the branch is
     `chore/<slug>` off the main branch; the log file
     `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
