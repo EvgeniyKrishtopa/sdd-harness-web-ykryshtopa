@@ -694,6 +694,12 @@ these are the step's own decisions:
     main" recommended. Either way no group branch is cut before the answer.
     The same merged parent with `"forge": "other"`, or with `gh` failing:
     the question still comes, with the three options and none recommended.
+34. Release: `/plugin update` to 0.12.0, then `/init-harness` in a project
+    set up on 0.11.0. Afterwards `models.*` holds short names,
+    `.gitattributes` has no `merge=union` line, main no longer tracks
+    `PROGRESS.md`, `.gitignore` has `PROGRESS.md` and `.playwright-mcp/`,
+    `.husky/pre-push`'s log-only line names `.claude/harness-log/`, the
+    audit question was asked once, and `harnessVersion` is `0.12.0`.
 
 ## 10. Live project, end to end (0.11.0)
 

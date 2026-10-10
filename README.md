@@ -207,8 +207,11 @@ It detects your framework, package manager and test runner, then:
 - **installs native git hooks via Husky** — `.husky/pre-commit` (typecheck +
   lint + `lint-staged`, kept fast since it fires once per task group) and
   `.husky/pre-push` (full `test:coverage`, then a blocking dependency
-  vulnerability audit). These are independent of Claude Code, so bad commits
-  and pushes are blocked even with no agent involved.
+  vulnerability audit). It asks once how to audit: the package manager's
+  plain audit command, or `scripts/deps-audit.mjs` with an allowlist of
+  known advisories, each with an expiry day. These are independent of
+  Claude Code, so bad commits and pushes are blocked even with no agent
+  involved.
 
 The plugin's own Claude Code hooks (`hooks/hooks.json`) need no
 installation — they apply to any repo where the plugin is enabled, the same
@@ -313,6 +316,9 @@ before push — not once per group — per `.claude/docs/review-gates.md`:
   uploads, CI/CD configuration) and spawns `deep-reviewer` for a security and
   architecture-as-built pass only when one fires. Most runs skip it, and the
   skip is logged.
+- **In a judgement-heavy run, every PLAUSIBLE finding** comes to you as its
+  own question, "fix before push?" — Fix or Keep as is. An isolated batch
+  goes on past PLAUSIBLE findings without asking.
 - **A `web-qa` FAIL or a CONFIRMED finding you choose to fix** runs through
   `debug-loop`: a bounded four-phase fix loop that escalates to you instead
   of retrying forever, records every hypothesis under `_debug/`, and
@@ -586,8 +592,11 @@ stylistic:
 1. bump `version` in `.claude-plugin/plugin.json` — every release, however
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
-3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh`,
-   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, `tests/claude-md-budget.sh`, and `tests/affected-scenarios.sh`) — the first fails if the version isn't
+3. run every `tests/*.sh` — `smoke-json-schema.sh`, `hook-behaviour.sh`,
+   `dead-code-scripts.sh`, `risk-prefilter.sh`, `claude-md-budget.sh`,
+   `affected-scenarios.sh`, `harness-log.sh`, `progress.sh`,
+   `traceability.sh`, `context7-trigger.sh` and `deps-audit.sh`
+   (`for t in tests/*.sh; do bash "$t" || break; done`) — the first fails if the version isn't
    semver, if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push`, **after** the release branch is merged —
