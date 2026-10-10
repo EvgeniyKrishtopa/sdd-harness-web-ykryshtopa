@@ -582,6 +582,19 @@ LOGEOF
   fi
 fi
 
+# No model version is written into the plugin's instructions: models.* holds
+# short names that follow the newest model of a family, full names convert
+# by the claude-<family>- rule, and a pin lives in the project's
+# ANTHROPIC_DEFAULT_<FAMILY>_MODEL. A version in the text goes stale with the
+# next release -- the old full-name table did, and stopped upgrades on a
+# newer name.
+versioned="$(grep -rnoiE 'claude-(opus|sonnet|haiku|fable)-[0-9][-0-9]*' skills agents hooks 2>/dev/null)"
+if [ -n "$versioned" ]; then
+  bad "a model version is named in plugin text: $(printf '%s' "$versioned" | tr '\n' ' ')"
+else
+  ok "no model version is named in skills/, agents/ or hooks/"
+fi
+
 # 0.12.0: the log is one file per branch. Every append must go to that file,
 # spelled the same way everywhere, and nothing may write the pre-0.12.0
 # single file any more -- one missed writer would quietly keep feeding the

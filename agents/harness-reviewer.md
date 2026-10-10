@@ -82,7 +82,7 @@ below) — never applied by you.
    the same recommendation `init-harness` gives once at setup, on every
    later review too, so a rule set dropped afterward doesn't go unnoticed.
    Every `models.*` value must be `sonnet`, `opus`, `haiku` or `fable` —
-   the only names the `Agent` tool accepts. A full name (`claude-sonnet-5`)
+   the only names the `Agent` tool accepts. A full name (`claude-sonnet-<version>`)
    is a finding: re-run `init-harness` to convert it.
 5. **Vendored-file awareness** — if any file carries a `generatedBy`/vendored
    marker, is it being treated as read-only (edited via its owning skill,
@@ -133,7 +133,7 @@ project:
    good faith that this check exists to catch.
    Each agent's `model:` is a short name too, and agents at the same level
    share one: two that do the same depth of work don't name one family two
-   ways (`sonnet` and `claude-sonnet-5`).
+   ways (`sonnet` and `claude-sonnet-<version>`).
 
 Unlike the three checks above, item 10 applies to every repo under review,
 plugin or target alike — it looks at the repo root, not at any path

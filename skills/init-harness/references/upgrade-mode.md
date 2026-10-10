@@ -118,13 +118,14 @@ whatever the answer above: the printed job works with either hook.
 
 ## The 0.12.0 model names
 
-Before 0.12.0, `models.*` held full names (`claude-sonnet-5`), which the
+Before 0.12.0, `models.*` held full names (`claude-sonnet-<version>`), which the
 `Agent` tool's `model` parameter doesn't accept. Check every `models.*`
 value against `references/manifest-schema.md`'s `models` entry:
 
 1. A short name (`sonnet`, `opus`, `haiku`, `fable`) → keep it.
-2. A full name in that entry's table → replace it with its short name; one
-   report line lists each key changed, `old → new`.
+2. A full name (`claude-<family>-…`, that entry's rule — any version or
+   date) → replace it with its family's short name; one report line lists
+   each key changed, `old → new`.
 3. Anything else → stop the upgrade with `models.<key> is "<value>": use
    sonnet, opus, haiku or fable`, before writing anything, and leave
    `harnessVersion` as it is. Guessing a family from an unknown name could
