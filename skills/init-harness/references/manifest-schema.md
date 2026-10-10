@@ -272,21 +272,23 @@ Merge into the file Step 2e already started (it may already contain just the
   Skills pass the value as it is and never translate it. Each name follows
   the newest model of its family, so the manifest doesn't go stale. Before
   writing, check every `models.*` value: one of the four → keep it. A full
-  name from the table below → write its short name (an upgrade's case).
-  Anything else → stop Step 8 with `models.<key> is "<value>": use sonnet,
-  opus, haiku or fable` and write nothing — a name the `Agent` tool rejects
-  breaks every delegation that reads it.
+  name → write its family's short name (an upgrade's case). Anything else →
+  stop Step 8 with `models.<key> is "<value>": use sonnet, opus, haiku or
+  fable` and write nothing — a name the `Agent` tool rejects breaks every
+  delegation that reads it.
 
-  | Full name | Short name |
-  | --- | --- |
-  | `claude-opus-5-5`, `claude-opus-5`, `claude-opus-4-6`, `claude-opus-4-5`, `claude-opus-4-1`, `claude-opus-4` | `opus` |
-  | `claude-sonnet-5-5`, `claude-sonnet-5`, `claude-sonnet-4-5`, `claude-sonnet-4` | `sonnet` |
-  | `claude-haiku-5-5`, `claude-haiku-4-5` | `haiku` |
-  | `claude-fable-5-1`, `claude-fable-5` | `fable` |
+  A full name is `claude-<family>-<anything>`, where `<family>` is one of
+  the four short names, matched case-insensitively:
+  `^claude-(opus|sonnet|haiku|fable)-`. Its short name is `<family>`,
+  whatever version or date follows — the plugin keeps no list of versions,
+  so a model released after this plugin converts the same way. This rule is
+  the only place that maps full names; nothing else in the plugin does.
 
-  A name with a date at the end (`claude-sonnet-4-5-20250929`) counts as
-  the same name without it. This table is the only place that maps full
-  names; nothing else in the plugin does.
+  **A specific version** is pinned in Claude Code, not here: set
+  `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` (for example
+  `ANTHROPIC_DEFAULT_OPUS_MODEL`) to the full name in the `env` block of
+  the project's `.claude/settings.json`, and every `opus` the plugin passes
+  runs on that model. The plugin never writes this setting.
 
 ## Two rules that hold for the whole file
 

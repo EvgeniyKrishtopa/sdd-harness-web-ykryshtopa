@@ -630,11 +630,14 @@ these are the step's own decisions:
 26. Answer yes to the scheduled audit job: the report prints one weekly job
     that runs the same audit call as the hook and says the project owns
     it; `.github/workflows/` and the rest of the repo have no new file.
-27. Upgrade a project whose manifest has `"code": "claude-sonnet-5"` and
-    `"webQa": "claude-haiku-4-5"`: afterwards they read `sonnet` and
-    `haiku`, and the report lists both changes. Put `"deep": "gpt-5"` in
+27. Upgrade a project whose manifest has `"code": "claude-sonnet-9-9"` and
+    `"webQa": "claude-haiku-9-9-20990101"` — versions no plugin text
+    names: afterwards they read `sonnet` and `haiku`, and the report lists
+    both changes. Put `"deep": "gpt-5"` in
     instead: the upgrade stops with a message naming `models.deep` and the
     four allowed names, nothing is written and `harnessVersion` stays.
+    Same with `"code": "sonnet-latest"`: the stop comes before the hooks
+    and docs steps — `git status` is empty afterwards.
 28. A diff that relies on a library header or default (a cache header, a
     cookie flag): the code-review finding about it either cites context7 or
     says `library behaviour not confirmed` with one concrete check, and is
@@ -660,6 +663,19 @@ these are the step's own decisions:
     `.github/workflows/` or `vercel.json` still runs `code-review`. A
     project whose `git-conventions.md` has no chore line gets asked before
     the commit.
+32. Upgrade a 0.11.0 project whose `PROGRESS.md` is in git: the report
+    says to commit the upgrade on a short branch off main and merge it
+    first, and carries the one line about switching branches (replace,
+    then delete). Upgrade a project whose `PROGRESS.md` is already out of
+    git: no such line.
+33. A fresh parent with no commits of its own, cut from main, and main
+    moved on since (a chore run merged): the first run asks, with "Catch
+    the parent up to main" recommended; choosing it fast-forwards the
+    parent, records nothing in `## PR target`, and the run goes on from
+    the parent. A parent whose PR into main was merged: "Send PRs into
+    main" recommended. Either way no group branch is cut before the answer.
+    The same merged parent with `"forge": "other"`, or with `gh` failing:
+    the question still comes, with the three options and none recommended.
 
 ## 10. Live project, end to end (0.11.0)
 
