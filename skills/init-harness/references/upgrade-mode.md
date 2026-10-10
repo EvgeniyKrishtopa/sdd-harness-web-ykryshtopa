@@ -196,24 +196,34 @@ switching back deletes it. So the upgrade takes it out of git on the main
 branch itself, at once, and brings that into the current branch.
 
 Run this only when the main branch tracks the file
-(`git ls-tree --name-only <main> -- PROGRESS.md` prints it; `<main>` as in
-`opsx-apply-git/references/parent-branch.md`, without `origin/`). Before
+(`git ls-tree --name-only <main> -- PROGRESS.md` prints it). `<main>` is
+`git symbolic-ref --short refs/remotes/origin/HEAD` without `origin/`; no
+`origin` → `main`, else `master` if `git rev-parse --verify -q master`
+finds it — the same default `hooks/git-guard.sh` uses. Before
 anything else, check that nothing but `PROGRESS.md` is uncommitted:
 `git status --porcelain --untracked-files=no` lists no other file. Another
 file listed → skip this section, say why in the report, and take the
 fallback below.
 
+**Undo**, whenever a step below says so: on the main branch with this
+section's changes staged, `git restore --staged .gitignore PROGRESS.md`
+and `git checkout -- .gitignore`; then `git checkout <current branch>` if
+not on it; `cp .git/PROGRESS.md.upgrade PROGRESS.md`,
+`rm .git/PROGRESS.md.upgrade`; take the fallback below, and name the
+failed step in the report. Without the unstaging, the checkout back fails
+whenever the two branches' `PROGRESS.md` differ.
+
 1. Keep a copy: `cp PROGRESS.md .git/PROGRESS.md.upgrade`. Note the current
    branch. If `PROGRESS.md` has uncommitted changes,
    `git checkout -- PROGRESS.md` (the copy holds them).
 2. `git checkout <main>`, `git pull --ff-only origin <main>` (no `origin` →
-   skip the pull).
+   skip the pull). Either fails (an untracked file in the way, a local
+   main that diverged from `origin`) → Undo.
 3. On the main branch: `git rm --cached PROGRESS.md`, append `PROGRESS.md`
    to `.gitignore` if no line ignores it, `git add .gitignore`, and commit
    only these two: `chore: keep PROGRESS.md out of git`. The commit hook
    asks the user to confirm a commit on the main branch — that answer is
-   the consent; a "no" → `git checkout <current branch>`, restore the
-   copy, take the fallback.
+   the consent; a "no" → Undo.
 4. `git push origin <main>` (no `origin` → skip). Rejected (a protected
    branch) → push the same commit to a branch and open a PR instead:
    `git push origin <main>:chore/progress-out-of-git`, then

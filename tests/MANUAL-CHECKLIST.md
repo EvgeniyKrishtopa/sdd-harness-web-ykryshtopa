@@ -671,8 +671,16 @@ these are the step's own decisions:
     itself), and the file on disk still has the unsaved edits. Switching
     to main and back keeps it. `origin/main` no longer lists the file; the
     report names the other branches that still track it and has no
-    warning line. Say no to the main commit instead: only `feature/x`
-    stops tracking it, and the report carries the warning line.
+    warning line. Say no to the main commit instead: main and
+    `feature/x` check out cleanly (nothing left staged on main), only
+    `feature/x` stops tracking the file, its content is the saved one, and
+    the report carries the warning line. Also: a second file uncommitted →
+    the section is skipped with the reason and the fallback runs; a local
+    main diverged from `origin` → the pull fails, the file comes back, the
+    fallback runs; a protected main → the commit goes to
+    `chore/progress-out-of-git` with a PR; run from main itself → no merge
+    step; a project whose `PROGRESS.md` is already out of git → nothing
+    happens and no warning line.
 33. A fresh parent with no commits of its own, cut from main, and main
     moved on since (a chore run merged): the first run asks, with "Catch
     the parent up to main" recommended; choosing it fast-forwards the
