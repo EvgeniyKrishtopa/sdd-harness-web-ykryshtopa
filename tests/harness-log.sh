@@ -57,6 +57,82 @@ for sh in $shells; do
   check "latest line is picked by ts, not by file order" "new" "$out"
 done
 
+# 0.12.0 review finding 3: a change-level check (spec-review here) runs on
+# the parent branch, where nothing commits the log. Scenario a-f: spec-review
+# writes on the parent, group 1 carries the file in its log commit, the plan
+# is revised and spec-review writes again, group 2 carries that one, both
+# PRs merge. With the per-run file both merge cleanly; with the branch's own
+# file (the control) the second merge is an add/add conflict.
+change_line=$(grep -m1 '^printf .*--<check>--' "$REF")
+[ -n "$change_line" ] || { echo "no per-run writer line found in $REF"; exit 1; }
+change_writer=$(printf '%s' "$change_line" | sed 's|"<line>"|"$(cat .line.json)"|; s|<check>|spec-review|')
+branch_writer=$(printf '%s' "$write_line" | sed 's|"<line>"|"$(cat .line.json)"|')
+
+# A date that returns $FAKE_UTC for the file-name format, so the two
+# spec-review runs get two different seconds without waiting.
+mkdir -p "$WORK/bin"
+real_date=$(command -v date)
+cat > "$WORK/bin/date" <<SHIM
+#!/bin/sh
+case "\$*" in *%Y%m%dT%H%M%SZ*) echo "\$FAKE_UTC" ;; *) exec "$real_date" "\$@" ;; esac
+SHIM
+chmod +x "$WORK/bin/date"
+
+# scenario <name> <writer> -> prints "clean" or "conflict", leaves the repo in $WORK/<name>
+scenario() {
+  r="$WORK/$1"; w="$2"; mkdir -p "$r"
+  git -C "$r" init -q -b main
+  git -C "$r" config user.email t@example.com; git -C "$r" config user.name t
+  git -C "$r" commit -q --allow-empty -m base
+  git -C "$r" checkout -q -b feature/x
+  log() { printf '%s' "{\"ts\":\"$2\",\"change\":\"x\",\"gate\":\"spec-review\",\"verdict\":\"$3\"}" > "$r/.line.json"
+          (cd "$r" && mkdir -p .claude/harness-log && PATH="$WORK/bin:$PATH" FAKE_UTC="$1" bash -c "$w"); }
+  commit_log() { git -C "$r" add .claude/harness-log/ && git -C "$r" commit -qm "chore: log this run's checks"; }
+  # a) spec-review on the parent
+  log 20261001T100000Z 2026-10-01T10:00:00Z first
+  # b) group 1 carries it in its log commit
+  git -C "$r" checkout -q -b feature/x-g1; echo 1 > "$r/g1.txt"; git -C "$r" add g1.txt; git -C "$r" commit -qm g1; commit_log
+  # c) back on the parent the file is gone from the working tree
+  git -C "$r" checkout -q feature/x
+  # d) the plan is revised, spec-review writes again
+  log 20261001T110000Z 2026-10-01T11:00:00Z second
+  # e) group 2 carries its version
+  git -C "$r" checkout -q -b feature/x-g2; echo 2 > "$r/g2.txt"; git -C "$r" add g2.txt; git -C "$r" commit -qm g2; commit_log
+  # f) both PRs merge into the parent
+  git -C "$r" checkout -q feature/x
+  git -C "$r" merge -q --no-ff --no-edit feature/x-g1 >/dev/null 2>&1 || { echo conflict; return; }
+  git -C "$r" merge -q --no-ff --no-edit feature/x-g2 >/dev/null 2>&1 || { echo conflict; return; }
+  echo clean
+}
+
+echo "-- change-level check re-run between two groups --"
+check "per-run file: both group PRs merge" "clean" "$(scenario per-run "$change_writer")"
+out=$(cd "$WORK/per-run" && bash -c "$read_line" | jq -R 'fromjson?' | jq -s length)
+check "per-run file: the read sees both spec-review lines" "2" "$out"
+check "control, branch file: the second PR conflicts" "conflict" "$(scenario per-branch "$branch_writer")"
+
+# harness-stats counts the same on lines split over both file forms as on
+# the same lines in one file (requirement 3, "done when").
+STATS="$ROOT/skills/harness-review/references/harness-stats.md"
+awk '/^## The snippet/{s=1} s && /^```bash/{f=1; next} f && /^```/{exit} f' "$STATS" > "$WORK/stats.sh"
+l1='{"ts":"2026-10-01T10:00:00Z","change":"x","gate":"spec-review","verdict":"confirmed","durationMs":5,"tokensTotal":100}'
+l2='{"ts":"2026-10-01T11:00:00Z","change":"x","gate":"spec-review","verdict":"clean","durationMs":7,"tokensTotal":200}'
+l3='{"ts":"2026-10-01T12:00:00Z","change":"x","kind":"finding","gate":"spec-review","finding":"f","outcome":"fixed","ruleNumber":""}'
+l4='{"ts":"2026-10-01T13:00:00Z","change":"x","gate":"code-review","verdict":"clean","durationMs":9,"tokensTotal":300}'
+mkdir -p "$WORK/split/.claude/harness-log" "$WORK/single/.claude/harness-log"
+printf '%s\n' "$l1" > "$WORK/split/.claude/harness-log/feature--x--spec-review--20261001T100000Z.jsonl"
+printf '%s\n' "$l2" "$l3" > "$WORK/split/.claude/harness-log/feature--x--spec-review--20261001T110000Z.jsonl"
+printf '%s\n' "$l4" > "$WORK/split/.claude/harness-log/feature--x-g1.jsonl"
+printf '%s\n' "$l1" "$l2" "$l3" "$l4" > "$WORK/single/.claude/harness-log/feature--x.jsonl"
+split_out=$(cd "$WORK/split" && sh "$WORK/stats.sh" 2>&1)
+single_out=$(cd "$WORK/single" && sh "$WORK/stats.sh" 2>&1)
+if [ -n "$split_out" ] && [ "$split_out" = "$single_out" ] && printf '%s' "$split_out" | grep -q 'spec-review: 2 runs'; then
+  ok "harness-stats: split over both forms == one file"
+else
+  bad "harness-stats differs between split and single-file logs"
+  diff <(printf '%s\n' "$split_out") <(printf '%s\n' "$single_out") | head -10
+fi
+
 echo
 echo "Passed: $pass  Failed: $fail"
 [ "$fail" -eq 0 ]

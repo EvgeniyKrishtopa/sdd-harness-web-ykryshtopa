@@ -1,7 +1,7 @@
 # `harness-stats` — reading the log nobody was reading
 
-The harness log — one file per branch under `.claude/harness-log/` since
-0.12.0, plus the single `.claude/harness-log.jsonl` written before it
+The harness log — every `*.jsonl` under `.claude/harness-log/` since
+0.12.0 (a file per branch, and a file per run of a change-level check), plus the single `.claude/harness-log.jsonl` written before it
 (written by all seven gates, both skip-forms
 in `opsx-apply-git`, its two test steps — `e2e-replay` and
 `integration`, 0.11.0 — and a failed dependency audit, `audit`, 0.12.0;
@@ -140,7 +140,7 @@ been logged yet."
 #!/bin/sh
 # harness-stats: 0-token summary of the harness log, PROGRESS.md,
 # and the current change's tasks.md. No model calls anywhere in this path.
-# The log is one file per branch under .claude/harness-log/ (0.12.0), plus
+# The log is every *.jsonl under .claude/harness-log/ (0.12.0), plus
 # the single .claude/harness-log.jsonl an upgraded project still has. Gather
 # them into one temporary file so everything below reads a single path.
 LOG=$(mktemp)
