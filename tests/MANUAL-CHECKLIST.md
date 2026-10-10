@@ -663,6 +663,11 @@ these are the step's own decisions:
     `.github/workflows/` or `vercel.json` still runs `code-review`. A
     project whose `git-conventions.md` has no chore line gets asked before
     the commit.
+32. Upgrade a 0.11.0 project whose `PROGRESS.md` is in git: the report
+    says to commit the upgrade on a short branch off main and merge it
+    first, and carries the one line about switching branches (replace,
+    then delete). Upgrade a project whose `PROGRESS.md` is already out of
+    git: no such line.
 
 ## 10. Live project, end to end (0.11.0)
 

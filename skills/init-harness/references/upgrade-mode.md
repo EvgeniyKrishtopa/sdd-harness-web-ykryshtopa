@@ -33,7 +33,7 @@ exists to prevent.
 | `.claude/harness.json` | Steps 2e, 8, 8b | merge keys (`disabledRules`, `models.clarify`, `models.deep`, and `sizeRouting`, all added 0.5.0; `forge`, added 0.6.0; `scaffold`, added 0.7.0; `makerChecker` with `models.testAuthor`, added 0.9.0; `designSystem`, added 0.10.0, always merged in as `{"enabled": false}` regardless of what else the upgrade found — see Step 8; `depsAudit`, added 0.12.0 — written only from the user's answer; the optional `tests` block, added 0.11.0 — a `tests.integration` without `envCommand`/`mailCatcherUrl` gets them offered in the same one question as a first install, never written unasked); `models.*` full names become short names (0.12.0, see "The 0.12.0 model names" below); never drop keys already there, with one exception: the two keys `tests` replaced are moved into it and removed (see "Moving the pre-0.11.0 test keys" below). `tests.integration` is not merged in blindly: look for the script the same way a first install does (`references/stack-detection.md`), and when the project has none, write no key — an upgrade must not invent one |
 | `CLAUDE.md` / `AGENTS.md` pointer block | Step 9 | append missing lines only, inside the existing `## Harness (...)` block. The two-line Shell bullet (0.10.2) is skipped when the file already says the same thing in the user's own words anywhere: a `## Shell` section or any line telling the agent not to prefix commands with `cd` into the repo counts. Two versions of one rule are a maintenance problem, and the user's version is the one they chose |
 | `CONTEXT.md` | Step 5 | create if absent, starting empty (heading only, no entries); never diffed or touched afterwards |
-| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade |
+| `PROGRESS.md` | Step 5 | create if absent; afterwards only `opsx-apply-git` regenerates it at run boundaries, through `scripts/progress.mjs`, never freeform-edited. Local since 0.12.0: if git tracks it, `git rm --cached PROGRESS.md` (the file stays on disk) and tell the user to commit that with the upgrade — on a short branch off the main branch, merged into it before any other work (see "Where to commit the upgrade" below) |
 | `.gitignore` (`PROGRESS.md`) | Step 5 | append the line if missing (0.12.0) |
 | `.gitignore` (`.playwright-mcp/`) | Step 5 | append the line if missing (0.12.0) |
 | `.gitattributes` (`PROGRESS.md merge=union`, `.claude/harness-log.jsonl merge=union`) | Step 5 | no longer written (0.12.0): **remove** each of these two lines if present, and nothing else — the file itself stays, even if that leaves it empty. The old `.claude/harness-log.jsonl` itself is never moved or deleted — `harness-stats` still reads it |
@@ -178,7 +178,26 @@ actually missing. Concretely:
 - **Report what changed** (Step 10): the version transition
   (`<old or "unversioned"> → <new>`), each file created, each file appended
   to, and each file left alone. "Already up to date" is a real and common
-  outcome — say it plainly rather than implying work happened.
+  outcome — say it plainly rather than implying work happened. When this
+  run did `git rm --cached PROGRESS.md`, add exactly one line: "Until this
+  commit is in main, switching to a branch where PROGRESS.md is still in
+  git will replace your file, and switching back will delete it." No
+  `git rm --cached` this run → no such line.
+
+## Where to commit the upgrade (0.12.0)
+
+Commit the upgrade on a short branch off the main branch and merge it into
+the main branch before any other work; then merge the main branch into
+each open parent branch. Say this in the report whenever the run changed a
+file.
+
+Why it matters this once: the upgrade takes `PROGRESS.md` out of git and
+ignores it, but only on the branch it was committed on. Every other branch
+still tracks the file. git treats an ignored file as disposable, so a
+checkout of such a branch silently overwrites the local `PROGRESS.md` with
+that branch's copy, and switching back deletes it — "Paused changes" and
+"PR target" go with it. Once the upgrade is in the main branch and merged
+into the open parents, no branch tracks the file and the window closes.
 
 Upgrade mode is the *only* way a repo picks up a new release's files. Do not
 add automatic migration to `SessionStart` or any other hook: writing into the
