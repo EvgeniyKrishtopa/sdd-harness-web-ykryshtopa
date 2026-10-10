@@ -259,8 +259,8 @@ upgrade mode, since a repo set up by an earlier version never got them:
   no next steps, and a clock-in of "now"; after this point only
   `opsx-apply-git` touches it, at its own run boundaries. It is local to
   this machine (0.12.0): append `PROGRESS.md` to `.gitignore` if missing; in upgrade
-  mode also `git rm --cached PROGRESS.md` (see
-  `references/progress-template.md`).
+  mode also takes it out of git on the main branch (see
+  `references/upgrade-mode.md`).
 - Append `.playwright-mcp/` to `.gitignore` unless a line already ignores it (with or without `/`), on a new line (0.12.0):
   the plugin's Playwright MCP server writes its snapshots and screenshots there.
 - Write no `merge=union` line into `.gitattributes` (0.12.0). The harness
