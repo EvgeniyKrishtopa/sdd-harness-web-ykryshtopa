@@ -67,9 +67,12 @@ committed, and something else merged into main since. So:
     ancestor of main;
   - **Keep the parent as it is.**
 
-  Record "main" and "keep" with the script, never by hand:
+  Record "main" and "keep" with the script, never by hand. `<this file's
+  folder>` is the folder you read this file from — build the full path
+  from it; a reference file gets no `${...}` substitution, so a plugin-root
+  variable would run `node "/skills/..."` and record nothing:
   ```bash
-  node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs" pr-target \
+  node "<this file's folder>/../scripts/progress.mjs" pr-target \
     --parent "<parent>" --target "<chosen branch>" --date "$(date -u +%Y-%m-%d)"
   ```
   "Catch up" records nothing: run the check again afterwards — it prints

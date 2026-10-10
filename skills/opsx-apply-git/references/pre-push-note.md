@@ -9,8 +9,8 @@ can't write the log itself: the log under `.claude/harness-log/` is tracked, and
 line written after the commit would leave the working tree dirty. So the
 hook leaves a note in `.claude/.last-pre-push.json` (ignored by git) on
 every exit, and this step turns it into a log line
-(`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/git-hooks.md`
-step 4).
+(`../../init-harness/references/git-hooks.md` step 4, relative to this
+file).
 
 ## Around step 4's push
 

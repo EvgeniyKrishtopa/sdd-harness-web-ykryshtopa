@@ -33,10 +33,12 @@ the script below.
   no unchecked task left, and the next stop is the merge into `main`. This
   change's scenarios plus every older one whose pages the change touched.
   Pick them with the plugin's script, over the **whole change's** diff, not
-  this run's — earlier runs could have touched an old flow too:
+  this run's — earlier runs could have touched an old flow too
+  (`<this file's folder>`: the folder you read this file from, as a full
+  path):
   ```bash
   main=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
-  node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/affected-scenarios.mjs" \
+  node "<this file's folder>/../scripts/affected-scenarios.mjs" \
     --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>" \
     --framework "$(jq -r '.framework // empty' .claude/harness.json)"
   ```

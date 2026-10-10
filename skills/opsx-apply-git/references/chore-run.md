@@ -35,7 +35,21 @@ branch → use it instead. No `origin` → stop and ask.
 
 Implement it with the usual guardrails (`command-hygiene.md`, and
 `context7-lookup.md`'s trigger for a named library API). Behaviour changed →
-add or update a test. Once the project's typecheck, lint and tests pass:
+add or update a test.
+
+**Installing, adding or updating a package is the human's step.** The
+project's `permissions.deny` forbids the agent every install command, on
+purpose: a package runs its own scripts on install. Stop and warn, in one
+message: what the task needs installed, why the agent doesn't run it, and
+the exact command to run in the prompt, e.g.
+`! npm install zod@4.1.0` (the project's package manager, the version the
+task names). Wait for the human; once they say it ran, check the lockfile
+changed (`git status --porcelain` lists it). Changed → go on — typecheck,
+lint, tests. Unchanged → don't go on: say so and ask again with the same
+command — the checks would fail on a missing package, and `debug-loop`
+cannot fix what only an install can. Never route around the deny: no
+other package manager, no `npm update`, no `npx`, no editing the lockfile
+by hand. The human declines → stop the chore run and say so. Once the project's typecheck, lint and tests pass:
 
 1. **`web-qa` (Gate 3), before the commit**, as for a change's last group —
    only when the diff touches user-facing UI, its fixes folding into the

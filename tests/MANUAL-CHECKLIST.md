@@ -647,11 +647,12 @@ these are the step's own decisions:
     fix: every suggested JSON/YAML edit in the report parses (paste it and
     run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
     as words only, marked as not parsed.
-30. A judgement-heavy run whose review returns two PLAUSIBLE findings: one
-    multi-select question "Fix before push?" lists both. Pick one: it lands
-    as its own commit, the other changes nothing, and the log has one
-    `fixed` and one `rejected` finding line. An isolated run with the same
-    findings asks nothing.
+30. A judgement-heavy run whose review returns two PLAUSIBLE findings: two
+    questions in one call, each "<rule code>: … — fix before push?" with
+    "Fix" and "Keep as is". Fix one: it lands as its own commit, the other
+    changes nothing, and the log has one `fixed` and one `rejected` finding
+    line. One finding → one valid question; five → four, then one. An
+    isolated run with the same findings asks nothing.
 31. Ask for a chore run that bumps one dependency: the branch is
     `chore/<slug>` off the main branch; the log file
     `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
@@ -663,6 +664,10 @@ these are the step's own decisions:
     `.github/workflows/` or `vercel.json` still runs `code-review`. A
     project whose `git-conventions.md` has no chore line gets asked before
     the commit.
+    Its install: the agent stops, warns, and prints the exact command
+    (`! npm install <pkg>@<version>`) without trying another way. Say it
+    ran without running it → it asks again, no checks. Run it → it goes on
+    to typecheck, lint, tests. Decline → the chore run stops.
 32. Upgrade a 0.11.0 project from `feature/x`, where `PROGRESS.md` is in
     git, was changed in a commit on `feature/x`, and has unsaved edits:
     the upgrade asks to confirm one commit on main

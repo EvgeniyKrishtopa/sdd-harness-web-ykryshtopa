@@ -27,8 +27,9 @@ Write the answer to `depsAudit` (`"script"` or `"plain"`) in Step 8.
 
 ## Script chosen
 
-1. Copy `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/deps-audit.mjs`
-   to `scripts/deps-audit.mjs` as it is. The file exists already → leave it
+1. Copy `deps-audit.mjs` — it sits next to this file; build its full path
+   from the folder you read this file from — to `scripts/deps-audit.mjs`
+   as it is. The file exists already → leave it
    alone; the project owns it.
 2. `scripts/audit-allowlist.json` missing → write `[]`. Never overwrite it:
    its entries are the project's decisions.

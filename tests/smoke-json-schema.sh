@@ -582,6 +582,18 @@ LOGEOF
   fi
 fi
 
+# Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} only in SKILL.md, agents and
+# commands. In a reference file the agent reads it as text and the shell
+# expands it to nothing: `node "/skills/..."` fails and the step quietly does
+# nothing. 0.10.3 removed it, 0.11.0 and 0.12.0 brought it back. References
+# give paths relative to themselves instead.
+in_refs="$(grep -rln 'CLAUDE_PLUGIN_ROOT' skills/*/references/ 2>/dev/null)"
+if [ -n "$in_refs" ]; then
+  bad "\${CLAUDE_PLUGIN_ROOT} in a reference file (not substituted there): $(printf '%s' "$in_refs" | tr '\n' ' ')"
+else
+  ok "no reference file relies on \${CLAUDE_PLUGIN_ROOT}"
+fi
+
 # No model version is written into the plugin's instructions: models.* holds
 # short names that follow the newest model of a family, full names convert
 # by the claude-<family>- rule, and a pin lives in the project's

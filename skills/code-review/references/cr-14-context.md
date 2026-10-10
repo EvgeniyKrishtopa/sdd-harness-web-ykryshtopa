@@ -40,9 +40,10 @@ First match wins:
 
 1. No `tests.integration` block → `boundaries: not applicable —
    tests.integration not configured`.
-2. Otherwise pass the definition file's path,
-   `${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/references/integration-tests.md`,
-   and the template it points to
-   (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
-   section 2). Boundaries apply on every run, not only the last: the group
+2. Otherwise pass the definition file's full path,
+   `../../opsx-apply-git/references/integration-tests.md`, and the
+   template it points to
+   (`../../init-harness/references/local-stack-profile.md` section 2) —
+   both relative to this file; build the full paths from the folder you
+   read this file from, since the agent runs in the project, not here. Boundaries apply on every run, not only the last: the group
    that adds a boundary writes its integration test itself.
