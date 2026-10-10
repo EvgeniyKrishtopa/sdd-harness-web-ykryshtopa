@@ -668,6 +668,12 @@ these are the step's own decisions:
     first, and carries the one line about switching branches (replace,
     then delete). Upgrade a project whose `PROGRESS.md` is already out of
     git: no such line.
+33. A fresh parent with no commits of its own, cut from main, and main
+    moved on since (a chore run merged): the first run asks, with "Catch
+    the parent up to main" recommended; choosing it fast-forwards the
+    parent, records nothing in `## PR target`, and the run goes on from
+    the parent. A parent whose PR into main was merged: "Send PRs into
+    main" recommended. Either way no group branch is cut before the answer.
 
 ## 10. Live project, end to end (0.11.0)
 

@@ -43,17 +43,37 @@ git merge-base --is-ancestor <parent> "$main" \
 
 `$main` empty (no `origin`) or the check prints nothing or `0` → nothing to
 do; go on. A number above 0 → the parent, local and on `origin`, is all in
-`$main`, and `$main` has moved on:
+`$main`, and `$main` has moved on. That is true of a merged parent, but
+also of a fresh one with no commits of its own yet: cut from main, nothing
+committed, and something else merged into main since. So:
 
 - `PROGRESS.md`'s `## PR target` has a line for this parent → follow it,
   no question.
-- Otherwise ask (`AskUserQuestion`): send this change's group and archive
-  PRs into the main branch (recommended), or keep the parent. Record the
-  answer with the script, never by hand:
+- Otherwise find out whether a PR from the parent was ever merged into
+  main. `.claude/harness.json`'s `forge` is `"github"` or missing →
+  ```bash
+  gh pr list --head "<parent>" --base "<main, without origin/>" --state merged --json number --jq length
+  ```
+  Above 0 → merged: recommend "main". `0` → never merged, only behind:
+  recommend "catch up". `forge` is `"other"`, or `gh` fails → recommend
+  nothing.
+- Ask (`AskUserQuestion`), the recommended option first:
+  - **Send PRs into main** — this change's group and archive PRs go into
+    the main branch;
+  - **Catch the parent up to main** — on the parent,
+    `git pull --ff-only origin <main, without origin/>`, then
+    `git push origin <parent>` if `origin/<parent>` exists. Always a
+    fast-forward: the check above already proved the parent is an
+    ancestor of main;
+  - **Keep the parent as it is.**
+
+  Record "main" and "keep" with the script, never by hand:
   ```bash
   node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs" pr-target \
     --parent "<parent>" --target "<chosen branch>" --date "$(date -u +%Y-%m-%d)"
   ```
+  "Catch up" records nothing: run the check again afterwards — it prints
+  `0`, and the flow goes on from the parent.
 - No answer → stop. Never cut a group from this parent without one.
 
 Main chosen → `git checkout <main, without origin/>`. From here it is the
