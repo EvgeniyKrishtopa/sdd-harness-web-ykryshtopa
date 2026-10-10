@@ -19,7 +19,7 @@ path_re='auth|login|logout|session|passwo?rd|token|permission|role|polic|payment
 content_re='localStorage|sessionStorage|document\.cookie|dangerouslySetInnerHTML|innerHTML|eval\(|new Function\(|child_process|execSync|jwt|bcrypt|argon2|createHmac|randomBytes|cors\(|csrf|multipart|\.raw\(|SELECT .* FROM|INSERT INTO|DELETE FROM|permissions:|secrets\.|pull_request_target|workflow_run|GITHUB_TOKEN|id-token: *write'
 
 # Documents and tests execute nothing in production: no signal from them.
-skip_re='^(docs|openspec)/|\.(md|markdown)$|(^|/)(__tests__|__mocks__|tests?|e2e)/|\.(test|spec)\.[cm]?[jt]sx?$'
+skip_re='^(docs|openspec)/|\.(md|markdown)$|^(src/)?(tests?|e2e)/|(^|/)(__tests__|__mocks__)/|\.(test|spec)\.[cm]?[jt]sx?$'
 
 paths=$(git diff --name-only "$range")
 if [ -z "$paths" ]; then
@@ -54,15 +54,22 @@ comment tweak in `jwt-utils.ts` reports `risk=content`), and it looks only at
 added lines — a risky pattern this diff *removes* is not worth a review.
 
 Neither signal looks at documents or tests (`skip_re`, 0.12.0): Markdown
-anywhere, everything under `docs/` and `openspec/`, and test files
-(`*.test.*`, `*.spec.*`, and `tests/`, `test/`, `e2e/`, `__tests__/`,
-`__mocks__/`). A README that explains `GITHUB_TOKEN`, a spec for a login
-change, or a test of the session cookie executes nothing in production, and
-these words are exactly what such files mention. Before 0.12.0 path signals
-still applied to them, so a change of only documents and tests about sign-in
-spent a deep review on the larger model for nothing. `.mdx` is still
-scanned: it compiles to components and can carry real JSX. A risky change
-always comes with the source file that does it, and that one is checked.
+anywhere, everything under `docs/` and `openspec/`, and test files —
+`*.test.*` and `*.spec.*` anywhere, anything inside `__tests__/` or
+`__mocks__/` anywhere, and anything inside `tests/`, `test/` or `e2e/` only
+at the project root or directly under `src/`. A README that explains
+`GITHUB_TOKEN`, a spec for a login change, or a test of the session cookie
+executes nothing in production, and these words are exactly what such files
+mention. Before 0.12.0 path signals still applied to them, so a change of
+only documents and tests about sign-in spent a deep review on the larger
+model for nothing. A risky change always comes with the source file that
+does it, and that one is checked.
+
+A `test` folder deeper down is not counted as tests: there it is often
+working code — an API route (`src/app/api/test/route.ts`) or a CI action
+(`.github/actions/test/action.yml`). Matching it at any depth dropped both
+out of the check. `.mdx` is scanned everywhere except under `docs/` and
+`openspec/`: it compiles to components and can carry real JSX.
 
 ## CI/CD signals (added 0.10.4)
 
