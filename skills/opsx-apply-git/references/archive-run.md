@@ -25,10 +25,9 @@ a change that was never actually accepted (#19).
    - **`OPEN`** (or the human says not yet) → stop here and report — the
      change is fully implemented and its PR is open, but archiving waits on
      that merge. To resume once a human has merged it, re-invoke
-     `opsx-apply-git` on **this run's own branch** (not the parent, and not
-     a fresh checkout) so it lands back on this same archiving step rather
-     than tripping step 1's "leftover group branch" guard in §1, which fires
-     when the checked-out branch isn't the current run's own branch.
+     `opsx-apply-git` on **this run's own branch**: §1 step 1 sees its PR
+     `MERGED`, switches to the PR's base branch by itself and comes back to
+     this step.
    - **`CLOSED`** and not merged (or the human says it was rejected or
      reworked) → do **not** wait for a merge that isn't coming — stop and
      ask the human what to do with the change instead (re-open, rework, or
@@ -45,11 +44,11 @@ a change that was never actually accepted (#19).
    print the archive branch name and the parent branch instead of opening a
    PR; otherwise (`"github"`, or absent) open a PR into the parent
    (`gh pr create`). Leave it open.
-5. Regenerate `PROGRESS.md` one final time for this change (clock-out): no
-   current change and no next steps remain for it, noting the archive
-   location and archive PR URL — the same self-checking regeneration as §4
-   step 7, just for a change that's now fully done rather than paused,
-   including the same `## Paused changes` prune-this-change-only-if-present
-   rule from §4 step 7. Then report the full session: every group completed
-   with PR URLs, final `N/N tasks complete`, archive location, archive PR
-   URL.
+5. Clock out in `PROGRESS.md` one final time for this change, with
+   `SKILL.md` §4 step 7's script call: `--change none`, `--branch` the
+   archive branch, `--last-commit` the archive commit, `--done` every group,
+   no `--next`. The script prunes this change's `## Paused changes` line the
+   same way. Nothing to commit: `PROGRESS.md` is gitignored, local to this
+   machine (`progress-template.md`). Then report the full session: every group
+   completed with PR URLs, final `N/N tasks complete`, archive location,
+   archive PR URL.

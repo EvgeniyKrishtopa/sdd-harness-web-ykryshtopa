@@ -15,6 +15,7 @@ Merge into the file Step 2e already started (it may already contain just the
   "testRunner": "vitest",
   "buildDir": "dist",
   "lockfile": "yarn.lock",
+  "depsAudit": "script",
   "coverageThreshold": 80,
   "scripts": {
     "dev": "dev",
@@ -49,15 +50,15 @@ Merge into the file Step 2e already started (it may already contain just the
   "makerChecker": { "enabled": false },
   "designSystem": { "enabled": false },
   "models": {
-    "architecture": "claude-opus-5",
-    "spec": "claude-sonnet-5",
-    "webQa": "claude-haiku-4-5",
-    "code": "claude-sonnet-5",
-    "deep": "claude-opus-5",
-    "harness": "claude-haiku-4-5",
-    "testAuthor": "claude-sonnet-5",
-    "clarify": "claude-sonnet-5",
-    "default": "claude-sonnet-5"
+    "architecture": "opus",
+    "spec": "sonnet",
+    "webQa": "haiku",
+    "code": "sonnet",
+    "deep": "opus",
+    "harness": "haiku",
+    "testAuthor": "sonnet",
+    "clarify": "sonnet",
+    "default": "sonnet"
   }
 }
 ```
@@ -92,6 +93,11 @@ Merge into the file Step 2e already started (it may already contain just the
   values detected in Step 1 (`buildDir` is `dist` for Vite, `.next` for
   Next.js; `lockfile` is whichever of `yarn.lock`/`package-lock.json`/
   `pnpm-lock.yaml` was found).
+- `depsAudit` (0.12.0) — how `.husky/pre-push` runs the dependency audit:
+  `"script"` (`scripts/deps-audit.mjs` with an allowlist) or `"plain"` (the
+  package manager's own audit command). The user's answer to
+  `references/deps-audit.md`'s question; absent → the question hasn't been
+  asked yet, and upgrade mode asks it once.
 - `runCmd` — the command prefix used to invoke a `package.json` script
   (`yarn`, `npm run`, or `pnpm`).
 - `scripts.*` — the actual script **keys** that exist in this project's
@@ -254,9 +260,35 @@ Merge into the file Step 2e already started (it may already contain just the
   agent, the security/architecture-as-built pass `code-review` spawns only
   when its risk prefilter fires; it is seeded on a larger model than
   `code` precisely because it runs rarely — see
-  `skills/code-review/references/deep-review.md`. Only depart from the seeded
+  `skills/code-review/references/deep-review.md`. `webQa` (0.12.0) is the
+  model for three flows or fewer: when it is `haiku` (or missing) and a pass has more
+  than three flows, `web-qa` runs it on `sonnet` instead — see
+  `skills/web-qa/SKILL.md` "Action". Only depart from the seeded
   defaults if the user asks for a different tier or doesn't have access to
   one of these models.
+
+  **Values are short names only (0.12.0): `sonnet`, `opus`, `haiku`,
+  `fable`** — exactly what the `Agent` tool's `model` parameter accepts.
+  Skills pass the value as it is and never translate it. Each name follows
+  the newest model of its family, so the manifest doesn't go stale. Before
+  writing, check every `models.*` value: one of the four → keep it. A full
+  name → write its family's short name (an upgrade's case). Anything else →
+  stop Step 8 with `models.<key> is "<value>": use sonnet, opus, haiku or
+  fable` and write nothing — a name the `Agent` tool rejects breaks every
+  delegation that reads it.
+
+  A full name is `claude-<family>-<anything>`, where `<family>` is one of
+  the four short names, matched case-insensitively:
+  `^claude-(opus|sonnet|haiku|fable)-`. Its short name is `<family>`,
+  whatever version or date follows — the plugin keeps no list of versions,
+  so a model released after this plugin converts the same way. This rule is
+  the only place that maps full names; nothing else in the plugin does.
+
+  **A specific version** is pinned in Claude Code, not here: set
+  `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` (for example
+  `ANTHROPIC_DEFAULT_OPUS_MODEL`) to the full name in the `env` block of
+  the project's `.claude/settings.json`, and every `opus` the plugin passes
+  runs on that model. The plugin never writes this setting.
 
 ## Two rules that hold for the whole file
 

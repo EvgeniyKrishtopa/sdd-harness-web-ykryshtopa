@@ -30,8 +30,8 @@ cloud service. Unit tests with a stub and the environment check cover it.
 
 `<name>.integration.test.ts` next to the boundary's file — or where the
 project's existing integration tests already live, if it has some. Follow
-`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
-section 2: addresses and keys come from `inject('localStack')`, never from
+`../../init-harness/references/local-stack-profile.md` (relative to this
+file) section 2: addresses and keys come from `inject('localStack')`, never from
 `process.env` or a `.env*` file. Assert the service's real answer — e.g. a
 wrong password returns the service's own error, and the code turns it into
 the right result. Name the requirement identifier, as for every test.

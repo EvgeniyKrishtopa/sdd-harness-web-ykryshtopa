@@ -1,8 +1,11 @@
 # `harness-stats` — reading the log nobody was reading
 
-`.claude/harness-log.jsonl` (written by all seven gates, both skip-forms
-in `opsx-apply-git`, and its two test steps — `e2e-replay` and
-`integration`, 0.11.0 — see each one's own log section and #U13) is
+The harness log — every `*.jsonl` under `.claude/harness-log/` since
+0.12.0 (a file per branch, and a file per run of a change-level check), plus the single `.claude/harness-log.jsonl` written before it
+(written by all seven gates, both skip-forms
+in `opsx-apply-git`, its two test steps — `e2e-replay` and
+`integration`, 0.11.0 — and a failed dependency audit, `audit`, 0.12.0;
+see each one's own log section and #U13) is
 appended to on every run. Until this file existed, nothing ever read it
 back. This is that read path: one deterministic snippet, callable on demand
 or as part of the monthly harness-diet ritual (`README.md`'s
@@ -107,9 +110,12 @@ uses for JSON parsing.
 10. **Findings outcomes** — for every `kind:"finding"` line
     (`skills/opsx-apply-git/references/log-findings.md`, #U17 point 7), a
     per-gate count of `fixed`/`rejected`/`deferred`. This is the one number
-    that says whether a gate's CONFIRMED findings are trustworthy or noise —
+    that says whether a gate's findings are trustworthy or noise —
     without it, "gate said confirmed" and "gate was right" are
-    indistinguishable. These lines carry no `verdict`/`durationMs`, so they
+    indistinguishable. The counts mix CONFIRMED findings with PLAUSIBLE ones
+    a human was asked about (a Case B run since 0.12.0), so a high
+    `rejected` share can mean PLAUSIBLE notes the human waved off, not
+    wrong CONFIRMED ones. These lines carry no `verdict`/`durationMs`, so they
     are excluded from every metric above (1-9) and counted here instead.
 11. **Environment failures among `confirmed`** (0.11.0) — for `e2e-replay`,
     `integration` and `web-qa`: how many `confirmed` runs had `failureKind`
@@ -122,7 +128,7 @@ uses for JSON parsing.
 
 ## Empty or missing log
 
-If `.claude/harness-log.jsonl` doesn't exist or is empty, say so in one
+If neither `.claude/harness-log/` nor `.claude/harness-log.jsonl` has a line, say so in one
 line and stop — VCR still runs on its own since it doesn't depend on the
 log. Never let a missing log surface as a shell trace (`No such file or
 directory`, a `jq` parse error) — that reads as a bug, not as "nothing's
@@ -132,9 +138,14 @@ been logged yet."
 
 ```bash
 #!/bin/sh
-# harness-stats: 0-token summary of .claude/harness-log.jsonl, PROGRESS.md,
+# harness-stats: 0-token summary of the harness log, PROGRESS.md,
 # and the current change's tasks.md. No model calls anywhere in this path.
-LOG=".claude/harness-log.jsonl"
+# The log is every *.jsonl under .claude/harness-log/ (0.12.0), plus
+# the single .claude/harness-log.jsonl an upgraded project still has. Gather
+# them into one temporary file so everything below reads a single path.
+LOG=$(mktemp)
+trap 'rm -f "$LOG"' EXIT
+{ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null > "$LOG"
 
 echo "=== VCR (Verified Completion Rate) ==="
 if [ -f PROGRESS.md ]; then
@@ -158,8 +169,8 @@ else
 fi
 echo
 
-if [ ! -f "$LOG" ] || [ ! -s "$LOG" ]; then
-  echo "harness-stats: $LOG is missing or empty — no gate-run stats to show yet. Run a change through opsx-apply-git first."
+if [ ! -s "$LOG" ]; then
+  echo "harness-stats: the harness log is missing or empty — no gate-run stats to show yet. Run a change through opsx-apply-git first."
   exit 0
 fi
 

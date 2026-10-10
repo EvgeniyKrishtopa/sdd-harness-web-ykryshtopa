@@ -80,10 +80,11 @@ neighboring step, that step is scoped wrong.
      below still holds for the scaffold itself; a fix commit added after
      review is expected, not an exception to it.
    - **Clean, or PLAUSIBLE-only** — continue to the next step.
-   Then append one line to `.claude/harness-log.jsonl` (create it if
-   missing), the same shape every other gate's line uses — see
+   Then append one line to a log file of this run's own,
+   `.claude/harness-log/<branch>--scaffold-review--<UTC time>.jsonl` — see
    `skills/architecture-review/SKILL.md`'s own logging step for the exact
-   `jq` command and field meanings — with `gate: "scaffold-review"` and
+   `jq` command, file name and field meanings, with `scaffold-review` in
+   place of `architecture-review` in both — with `gate: "scaffold-review"` and
    `group` carrying this change's route: `openspec/changes/<change>/.route`'s
    first line, `short` or `full`; missing → treat as `full`, the same rule
    `architecture-review` uses (this gate runs at change scope, not per task

@@ -161,7 +161,17 @@ not one that merely lacks a `harnessVersion` key by coincidence.
    - `.claude/docs/laziness-ladder.md` created;
    - `openspec/config.yaml` gains its `context`/`rules` keys without its
      `schema` key or any other existing content being touched;
-   - `.gitattributes` gains the `PROGRESS.md merge=union` line;
+   - `.gitattributes` gains no `merge=union` line (0.12.0); on a project set
+     up before 0.12.0, its `PROGRESS.md merge=union` and
+     `.claude/harness-log.jsonl merge=union` lines are removed, every other
+     line stays, and `.claude/harness-log.jsonl` itself is kept;
+   - `PROGRESS.md` is in `.gitignore`; on a project set up before 0.12.0,
+     `git status` shows it deleted from the index while the file is still
+     on disk (`git rm --cached`);
+   - `.playwright-mcp/` is in `.gitignore`, on a fresh install and after an
+     upgrade; a second run adds no duplicate line;
+   - on a 0.11.0 project, `.husky/pre-push`'s log-only check is offered as
+     a one-line diff to the per-branch pattern;
    - `.claude/harness.json` gains `harnessVersion`, `maxFixAttempts`, and
      `toolchainVerifiedAt`.
 7. Confirm the hand-edited paragraph from step 3 survived — `init-harness`
@@ -323,6 +333,16 @@ a real project with a local stack:
     host: the recording question names the host and offers `@external`,
     untagged, or not recorded. "Untagged" writes the scenario without
     `@external`, and the replay before push runs it.
+11. A change with a sign-in and a page that sends an expired login back to
+    `/sign-in`: the agent finds the login cookie with `browser_cookie_list`,
+    deletes it with `browser_cookie_delete`, reloads, and judges the
+    redirect itself — no help from the calling session. That flow's row
+    names both calls. The Keyboard Pass row for tab order lists the
+    recorded order (`Email → Password → Sign in`), not just PASS.
+12. With `"webQa": "haiku"`: a change reaching two screens runs the agent
+    on haiku; one reaching five says `5 flows → sonnet` and runs on
+    sonnet. The log line's `model` names what actually ran. With
+    `"webQa": "opus"`, five flows still run on opus.
 
 ## 5a. `debug-loop` — bounded fix loop and escalation (#U6, #U18)
 
@@ -340,7 +360,7 @@ of looping forever.
    each visibly structured as its four phases (reproduce, isolate, diagnose,
    fix-and-reverify), and then **escalates to a human** with a clear message
    naming the failure — not a third silent attempt, not a generic timeout.
-3. Confirm `.claude/harness-log.jsonl`'s line for that run records
+3. Confirm the line in `.claude/harness-log/<branch>.jsonl` for that run records
    `fixIterations: 2` and `escalatedToHuman: true`.
 4. Repeat with a CONFIRMED `code-review` finding whose suggested fix, once
    applied, still fails re-verification — confirm the same cap and
@@ -408,7 +428,7 @@ Review-depth-by-classification (#34):
 Trivial-diff pre-filter (#36):
 
 13. Make a run whose entire cumulative diff is a 3-line `.md` edit — confirm
-    `code-review` never spawns at all, and `.claude/harness-log.jsonl` gets
+    `code-review` never spawns at all, and the harness log (`.claude/harness-log/<branch>.jsonl`) gets
     both the `code-review` and `test-coverage` lines written directly by
     `opsx-apply-git` with `"verdict":"skipped"`.
 14. Make a run that's still `.md`-only but exceeds `trivialDiffThreshold`
@@ -468,7 +488,7 @@ Precondition (#35):
    nothing under `CLAUDE.md`/`AGENTS.md`/`.claude/`/`.husky/`, no
    `openspec/config.yaml` edit, no `package.json` script/dependency change —
    confirm `harness-reviewer`
-   never spawns for it, and `.claude/harness-log.jsonl` gets a
+   never spawns for it, and the harness log (`.claude/harness-log/<branch>.jsonl`) gets a
    `"gate":"harness-review","verdict":"skipped"` line written directly by
    `opsx-apply-git` (not by the harness-review skill, which never ran).
 5. Run a change that only adds a `package.json` script (no `.claude/`/
@@ -522,7 +542,7 @@ Precondition (#35):
    hand-written `## Shell` section ("don't `cd` into the repo") in its
    `CLAUDE.md` first and confirm the bullet is skipped.
 7. Make a run log a skip (a `.md`-only diff): the PR body's Review trail and
-   `.claude/harness-log.jsonl` show the reason in English (`small change`).
+   the harness log (`.claude/harness-log/<branch>.jsonl`) show the reason in English (`small change`).
 
 Steps 8-13 check `docs/deferred.md` (0.10.5). They are manual: the eval set
 under `evals/` covers skill routing and review misses, not a multi-step
@@ -583,6 +603,103 @@ these are the step's own decisions:
     Add a `code-review` fix commit to a source file → the replay runs. A
     `web-qa` that needed a fix along the way (verdict `confirmed`) → the
     replay runs too.
+22. Merge a group's PR, stay on its branch and run `opsx-apply-git` again:
+    one line says it switched to the PR's base branch, and the run goes on
+    with no question. Do the same with the PR still open → it asks which
+    branch is the parent. With `forge` `"other"` → it asks, too.
+23. Merge the parent into `main`, add a commit to `main`, then run
+    `opsx-apply-git` on the parent: it offers to send the PRs into `main`
+    and cuts no group before the answer. `PROGRESS.md` gets a `## PR
+    target` line; the next run on that parent asks nothing. A parent not
+    merged into `main` → no question. A parent squash-merged into `main` →
+    no question either (known limit, `parent-branch.md`). Run it once with
+    `origin/HEAD` unset (`git remote set-head origin -d`): same result.
+    A merged archive branch → it reports the change is archived and stops.
+24. Put a package with a known high vulnerability into the parent's
+    lockfile, then run a group that changes only source files: the push
+    fails, one line says the vulnerability is not related to this run, the
+    four-step way out is offered and nothing of it is done, and the log has
+    a `gate:"audit"` line with `failureKind` `unrelated`. Change the
+    lockfile in the run instead → `failureKind` `app`, no way out offered.
+25. `init-harness` on a fresh project: it asks plain audit or the script.
+    Script → `scripts/deps-audit.mjs`, `scripts/audit-allowlist.json` (`[]`)
+    and the hook calls `node scripts/deps-audit.mjs <pm audit> --json`;
+    `depsAudit` is `"script"`. An allowlist entry with a past `expires`
+    fails the push again. Upgrade a 0.11.0 project: the question comes once,
+    and the hook's audit line is replaced only after the diff is shown.
+26. Answer yes to the scheduled audit job: the report prints one weekly job
+    that runs the same audit call as the hook and says the project owns
+    it; `.github/workflows/` and the rest of the repo have no new file.
+27. Upgrade a project whose manifest has `"code": "claude-sonnet-9-9"` and
+    `"webQa": "claude-haiku-9-9-20990101"` — versions no plugin text
+    names: afterwards they read `sonnet` and `haiku`, and the report lists
+    both changes. Put `"deep": "gpt-5"` in
+    instead: the upgrade stops with a message naming `models.deep` and the
+    four allowed names, nothing is written and `harnessVersion` stays.
+    Same with `"code": "sonnet-latest"`: the stop comes before the hooks
+    and docs steps — `git status` is empty afterwards.
+28. A diff that relies on a library header or default (a cache header, a
+    cookie flag): the code-review finding about it either cites context7 or
+    says `library behaviour not confirmed` with one concrete check, and is
+    PLAUSIBLE at most. No report suggests reading `node_modules`. The
+    `code-review` and `deep-review` log lines carry `context7Lookups`.
+29. Give `harness-review` a project whose `.claude/harness.json` needs a
+    fix: every suggested JSON/YAML edit in the report parses (paste it and
+    run `jq .`). On a machine with no YAML parser, a YAML suggestion comes
+    as words only, marked as not parsed.
+30. A judgement-heavy run whose review returns two PLAUSIBLE findings: two
+    questions in one call, each "<rule code>: … — fix before push?" with
+    "Fix" and "Keep as is". Fix one: it lands as its own commit, the other
+    changes nothing, and the log has one `fixed` and one `rejected` finding
+    line. One finding → one valid question; five → four, then one. An
+    isolated run with the same findings asks nothing.
+31. Ask for a chore run that bumps one dependency: the branch is
+    `chore/<slug>` off the main branch; the log file
+    `.claude/harness-log/chore--<slug>.jsonl` has a line per check with
+    `change: "<slug>"`; the PR goes into the main branch with "What changed
+    and why" and a "Review trail" whose Change line reads `No OpenSpec
+    change — chore run <slug>.` and whose base is `main`, not
+    `origin/main`. A chore run that edits only a few lines of a `.md` file
+    writes `code-review` as `skipped`, `small change`; one that edits
+    `.github/workflows/` or `vercel.json` still runs `code-review`. A
+    project whose `git-conventions.md` has no chore line gets asked before
+    the commit.
+    Its install: the agent stops, warns, and prints the exact command
+    (`! npm install <pkg>@<version>`) without trying another way. Say it
+    ran without running it → it asks again, no checks. Run it → it goes on
+    to typecheck, lint, tests. Decline → the chore run stops.
+32. Upgrade a 0.11.0 project from `feature/x`, where `PROGRESS.md` is in
+    git, was changed in a commit on `feature/x`, and has unsaved edits:
+    the upgrade asks to confirm one commit on main
+    (`chore: keep PROGRESS.md out of git`), pushes it, merges main into
+    `feature/x` (the modify/delete conflict on `PROGRESS.md` resolved by
+    itself), and the file on disk still has the unsaved edits. Switching
+    to main and back keeps it. `origin/main` no longer lists the file; the
+    report names the other branches that still track it and has no
+    warning line. Say no to the main commit instead: main and
+    `feature/x` check out cleanly (nothing left staged on main), only
+    `feature/x` stops tracking the file, its content is the saved one, and
+    the report carries the warning line. Also: a second file uncommitted →
+    the section is skipped with the reason and the fallback runs; a local
+    main diverged from `origin` → the pull fails, the file comes back, the
+    fallback runs; a protected main → the commit goes to
+    `chore/progress-out-of-git` with a PR; run from main itself → no merge
+    step; a project whose `PROGRESS.md` is already out of git → nothing
+    happens and no warning line.
+33. A fresh parent with no commits of its own, cut from main, and main
+    moved on since (a chore run merged): the first run asks, with "Catch
+    the parent up to main" recommended; choosing it fast-forwards the
+    parent, records nothing in `## PR target`, and the run goes on from
+    the parent. A parent whose PR into main was merged: "Send PRs into
+    main" recommended. Either way no group branch is cut before the answer.
+    The same merged parent with `"forge": "other"`, or with `gh` failing:
+    the question still comes, with the three options and none recommended.
+34. Release: `/plugin update` to 0.12.0, then `/init-harness` in a project
+    set up on 0.11.0. Afterwards `models.*` holds short names,
+    `.gitattributes` has no `merge=union` line, main no longer tracks
+    `PROGRESS.md`, `.gitignore` has `PROGRESS.md` and `.playwright-mcp/`,
+    `.husky/pre-push`'s log-only line names `.claude/harness-log/`, the
+    audit question was asked once, and `harnessVersion` is `0.12.0`.
 
 ## 10. Live project, end to end (0.11.0)
 
@@ -591,8 +708,9 @@ One Next.js project with a local stack, start to finish, by a human:
 1. `init-harness` offers the test layers: the integration layer with its
    start command, a Playwright config without `@external`, the environment
    check (a drafted `scripts/qa-preflight.mjs` whose probes name variables,
-   never values), and a printed CI template. Declining leaves the
-   repository as it was; no CI file is ever written.
+   never values, and no `Read` of any `.env*` file while drafting), and a
+   printed CI template. Declining leaves the repository as it was; no CI
+   file is ever written.
 2. A change with a UI flow passes `web-qa` and records a scenario.
 3. A later change that touches that scenario's page replays it before the
    push of its last run. A later change that doesn't touch the page leaves

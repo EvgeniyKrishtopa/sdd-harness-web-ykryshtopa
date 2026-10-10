@@ -141,7 +141,7 @@ repo. `eval-case.md` holds the format it turns into.
 ## What this record is not
 
 It is not a log line, and it does not become one. The invoking gate's own
-`harness-log.jsonl` line already carries `fixIterations` and
+harness log line already carries `fixIterations` and
 `escalatedToHuman`, which is everything about this loop that counts. What was
 missing was the *content*, and content does not fit in one JSON line — that
 is the whole division of labour here. No field is added to the log for it.

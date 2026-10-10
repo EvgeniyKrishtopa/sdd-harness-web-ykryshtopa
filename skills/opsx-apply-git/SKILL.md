@@ -1,6 +1,6 @@
 ---
 name: opsx-apply-git
-description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks.
+description: Implements the next run from an OpenSpec change — an autonomous batch of consecutive isolated task groups, or a single judgement-heavy group with a human in the loop — inside a branch-per-group git workflow with the project's review gates, auto-committing each group when green, opening one PR per run into the parent branch, and auto-archiving via its own PR once that run's PR has merged. Use instead of the vendored openspec-apply-change whenever the user wants to implement, continue, or work through OpenSpec tasks. Also covers a small task with no OpenSpec change — a chore run ("bump a dependency", "small fix without a spec", "do this as a chore").
 ---
 
 Implement the next run from an OpenSpec change inside this project's git
@@ -16,17 +16,17 @@ first (see below).
 
 ## 0. Read the harness docs first
 
-Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in
-the target repo (written by `init-harness`) before touching any code — they
+Read `.claude/docs/git-conventions.md` and `.claude/docs/review-gates.md` in the target repo (written by `init-harness`) before touching any code — they
 are the source of truth for branch naming, commit format, and gate order.
 Then **read `references/command-hygiene.md`**, before the first Bash call;
 read `references/ci-probes.md` before any task that must push failing code.
+**No OpenSpec change** (a small task) → read `references/chore-run.md` instead of §1-§5.
 
 ## 1. Determine the parent branch and read the stack manifest
 
-1. `git branch --show-current` — this should be the parent feature branch
-   already active, never `main`/`master`. If it looks like a leftover group
-   branch, stop and ask which branch is the real parent.
+1. `git branch --show-current` — the parent, never `main`/`master` unless
+   `PROGRESS.md`'s `## PR target` points to it. A leftover group branch →
+   **read `references/parent-branch.md`**.
 2. Read `.claude/harness.json` (written by `init-harness`) for
    `packageManager`, `runCmd`, `framework`, `testRunner`, `buildDir`,
    `scripts`, `devServerUrl`, and `coverageThreshold` — every verification
@@ -35,6 +35,7 @@ read `references/ci-probes.md` before any task that must push failing code.
    missing, stop and tell the user to run `init-harness` first — see
    `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/stack-detection.md`
    for what it detects and why this skill doesn't duplicate that logic.
+3. Parent already merged into main? **Read `references/parent-branch.md`.**
 
 ## 2. Standard OpenSpec selection and context
 
@@ -69,12 +70,12 @@ unclassified group.
 
 If a task names the `FR-`/`NFR-` identifier it implements (`rules.tasks` in
 `openspec/config.yaml`, seeded by `init-harness` Step 2f, requires this),
-leave a matching `implements <ID> of <change-name>` comment — any comment
-syntax works, `//`, `/* */`, JSDoc, a docstring — in the code or test that
-actually satisfies it, while working the task below. This is the only thing
-`code-review`'s grep-based coverage check (§4 step 2;
-`skills/code-review/SKILL.md`) has to go on: skip the comment and the
-identifier reports as uncovered even though the work happened.
+leave a matching `implements <ID> of <change-name>` comment (any comment
+syntax) in the code or test that satisfies it; several IDs go in one list —
+`implements FR-4, NFR-3 of <change-name>`, or `FR-4 and NFR-3`. This is the
+only thing `code-review`'s grep-based coverage check (§4 step 2;
+`skills/code-review/references/traceability-prefilter.md`) goes on: skip
+the comment and the identifier reports as uncovered though the work happened.
 
 ### Blocked tasks
 
@@ -243,13 +244,13 @@ implement unattended is reviewed as one unit too, not group-by-group.
    three log lines yourself (same shape `code-review` would write, all
    `verdict:"skipped"`) — nobody else writes `deep-review`'s line either:
    ```bash
-   mkdir -p .claude
+   mkdir -p .claude/harness-log
    for g in code-review test-coverage deep-review; do
      printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
        --arg change "<change-slug>" --arg group "<group-number-or-range>" \
        --arg gate "$g" \
        '{ts:$ts,change:$change,group:$group,gate:$gate,verdict:"skipped",skipReason:"small change",durationMs:0,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
-       >> .claude/harness-log.jsonl
+       >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
    done
    ```
    Then skip straight to step 3 (Gate 6's own precondition, #35 — evaluated
@@ -305,8 +306,8 @@ implement unattended is reviewed as one unit too, not group-by-group.
    to write a `blocked` marker on (unlike §3 step 5's pause, which is mid-
    implementation). Stop this run, leave the branch as is, and report every
    attempt's hypothesis to the human — don't push past it (`rm -f
-   "$diff_file"` first, per above). Clean/PLAUSIBLE in
-   every section → continue. Separately from that verdict, `code-reviewer` —
+   "$diff_file"` first, per above). Clean/PLAUSIBLE → continue; Case B with
+   any PLAUSIBLE → **read `references/plausible-fix.md` first**. Separately, `code-reviewer` —
    and `deep-reviewer` whenever the prefilter spawned it — each report their
    own `reviewConfidence`. On **Case A (isolated batch)**, a run with no
    CONFIRMED finding but `reviewConfidence: low` from *either* continues —
@@ -337,15 +338,15 @@ implement unattended is reviewed as one unit too, not group-by-group.
    as this project's hooks.) Most runs touch neither — a run that never
    touched the harness has nothing for this gate to find. In that case,
    skip the `harness-review` delegation
-   entirely and append the skip directly to `.claude/harness-log.jsonl`
+   entirely and append the skip directly to this branch's log file, `.claude/harness-log/<branch>.jsonl`
    yourself (create the file if it doesn't exist), since the skill that
    normally writes that line never ran:
    ```bash
-   mkdir -p .claude
+   mkdir -p .claude/harness-log
    printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
      --arg change "<change-slug>" --arg gate "harness-review" \
      '{ts:$ts,change:$change,group:"-",gate:$gate,verdict:"skipped",skipReason:"harness config unchanged",durationMs:0,tokensTotal:0,tokensNote:"",model:"",reviewConfidence:"",fixIterations:0,escalatedToHuman:false}')" \
-     >> .claude/harness-log.jsonl
+     >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
    ```
    If `jq` isn't available, construct the equivalent line with `printf`
    instead, matching `harness-review`'s own log format. If either
@@ -369,9 +370,9 @@ implement unattended is reviewed as one unit too, not group-by-group.
    CONFIRMED finding, print the reviewer's stated reason to the chat now
    (step 2 deferred it here). Then push the run's branch (`git push -u
    origin <branch>`, on its own: never piped, see `references/command-hygiene.md`)
-   — **read `references/pre-push-note.md` before it**: the integration tests' log line.
+   — **read `references/pre-push-note.md` before it**: the integration tests' log line, a failed audit.
 5. Ensure the parent branch exists on `origin` (push it first if local-only).
-6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing `.claude/harness-log.jsonl` per step 2 below.
+6. Write the run's summary and this run's review trail, then open the PR. **Read `references/log-findings.md` now and follow it** — it covers logging CONFIRMED findings, composing the "Review trail" section named in step 3 below, and committing the log folder `.claude/harness-log/` per step 2 below.
    1. Compose a **"What changed and why"** section: 3-5 sentences of plain
       language covering what this run actually did and why, in terms a
       human who hasn't read the diff can follow. This is *not* satisfied by
@@ -380,7 +381,7 @@ implement unattended is reviewed as one unit too, not group-by-group.
       process, and the point of this section is to force the run to be
       stated in words, which is only possible once it's actually
       understood.
-   2. Commit and push `.claude/harness-log.jsonl` (per `log-findings.md`),
+   2. Commit and push `.claude/harness-log/` (per `log-findings.md`),
       then print both sections — before step 6.3 opens or prints the PR, the
       one point in an autonomous batch where a human sees the run in prose
       instead of tool output, with a chance to intervene.
@@ -396,20 +397,20 @@ implement unattended is reviewed as one unit too, not group-by-group.
       `⚠️ Judgement-heavy: needs careful human review` marker still leads the
       body, ahead of both sections. Leave the PR open — the human owns the
       merge.
-7. **Tasks remain** → regenerate `PROGRESS.md` (clock-out) before stopping —
-   current change and branch, last commit, done/in-progress/blocked groups
-   (a blocked task carries its own `<!-- blocked: ... -->` reason, written at
-   the moment it stopped the run — see §3's Blocked tasks section — and
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`'s
-   self-check: re-read what you wrote
-   and reconcile it against `tasks.md`'s real state before moving on) and
-   numbered next steps for whatever remains in this change. If `PROGRESS.md`
-   has a `## Paused changes` section and one of its lines names *this*
-   change, remove that line — this run means the change is active again,
-   not paused — and leave every other line in that section untouched; if no
-   line names this change, leave the whole section exactly as found (it
-   belongs to `opsx-propose-review`, see
-   `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`).
+7. **Tasks remain** → clock out in `PROGRESS.md` with the script, never by
+   hand (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`):
+   ```bash
+   node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs" clock-out \
+     --change "<change-slug>" --branch "<this run's branch>" \
+     --last-commit "<short-hash> — <subject>" --done "<groups done, or none>" \
+     --in-progress "<group, or none>" --blocked "<group/task — reason, or none>" \
+     --next "<step>" --next "<step>" \
+     --clock-in "<this session's start, ISO-8601 UTC>" --clock-out "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+   ```
+   One `--next` per remaining step; the script numbers them and drops this
+   change's `## Paused changes` line. Blocked reason = the task's
+   `<!-- blocked: ... -->` marker. Re-read the file against `tasks.md`; on a
+   mismatch, rerun with corrected values. Never commit it: it is gitignored.
    Report progress and stop, calling out any blocked task by name and reason
    as its own line in the report rather than folding it into the general
    summary — the next `opsx-apply-git` invocation re-syncs the parent from
@@ -441,9 +442,9 @@ numbered as below; other skills cite these numbers, so they stay listed here:
 4. Push the archive branch. Same `forge` branch as step 6.3 above: `"other"`
    → print the archive branch name and the parent branch instead of a PR
    call; otherwise open a PR into the parent (`gh pr create`). Leave it open.
-5. **Regenerate `PROGRESS.md` one final time** for this change (clock-out):
-   no current change and no next steps remain for it, noting the archive
-   location and archive PR URL. Then report the full session.
+5. **Clock out in `PROGRESS.md` one final time** for this change, with the
+   same script call as §4 step 7 (`--change none`, no `--next`). It is
+   gitignored, so there is nothing to commit. Then report the full session.
 
 ## Exceptions
 

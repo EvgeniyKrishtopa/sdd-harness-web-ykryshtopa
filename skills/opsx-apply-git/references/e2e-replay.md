@@ -33,10 +33,12 @@ the script below.
   no unchecked task left, and the next stop is the merge into `main`. This
   change's scenarios plus every older one whose pages the change touched.
   Pick them with the plugin's script, over the **whole change's** diff, not
-  this run's — earlier runs could have touched an old flow too:
+  this run's — earlier runs could have touched an old flow too
+  (`<this file's folder>`: the folder you read this file from, as a full
+  path):
   ```bash
   main=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null || echo origin/main)
-  node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/affected-scenarios.mjs" \
+  node "<this file's folder>/../scripts/affected-scenarios.mjs" \
     --base "$(git merge-base "$main" HEAD)" --dir "<dir>" --change "<change-slug>" \
     --framework "$(jq -r '.framework // empty' .claude/harness.json)"
   ```
@@ -158,6 +160,7 @@ push.
 One line per step 3a, written once its outcome is final:
 
 ```bash
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" --arg group "<group-number-or-range>" \
   --arg verdict "<clean|confirmed|skipped>" --arg skipReason "<reason, or empty>" \
@@ -168,7 +171,7 @@ printf '%s\n' "$(jq -nc --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg scopeReason "<only for full>" --argjson scenarios <files run, 0 when skipped> \
   --arg failureKind "<app|environment, only for confirmed>" \
   '{ts:$ts,change:$change,group:$group,gate:"e2e-replay",verdict:$verdict,skipReason:$skipReason,durationMs:$durationMs,tokensTotal:$tokensTotal,tokensNote:$tokensNote,model:"",reviewConfidence:"",fixIterations:$fixIterations,escalatedToHuman:$escalatedToHuman,scope:$scope,scopeReason:$scopeReason,scenarios:$scenarios,failureKind:$failureKind}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
 `verdict` `confirmed` whenever a failure was found along the way, even if

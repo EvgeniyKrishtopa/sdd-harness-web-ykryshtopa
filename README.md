@@ -162,10 +162,13 @@ It detects your framework, package manager and test runner, then:
   `openspec/config.yaml` with your project's detected context and artifact
   rules, and asks for your coverage threshold;
 - **writes the project docs** — `.claude/docs/git-conventions.md`,
-  `review-gates.md`, `laziness-ladder.md` — plus `PROGRESS.md`,
-  `CONTEXT.md`, and `.gitattributes` entries marking `PROGRESS.md` and
-  `.claude/harness-log.jsonl` `merge=union`, so every task-group branch in
-  the branch-per-group workflow can append to both without conflicting.
+  `review-gates.md`, `laziness-ladder.md` — plus `CONTEXT.md` and
+  `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored,
+  as is `.playwright-mcp/` (the Playwright MCP server's snapshots);
+  the harness log lives under `.claude/harness-log/`: a branch writes only
+  its own file there, and a change-level check (architecture, spec,
+  clarify, scaffold review) writes a new file each time it runs, so two
+  PRs never add the same file.
   `docs/decisions/` is *not* created here — it appears on demand, the first
   time a decision actually outlives its change;
 - **writes `.claude/harness.json`**, the single machine-readable manifest
@@ -204,8 +207,11 @@ It detects your framework, package manager and test runner, then:
 - **installs native git hooks via Husky** — `.husky/pre-commit` (typecheck +
   lint + `lint-staged`, kept fast since it fires once per task group) and
   `.husky/pre-push` (full `test:coverage`, then a blocking dependency
-  vulnerability audit). These are independent of Claude Code, so bad commits
-  and pushes are blocked even with no agent involved.
+  vulnerability audit). It asks once how to audit: the package manager's
+  plain audit command, or `scripts/deps-audit.mjs` with an allowlist of
+  known advisories, each with an expiry day. These are independent of
+  Claude Code, so bad commits and pushes are blocked even with no agent
+  involved.
 
 The plugin's own Claude Code hooks (`hooks/hooks.json`) need no
 installation — they apply to any repo where the plugin is enabled, the same
@@ -310,6 +316,9 @@ before push — not once per group — per `.claude/docs/review-gates.md`:
   uploads, CI/CD configuration) and spawns `deep-reviewer` for a security and
   architecture-as-built pass only when one fires. Most runs skip it, and the
   skip is logged.
+- **In a judgement-heavy run, every PLAUSIBLE finding** comes to you as its
+  own question, "fix before push?" — Fix or Keep as is. An isolated batch
+  goes on past PLAUSIBLE findings without asking.
 - **A `web-qa` FAIL or a CONFIRMED finding you choose to fix** runs through
   `debug-loop`: a bounded four-phase fix loop that escalates to you instead
   of retrying forever, records every hypothesis under `_debug/`, and
@@ -322,12 +331,21 @@ line per gate with its verdict or its skip reason, this run's CONFIRMED
 findings with rule code and outcome, and any ambiguity deferred with an
 owner and a due date. A clean run prints the section too, with an explicit
 "no findings". The run's closing commit also carries
-`.claude/harness-log.jsonl`, so the record outlives the machine that made
+the log folder `.claude/harness-log/`, so the record outlives the machine that made
 it. On a non-GitHub forge the PR body is printed for you to paste instead.
 The next `opsx-apply-git` re-syncs from your merge.
 
 **6. On the last group**, `opsx-apply-git` archives the change via its own
 PR.
+
+**A small task with no OpenSpec change** (a dependency bump, a config
+tweak, a one-file fix) — ask `opsx-apply-git` for a chore run. It works on
+a `chore/<slug>` branch off the main branch, runs the same checks with the
+same skip rules, logs under `change: "<slug>"`, and opens a PR of the same
+shape (`skills/opsx-apply-git/references/chore-run.md`). Installing or
+updating a package stays yours: the agent stops, warns, and prints the
+exact command to run (`! npm install zod@4.1.0`), then carries on with the
+checks.
 
 ## Test layers
 
@@ -477,7 +495,12 @@ rule.
   plugin's own server therefore doesn't fall back to yours; it leaves the
   agent with nothing that resolves, so it refuses to launch, which is the
   failure you want to see rather than a browser pass on an unverified
-  version.
+  version. The server starts with `--caps=storage` so the agent can list
+  and delete cookies (an expired login is checked by deleting its
+  `HttpOnly` cookie); it is not given `browser_cookie_set` or
+  `browser_cookie_clear`. The flag adds 17 tools for the main session too
+  (cookie, local/session storage, storage state); nothing allows them, so
+  each call asks first, and `/mcp` turns the server off.
 - **context7** (`@upstash/context7-mcp`) — mandatory since 0.6.0. Used by
   `opsx-apply-git` before writing framework-specific code, and by
   `code-review` when a diff touches a library that wasn't checked at
@@ -498,7 +521,7 @@ Both stay resident for the whole session even though each is used at one
 point only: as of Claude Code 2.1.220 there is no supported way for a
 plugin's server list to load a server per-skill or per-gate. Two things
 narrow the cost — Claude Code 2.1.x defers MCP tool schemas (`ToolSearch`)
-instead of loading them up front (24 tools for `@playwright/mcp@0.0.78`,
+instead of loading them up front (41 tools for `@playwright/mcp@0.0.78 --caps=storage`,
 measured by asking the server itself), and `npx` resolves an already-cached
 package without a registry round-trip, so installing `@playwright/mcp` as a
 devDependency avoids the network check on session start. If a session won't
@@ -569,8 +592,11 @@ stylistic:
 1. bump `version` in `.claude-plugin/plugin.json` — every release, however
    small, or existing installs never see it;
 2. add the matching `## <version>` section to `CHANGELOG.md`;
-3. run `bash tests/smoke-json-schema.sh` (plus `tests/hook-behaviour.sh`,
-   `tests/dead-code-scripts.sh`, `tests/risk-prefilter.sh`, `tests/claude-md-budget.sh`, and `tests/affected-scenarios.sh`) — the first fails if the version isn't
+3. run every `tests/*.sh` — `smoke-json-schema.sh`, `hook-behaviour.sh`,
+   `dead-code-scripts.sh`, `risk-prefilter.sh`, `claude-md-budget.sh`,
+   `affected-scenarios.sh`, `harness-log.sh`, `progress.sh`,
+   `traceability.sh`, `context7-trigger.sh` and `deps-audit.sh`
+   (`for t in tests/*.sh; do bash "$t" || break; done`) — the first fails if the version isn't
    semver, if the marketplace entry has grown a competing `version`, or if
    `CHANGELOG.md` has no section for the current one;
 4. `claude plugin tag --push`, **after** the release branch is merged —
@@ -590,7 +616,7 @@ Three things measure this plugin, and the third one is new in 0.8.0:
 | Layer | What it answers | Where |
 |---|---|---|
 | Structural tests | Are the files there and the schemas valid? | `tests/*.sh` |
-| Production telemetry | What did the pipeline actually do this month? | `.claude/harness-log.jsonl`, read by `harness-stats` |
+| Production telemetry | What did the pipeline actually do this month? | `.claude/harness-log/` (plus the old `.claude/harness-log.jsonl` in a project set up before 0.12.0), read by `harness-stats` |
 | The eval set | On a fixed list of prompts with a known right answer, did the plugin behave? | `evals/` |
 
 The first two can both look healthy while routing quietly regresses. A

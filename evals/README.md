@@ -6,7 +6,7 @@ of them were here:
 | Layer | What it answers | Where |
 |---|---|---|
 | Structural tests | Are the files present and are the schemas valid? | `tests/*.sh` |
-| Production telemetry | What did the review pipeline actually do this month? | `.claude/harness-log.jsonl`, read by `harness-stats` |
+| Production telemetry | What did the review pipeline actually do this month? | `.claude/harness-log/`, read by `harness-stats` |
 | **This set** | **On a fixed list of prompts with a known right answer, did the plugin behave?** | `evals/` |
 
 The first two can both look healthy while routing quietly regresses: a

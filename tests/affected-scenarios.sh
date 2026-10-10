@@ -183,6 +183,7 @@ test('cart, edited', { tag: ['@old-change'] }, async () => {});"; commit scenari
   new_next_repo docs-and-harness
   put openspec/changes/add-thing/tasks.md '- [x] 1.1 done'
   put .claude/harness-log.jsonl '{"gate":"x"}'
+  put .claude/harness-log/feature--add-thing.jsonl '{"gate":"x"}'
   put docs/notes.md 'notes'
   put types/global.d.ts 'declare const x: number;'
   put components/LoginForm.tsx 'export function LoginForm() { return "changed"; }'; commit mixed

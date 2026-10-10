@@ -9,6 +9,126 @@ releases" in the README for the procedure.
 Versions follow semver. Before 1.0.0, breaking changes land in the minor
 position.
 
+## 0.12.0
+
+This release carries the fixes a full change cycle on a real project asked
+for — one large change of seven groups from implementation to archive, a
+long-open change closed, and four small tasks outside OpenSpec — plus the
+findings of an independent review of this version before release.
+
+What broke in real use: two group PRs that both appended to the one
+harness log showed as conflicting on GitHub (it ignores the
+`merge=union` rule), and resolving it in the web UI could commit to a
+protected branch; regex edits to `PROGRESS.md` dropped a numbered step
+twice; a vulnerability in a dependency nobody touched blocked every push,
+with no way out; a parent branch already merged into main stayed the base
+of new groups, so they were built on old code; a leftover group branch
+whose PR had merged stopped every run with a question; `models.*` held full
+model names the `Agent` tool rejects; reviewers could not confirm a
+library's behaviour; a change of only documents and tests about sign-in
+started the deep security review; `implements FR-4, NFR-3 of x` counted for
+neither; and small tasks outside OpenSpec had no path at all.
+
+**Upgrade:** `/plugin update`, then `/init-harness` in each configured
+repository. What the upgrade does by itself:
+
+- checks `models.*` first, before it writes any file: a full name
+  (`claude-<family>-…`, any version) becomes its short name (`opus`,
+  `sonnet`, `haiku`, `fable`); an unknown one stops the upgrade with
+  nothing written and `harnessVersion` unchanged;
+- takes `PROGRESS.md` out of git **on the main branch** at once: it keeps a
+  copy, commits `chore: keep PROGRESS.md out of git` there (you confirm the
+  commit on main), pushes it or opens a PR when main is protected, merges
+  main into your current branch and restores the file. Branches cut before
+  the upgrade still track it until main is merged into them — the report
+  names them;
+- removes the two `merge=union` lines from `.gitattributes` (the old
+  `.claude/harness-log.jsonl` stays and is still read);
+- appends `.playwright-mcp/` to `.gitignore`;
+- changes the "log only" line in `.husky/pre-push` to the log folder;
+- asks once how `pre-push` audits dependencies: the plain audit command, or
+  the new script with an allowlist.
+
+Without the upgrade, `models.*` keeps full names, which the `Agent` tool
+does not accept.
+
+### Added
+
+- **One log file per branch** — `.claude/harness-log/<branch>.jsonl` (`/` →
+  `--`). Only that branch writes and commits it. The four checks that run
+  on the change's parent branch — `architecture-review`, `spec-review`,
+  `spec-clarify`, the scaffold review — write a new file per run,
+  `<branch>--<check>--<UTC time>.jsonl`, so two group PRs never add the
+  same file. Every reader takes the whole folder plus the old single file.
+- **`opsx-apply-git/scripts/progress.mjs`** — every change to `PROGRESS.md`
+  goes through it (clock-out, pause, PR target): the same call gives the
+  same file, steps are always numbered 1..n. `PROGRESS.md` is local to the
+  machine and never in git.
+- **Parent-branch checks** (`opsx-apply-git/references/parent-branch.md`) —
+  a leftover group branch whose PR has merged switches to that PR's base
+  without asking. A parent that is an ancestor of main which has moved on
+  gets a question: send PRs into main, catch the parent up to main (a
+  fast-forward), or keep it — recommended by whether a PR from the parent
+  was ever merged (`gh pr list --state merged`), so a fresh parent with no
+  commits of its own isn't taken for a merged one. The answer is kept in
+  `PROGRESS.md`'s `## PR target`.
+- **A way out of an unrelated audit failure** — when `pre-push` fails on the
+  audit and this run did not change `package.json` or the lockfile, the
+  run says so and names the fix: a branch off main, merged, then main into
+  the run's branch.
+- **`scripts/deps-audit.mjs` with `scripts/audit-allowlist.json`**
+  (`init-harness/references/deps-audit.md`), offered by `init-harness` and
+  kept in the new `depsAudit` key: high and critical advisories fail unless
+  an entry with a live `expires` day covers them. One call per package
+  manager. A weekly audit job template is printed on request, never
+  written.
+- **Chore runs** (`opsx-apply-git/references/chore-run.md`) — a small task
+  outside OpenSpec on `chore/<slug>` off main, with the same checks, skip
+  rules, log and PR shape. Installing or updating a package stays the
+  human's step: the agent stops, warns and prints the exact command.
+- **"Fix before push?"** in a judgement-heavy run — one question per
+  PLAUSIBLE finding, Fix or Keep as is; each fix is its own commit and every
+  answer is logged.
+- **context7 in the reviewers** — `code-reviewer` and `deep-reviewer` look up
+  library behaviour themselves; a claim either cites the docs or says
+  "library behaviour not confirmed" and stays PLAUSIBLE. `context7Lookups`
+  is logged.
+- **`harness-reviewer` parses a suggested JSON/YAML/TOML edit** before
+  offering it; an edit that doesn't parse is never shown as a fix.
+- **The browser agent** gets `browser_evaluate` (reading the page, the
+  clock, a cookie — never the app's data) and the cookie tools to expire a
+  login (`--caps=storage` in `mcp-config.json`). `web-qa` runs more than
+  three flows on `sonnet` when `models.webQa` is `haiku` or missing.
+- **Tests** — `tests/harness-log.sh`, `tests/progress.sh`,
+  `tests/traceability.sh`, `tests/context7-trigger.sh`,
+  `tests/deps-audit.sh`.
+
+### Changed
+
+- **`models.*` and agent frontmatter use short names** — each follows the
+  newest model of its family, so nothing goes stale. No model version is
+  written anywhere in the plugin (the smoke test checks it). To pin one, set
+  `ANTHROPIC_DEFAULT_<FAMILY>_MODEL` in the project's
+  `.claude/settings.json` `env`.
+- **`init-harness`** writes no `merge=union` line, ignores `PROGRESS.md`
+  and `.playwright-mcp/`, and takes variable names for the environment
+  check from code only (`.env.example` stays denied).
+- **One requirement marker may list several identifiers** —
+  `implements FR-4, NFR-3 of x` counts for both.
+
+### Fixed
+
+- **The deep review prefilter** skips documents (Markdown, `docs/`,
+  `openspec/`) and tests: `*.test.*`, `*.spec.*`, `__tests__/`,
+  `__mocks__/`, and `tests/`, `test/`, `e2e/` only at the root or directly
+  under `src/` — a deeper `test` folder (an API route, a CI action) is
+  working code and is still checked.
+- **The context7 trigger** skips Markdown and comment lines.
+- **Reference files give paths relative to themselves** —
+  `${CLAUDE_PLUGIN_ROOT}` is substituted only in `SKILL.md`, agents and
+  commands, so in references it expanded to nothing (`pr-target` never
+  recorded the choice). The smoke test keeps it out of `references/`.
+
 ## 0.11.0
 
 Integration and end-to-end tests become a dependable, opt-in part of the

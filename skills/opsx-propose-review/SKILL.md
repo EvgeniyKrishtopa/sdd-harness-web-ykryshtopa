@@ -32,10 +32,12 @@ it ready to implement.
      1. **Continue the existing change** — stop this flow here and point the
         user at `opsx-apply-git` for it instead.
      2. **Pause it explicitly, with a reason** — add a line for it under
-        `PROGRESS.md`'s `## Paused changes` section
-        (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`,
-        create the section if it
-        doesn't exist yet), so it's visible to anyone reading the file. This
+        `PROGRESS.md`'s `## Paused changes` section with the script, never
+        by hand (it creates the section if needed;
+        `${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/progress-template.md`):
+        `node "${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/scripts/progress.mjs"
+        pause --change "<slug>" --date "$(date -u +%Y-%m-%d)" --reason "<one
+        line>"`. That makes it visible to anyone reading the file. This
         is a *different* change than whatever `PROGRESS.md`'s own
         `Current change`/`Status` sections describe — never write it into
         the `Blocked:` line there, which is `opsx-apply-git`'s and scoped to

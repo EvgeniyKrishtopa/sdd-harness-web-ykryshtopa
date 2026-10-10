@@ -21,27 +21,29 @@ First match wins:
    - this change's `recordedFlows` and `declinedFlows`, from every
      `web-qa-flows` line it has (a change can run `web-qa` more than once):
      ```bash
-     jq -sc --arg c "<change-slug>" \
+     { awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null \
+       | jq -R 'fromjson?' | jq -sc --arg c "<change-slug>" \
        '[.[] | select(.change == $c and .kind == "web-qa-flows")]
         | {recordedFlows: (map(.recordedFlows[]?.flow) | unique),
-           declinedFlows: (map(.declinedFlows[]?) | unique)}' \
-       .claude/harness-log.jsonl
+           declinedFlows: (map(.declinedFlows[]?) | unique)}'
      ```
    - whether `web-qa` ran in this change at all: a `gate:"web-qa"` line
      without `kind` and with `verdict` other than `skipped`. None → say
      "web-qa never ran in this change".
 
-   A log `jq -s` can't parse (a broken line) → read it line by line with
-   `jq -c` and skip what fails; say how many lines were skipped. No log
-   file → both lists empty, and web-qa never ran.
+   `fromjson?` skips a broken line instead of failing the whole read. No
+   log → both lists empty, and web-qa never ran. The log is one file per
+   branch since 0.12.0 (`skills/opsx-apply-git/references/log-findings.md`,
+   "Where the log lives"); the line above reads all of them.
 
 ## Boundaries
 
 1. No `tests.integration` block → `boundaries: not applicable —
    tests.integration not configured`.
-2. Otherwise pass the definition file's path,
-   `${CLAUDE_PLUGIN_ROOT}/skills/opsx-apply-git/references/integration-tests.md`,
-   and the template it points to
-   (`${CLAUDE_PLUGIN_ROOT}/skills/init-harness/references/local-stack-profile.md`
-   section 2). Boundaries apply on every run, not only the last: the group
+2. Otherwise pass the definition file's full path,
+   `../../opsx-apply-git/references/integration-tests.md`, and the
+   template it points to
+   (`../../init-harness/references/local-stack-profile.md` section 2) —
+   both relative to this file; build the full paths from the folder you
+   read this file from, since the agent runs in the project, not here. Boundaries apply on every run, not only the last: the group
    that adds a boundary writes its integration test itself.

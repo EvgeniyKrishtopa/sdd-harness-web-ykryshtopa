@@ -498,6 +498,29 @@ else
     ok "$MANIFEST_REF's manifest example carries neither pre-0.11.0 test key"
   fi
 
+  # Model names (0.12.0): the Agent tool's model parameter takes only these
+  # four. A full name in the example is copied into every new manifest and
+  # then rejected on every delegation that reads it.
+  bad_models="$(printf '%s' "$manifest_example" | jq -r '.models // {} | to_entries[] | select(.value | IN("sonnet","opus","haiku","fable") | not) | "\(.key)=\(.value)"' 2>/dev/null)"
+  if [ -z "$bad_models" ] && printf '%s' "$manifest_example" | jq -e '.models | length > 0' >/dev/null 2>&1; then
+    ok "$MANIFEST_REF's models example uses short names only"
+  else
+    bad "$MANIFEST_REF's models example has a non-short name or no models: ${bad_models:-none}"
+  fi
+  for f in agents/*.md evals/support/harness.json evals/support/make-repo.sh; do
+    if [ "${f##*.}" = json ]; then
+      vals="$(jq -r '.models // {} | .[]' "$f" 2>/dev/null)"
+    elif [ "${f##*.}" = sh ]; then
+      # make-repo.sh writes its manifest from a heredoc: read its models line.
+      vals="$(grep -o '"models": {[^}]*}' "$f" | sed 's/^/{/; s/$/}/' | jq -r '.models[]' 2>/dev/null)"
+      [ -n "$vals" ] || vals="no models block found"
+    else
+      vals="$(awk 'NR>1 && /^---$/{exit} /^model:/{print $2}' "$f")"
+    fi
+    odd="$(printf '%s\n' "$vals" | grep -vxE 'sonnet|opus|haiku|fable' | grep . || true)"
+    if [ -z "$odd" ]; then ok "$f names models by short name"; else bad "$f has a full model name: $odd"; fi
+  done
+
   # The readers' fallback chains, run against both manifest shapes: an
   # upgraded one must win with the tests key, a not-yet-upgraded one must
   # still resolve the old key, and one with neither must get the default.
@@ -526,8 +549,11 @@ fi
 # seven" (#U13's own risk, named in the plan) instead of a human noticing a
 # missing field months later while reading harness-stats output.
 log_line_fields() {
-  # field names only, in order, comma-joined, from one object literal line
-  printf '%s\n' "$1" | grep -oE '[A-Za-z]+:' | tr -d ':' | tr '\n' ','
+  # field names only, in order, comma-joined, from one object literal line.
+  # context7Lookups (0.12.0) is the one per-gate extra a SKILL.md line may
+  # carry: only the two reviewers that call context7 themselves log it, and
+  # the shared fields before it are still compared in full.
+  printf '%s\n' "$1" | grep -oE '[A-Za-z0-9]+:' | tr -d ':' | grep -vx 'context7Lookups' | tr '\n' ','
 }
 
 log_lines="$(grep -rn 'ts:\$ts' skills/*/SKILL.md 2>/dev/null)"
@@ -554,6 +580,64 @@ LOGEOF
   else
     ok "all $total harness-log.jsonl line literals (every gate + opsx-apply-git's two skip forms) share the same field set"
   fi
+fi
+
+# Claude Code substitutes ${CLAUDE_PLUGIN_ROOT} only in SKILL.md, agents and
+# commands. In a reference file the agent reads it as text and the shell
+# expands it to nothing: `node "/skills/..."` fails and the step quietly does
+# nothing. 0.10.3 removed it, 0.11.0 and 0.12.0 brought it back. References
+# give paths relative to themselves instead.
+in_refs="$(grep -rln 'CLAUDE_PLUGIN_ROOT' skills/*/references/ 2>/dev/null)"
+if [ -n "$in_refs" ]; then
+  bad "\${CLAUDE_PLUGIN_ROOT} in a reference file (not substituted there): $(printf '%s' "$in_refs" | tr '\n' ' ')"
+else
+  ok "no reference file relies on \${CLAUDE_PLUGIN_ROOT}"
+fi
+
+# No model version is written into the plugin's instructions: models.* holds
+# short names that follow the newest model of a family, full names convert
+# by the claude-<family>- rule, and a pin lives in the project's
+# ANTHROPIC_DEFAULT_<FAMILY>_MODEL. A version in the text goes stale with the
+# next release -- the old full-name table did, and stopped upgrades on a
+# newer name.
+versioned="$(grep -rnoiE 'claude-(opus|sonnet|haiku|fable)-[0-9][-0-9]*' skills agents hooks 2>/dev/null)"
+if [ -n "$versioned" ]; then
+  bad "a model version is named in plugin text: $(printf '%s' "$versioned" | tr '\n' ' ')"
+else
+  ok "no model version is named in skills/, agents/ or hooks/"
+fi
+
+# 0.12.0: the log is one file per branch. Every append must go to that file,
+# spelled the same way everywhere, and nothing may write the pre-0.12.0
+# single file any more -- one missed writer would quietly keep feeding the
+# old file, and GitHub would show its PRs as conflicting again.
+LOG_TARGET='>> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"'
+old_writers="$(grep -rnE '(>>|git add) *"?\.claude/harness-log\.jsonl' skills agents hooks 2>/dev/null)"
+if [ -n "$old_writers" ]; then
+  bad "something still writes the pre-0.12.0 .claude/harness-log.jsonl: $(printf '%s' "$old_writers" | cut -d: -f1,2 | tr '\n' ' ')"
+else
+  ok "nothing writes the pre-0.12.0 .claude/harness-log.jsonl"
+fi
+# The second form: the four checks that run on the change's parent branch,
+# where nothing commits the log, append to a new file per run, so two group
+# PRs never carry the same file. Only those four skills (and log-findings.md,
+# which documents it with a <check> placeholder) may use it.
+CHANGE_TARGET_RE='>> "\.claude/harness-log/\$\(git branch --show-current \| sed "s#/#--#g"\)--(architecture-review|spec-review|spec-clarify|scaffold-review|<check>)--\$\(date -u \+%Y%m%dT%H%M%SZ\)\.jsonl"'
+CHANGE_FILES_RE='^skills/(architecture-review|spec-review|spec-clarify|opsx-scaffold)/SKILL\.md:|^skills/opsx-apply-git/references/log-findings\.md:'
+change_writers="$(grep -rnE "$CHANGE_TARGET_RE" skills agents hooks 2>/dev/null)"
+misplaced="$(printf '%s\n' "$change_writers" | grep . | grep -vE "$CHANGE_FILES_RE")"
+odd_targets="$(grep -rnE '>> *"?\.claude/harness-log/' skills agents hooks 2>/dev/null | grep -vF "$LOG_TARGET" | grep -vE "$CHANGE_TARGET_RE")"
+writers="$(grep -rnF "$LOG_TARGET" skills agents hooks 2>/dev/null | wc -l | tr -d ' ')"
+if [ -n "$misplaced" ]; then
+  bad "the per-run log file is only for the four change-level checks, found at: $(printf '%s' "$misplaced" | cut -d: -f1,2 | tr '\n' ' ')"
+elif [ "$(printf '%s\n' "$change_writers" | grep -cE '^skills/(architecture|spec)-review/SKILL\.md:')" -ne 2 ]; then
+  bad "architecture-review and spec-review must each append their verdict line to a per-run log file"
+elif [ -n "$odd_targets" ]; then
+  bad "a log append spells the per-branch path differently: $(printf '%s' "$odd_targets" | cut -d: -f1,2 | tr '\n' ' ')"
+elif [ "$writers" -lt 12 ]; then
+  bad "only $writers per-branch log appends found, expected at least 12 -- did a writer lose its target?"
+else
+  ok "all log appends use one of the two paths ($writers per-branch, $(printf '%s\n' "$change_writers" | grep -c .) per-run)"
 fi
 
 # The kind:"finding" line (skills/opsx-apply-git/references/log-findings.md)

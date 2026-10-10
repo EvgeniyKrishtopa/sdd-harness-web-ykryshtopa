@@ -49,7 +49,7 @@ that failure is otherwise noticed, named, and forgotten inside a single
 conversation.
 
 What the record is not is a log line. This skill still writes nothing to
-`harness-log.jsonl` and adds no field to it (see `## Log` below) — the
+the harness log and adds no field to it (see `## Log` below) — the
 invoking gate's `fixIterations`/`escalatedToHuman` already count what can be
 counted, and what was missing is content that doesn't fit in one JSON line.
 
@@ -237,7 +237,7 @@ one delegation rather than two.
 
 ## Log
 
-This skill doesn't write its own `harness-log.jsonl` line — it isn't a gate.
+This skill doesn't write its own harness log line — it isn't a gate.
 The step that invoked it (`web-qa`, `code-review`, the replay before push)
 logs as it already does, folding the attempt count and escalation flag into
 that log line's `fixIterations`/`escalatedToHuman` fields (#U13) — see

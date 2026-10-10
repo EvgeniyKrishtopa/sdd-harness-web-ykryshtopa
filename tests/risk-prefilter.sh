@@ -118,6 +118,26 @@ add_file src/pages/intro.mdx '<div dangerouslySetInnerHTML={{ __html: html }} />
 expect "risky JSX in .mdx (still scanned)" "risk=content" "src/pages/intro.mdx"
 
 echo
+echo "-- a test folder below the root is working code (0.12.0) --"
+
+new_repo action-test
+add_file .github/actions/test/action.yml 'runs:
+  using: composite
+  steps:
+    - run: echo "${{ secrets.NPM_TOKEN }}"'
+expect "local action in a test folder" "risk=path" ".github/actions/test/action.yml"
+
+new_repo action-e2e
+add_file .github/actions/e2e/action.yml 'runs:
+  using: composite'
+expect "local action in an e2e folder" "risk=path" ".github/actions/e2e/action.yml"
+
+new_repo api-test-route
+add_file src/app/api/test/route.ts 'import { execSync } from "node:child_process";
+export function GET() { return new Response(execSync("ls").toString()); }'
+expect "API route in a test folder" "risk=content" "src/app/api/test/route.ts"
+
+echo
 echo "-- does not fire --"
 
 new_repo docs
@@ -130,6 +150,27 @@ new_repo readme-prose
 add_file README.md 'The release job reads GITHUB_TOKEN; set permissions: contents: write
 and never use pull_request_target with secrets. on innerHTML too.'
 expect "README prose naming CI signals (Markdown is not content-scanned)" "risk=none"
+
+new_repo auth-docs-tests
+add_file openspec/changes/add-login/proposal.md '# Login with session token'
+add_file docs/auth/session.md 'The session cookie is HttpOnly.'
+add_file src/auth/login.test.ts 'it("stores the jwt", () => { expect(localStorage.getItem("token")).toBe("x"); });'
+add_file tests/e2e/login.spec.ts 'test("login", async () => {});'
+expect "docs, spec and tests on sign-in only (0.12.0)" "risk=none"
+
+new_repo src-test-setup
+add_file src/test/setup.ts 'beforeEach(() => localStorage.clear());'
+expect "test setup under src/test/ (content signals off for tests)" "risk=none"
+
+new_repo root-tests
+add_file e2e/login.spec.ts 'test("login", async () => {});'
+add_file tests/auth.test.ts 'it("signs in", () => {});'
+expect "tests in root e2e/ and tests/" "risk=none"
+
+new_repo auth-source-with-tests
+add_file src/auth/login.test.ts 'it("logs in", () => {});'
+add_file src/auth/login.ts 'export const login = () => null;'
+expect "the source next to its test still fires" "risk=path" "src/auth/login.ts"
 
 new_repo component
 add_file src/components/Button.tsx 'export function Button({ label }: { label: string }) {

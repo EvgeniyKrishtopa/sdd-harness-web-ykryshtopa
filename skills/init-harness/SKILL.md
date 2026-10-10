@@ -249,7 +249,7 @@ rather than merge targets. If a file already exists, read it first:
   file the user may have customized without them seeing what would change.
 - Only write straight over the file with no confirmation when it doesn't exist yet.
 
-Also seed this repo's continuity files — new in both first-install and
+Also seed this repo's continuity files and their `.gitignore` lines — new in both first-install and
 upgrade mode, since a repo set up by an earlier version never got them:
 
 - Write `CONTEXT.md` from `references/context-template.md` if absent — create-if-missing only, never diffed or touched on a re-run; starts empty, fills in as terms come up.
@@ -257,16 +257,16 @@ upgrade mode, since a repo set up by an earlier version never got them:
   `references/progress-template.md` if one doesn't already exist — same
   never-overwrite rule as above. A fresh file starts with no current change,
   no next steps, and a clock-in of "now"; after this point only
-  `opsx-apply-git` touches it, at its own run boundaries (see
-  `references/progress-template.md`).
-- Write `.gitattributes` with `PROGRESS.md merge=union` and
-  `.claude/harness-log.jsonl merge=union` — append whichever line is
-  missing, leave everything else alone. Both are append-only files every
-  task-group branch can touch, so without this every group's PR would
-  conflict on either one. Nothing else here needs `merge=union` — in
-  particular not `docs/decisions/`, whose whole design point is that two
-  branches produce two different files instead of contending for one (see
-  `references/decision-template.md`).
+  `opsx-apply-git` touches it, at its own run boundaries. It is local to
+  this machine (0.12.0): append `PROGRESS.md` to `.gitignore` if missing; in upgrade
+  mode also takes it out of git on the main branch (see
+  `references/upgrade-mode.md`).
+- Append `.playwright-mcp/` to `.gitignore` unless a line already ignores it (with or without `/`), on a new line (0.12.0):
+  the plugin's Playwright MCP server writes its snapshots and screenshots there.
+- Write no `merge=union` line into `.gitattributes` (0.12.0). The harness
+  log is one file per branch under `.claude/harness-log/`, `PROGRESS.md` is
+  not in git at all, and GitHub ignores merge drivers anyway. `docs/decisions/` never needed one either: two branches
+  write two different files (`references/decision-template.md`).
 - Check whether the project already has a `docs/adr/` directory. If it does,
   tell the user to keep using it and don't create a competing
   `docs/decisions/` alongside it. If it doesn't, there's nothing to create
@@ -386,7 +386,7 @@ list, and the difference between "the harness found these names" and "the
 harness ran these commands". Also report both counts from
 `bash "${CLAUDE_PLUGIN_ROOT}/skills/init-harness/scripts/claude-md-lines.sh"`;
 over budget → `references/claude-md-budget.md`'s split proposal, never applied unasked.
-Report Step 1b's test-layer lines (and the CI template, if the user asked for it).
+Report Step 1b's test-layer lines (and the CI and audit job templates the user asked for), and each line appended to `.gitignore`.
 
 For a first-time install: summarize what was detected (framework, package
 manager, test runner), confirm OpenSpec is initialized and say whether
@@ -401,7 +401,7 @@ permissions/`.claudeignore` distinction from Steps 6-7 (what
 covers), that `.claude/harness.json` (Step 8) is now the source every other
 skill reads for stack details, and whether `CLAUDE.md`/`AGENTS.md` (Step 9)
 was created or appended to — say plainly that this is required for the
-auto-commit override at group/archive boundaries to apply. Tell the user
+auto-commit override at group/archive boundaries (and a chore run's end) to apply. Tell the user
 their harness is ready and that `opsx-propose-review` is next.
 
 Either mode: mention that after a future `/plugin update`, running this skill

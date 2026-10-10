@@ -4,7 +4,7 @@ Referenced from `SKILL.md` §4 step 6. Background:
 `harness-audit/v0.4.0-implemented/03-log-fields.txt` point 7.
 
 The nine `verdict`-bearing lines this pipeline already writes to
-`.claude/harness-log.jsonl` (one per gate, plus `opsx-apply-git`'s own two
+the log (one per gate, plus `opsx-apply-git`'s own two
 skip forms) record what a gate *said*. None of them record whether that
 verdict held up — whether a CONFIRMED finding was actually fixed, or the
 human looked at it and moved on, or it never got resolved at all. Without
@@ -21,16 +21,25 @@ of their own: the replay of recorded scenarios before push (§4 step 3a,
 `references/e2e-replay.md`), `gate:"e2e-replay"`, with three more fields —
 `scope`, `scopeReason`, `scenarios`; and the integration tests in
 `.husky/pre-push` (§4 step 4, `references/pre-push-note.md`),
-`gate:"integration"`. Neither is a numbered gate: their skip reasons are
+`gate:"integration"`; and, from 0.12.0, a failed dependency audit in the
+same hook (`pre-push-note.md`), `gate:"audit"`, written only when the audit
+stopped the push. None is a numbered gate: their skip reasons are
 their own, not part of the list in "Checks" below, and the Checks part
 stays six lines.
+
+**`context7Lookups`** (0.12.0) — on the `code-review` and `deep-review`
+lines only: how many `query-docs` calls the reviewer made itself to check a
+library claim. The number that says whether giving reviewers context7 is
+costing more than it catches.
 
 **`failureKind`** (0.11.0) — on `e2e-replay`'s and `integration`'s verdict lines: `app` when
 the code failed, `environment` when a check stopped before the code was
 ever tried (the environment check, `testDir` not covering the scenarios, no
 server to connect to, local services not running). Set only when the verdict is `confirmed`, empty
 otherwise. `web-qa`'s flows line carries the same field, with `environment`
-as its only value. An `environment` failure
+as its only value. The `audit` line uses `app` (this run changed
+`package.json` or the lockfile) or `unrelated` (it didn't: the
+vulnerability was already in the parent). An `environment` failure
 never goes through `debug-loop`, so its `fixIterations` is `0`.
 
 ## When to write this
@@ -42,12 +51,14 @@ and its resolution as the run goes (across Gates 3-6: `web-qa`,
 `e2e-replay`, one finding per red scenario), then write one line per
 finding here, right before opening the PR. A run with no CONFIRMED findings
 writes nothing — this section only exists for findings serious enough to
-have been CONFIRMED, not for every PLAUSIBLE note.
+have been CONFIRMED, not for every PLAUSIBLE note. One exception (0.12.0):
+in a Case B run every PLAUSIBLE finding put to the human
+(`references/plausible-fix.md`) gets its line too — `fixed` or `rejected`.
 
 This same tracked list also feeds the PR's "Review trail" section below —
 collected once, as the run goes, and read back for both destinations. Never
-re-derive it a second time by re-reading `.claude/harness-log.jsonl`: that
-file can hold `kind:"finding"` lines from earlier runs of the same `change`
+re-derive it a second time by re-reading the log: it
+can hold `kind:"finding"` lines from earlier runs of the same `change`
 too, with no field distinguishing which run wrote which, so the in-session
 list is the only reliable source for "this run's findings."
 
@@ -69,9 +80,10 @@ minute, not a dump of the log.
    at change scope, possibly in an earlier session, so read each one's
    latest matching line instead:
    ```bash
-   jq -c --arg change "<change-slug>" --arg gate "<gate-name>" \
-     'select(.change == $change and .gate == $gate and has("verdict"))' \
-     .claude/harness-log.jsonl | tail -n 1
+   { awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null \
+     | jq -R "fromjson?" | jq -sc --arg change "<change-slug>" --arg gate "<gate-name>" \
+       '[.[] | select(.change == $change and .gate == $gate and has("verdict"))]
+        | sort_by(.ts) | last // empty'
    ```
    A `skipped` verdict always carries one of the closed-list reasons already
    written elsewhere in this pipeline — `UI not touched`, `docs only`,
@@ -81,8 +93,10 @@ minute, not a dump of the log.
    so on that gate's line rather than omitting it.
 3. **Findings** — this run's CONFIRMED findings from the tracked list above:
    rule number, one-line description, outcome. PLAUSIBLE notes never appear
-   here. More than ten → print the first ten and one closing line, "...and
-   `<N>` more, see `.claude/harness-log.jsonl`." No CONFIRMED findings →
+   here, except on a Case B run, where each PLAUSIBLE finding put to the
+   human (`references/plausible-fix.md`) is listed with its outcome too.
+   More than ten → print the first ten and one closing line, "...and
+   `<N>` more, see `.claude/harness-log/`." No CONFIRMED findings →
    one explicit line saying so; never omit this part.
 4. **Deferred** — one line per entry currently under `proposal.md`'s
    `## Open Questions` heading, verbatim (owner and due date are already
@@ -95,22 +109,80 @@ minute, not a dump of the log.
 This section is assembled entirely from data this pipeline already writes
 elsewhere — this run's own gate verdicts, the findings list above,
 `proposal.md`'s Open Questions, and `docs/deferred.md`. It never introduces a new
-`.claude/harness-log.jsonl` field to answer a question the log doesn't
+log field to answer a question the log doesn't
 already record.
+
+## Where the log lives (0.12.0)
+
+One file per branch: `.claude/harness-log/<branch>.jsonl`, where
+`<branch>` is `git branch --show-current` with every `/` turned into `--`
+(`feature/add-login-2` → `feature--add-login-2.jsonl`). Every writer in this
+plugin appends with the same two lines, so the name never drifts:
+
+```bash
+mkdir -p .claude/harness-log
+printf '%s\n' "<line>" >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
+```
+
+Before 0.12.0 every branch appended to one shared `.claude/harness-log.jsonl`,
+kept mergeable by `merge=union` in `.gitattributes`. That works for a local
+`git merge`, but GitHub ignores merge drivers: two group PRs that both
+appended to the file showed as conflicting, and resolving it in the web UI
+could commit to a protected branch. Only that branch writes its own file
+now, so there is nothing to conflict on.
+
+**The second form: a file per run.** Four checks run at change scope, on
+the change's parent branch — `architecture-review`, `spec-review` (its
+verdict line and its readiness lines), `spec-clarify`, and the scaffold
+review in `opsx-scaffold`. Nothing commits the log on the parent, so their
+lines ride along in the next group's log commit. Written to the parent's
+`<branch>.jsonl`, that broke: a re-run between two groups (the plan
+revised through `opsx-update-review`, `spec-review` again) gave two group
+PRs two different versions of the same new file, and the second PR to
+merge hit an add/add conflict. These four checks append each run to a
+new file instead, named with the time of writing (`date -u`, to the
+second, taken in the same command, so nothing is carried between steps):
+
+```bash
+mkdir -p .claude/harness-log
+printf '%s\n' "<line>" >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g")--<check>--$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+```
+
+`<check>` is `architecture-review`, `spec-review`, `spec-clarify` or
+`scaffold-review`. Everything else keeps the branch's own file, which only
+that branch writes and commits.
+
+**Reading the log** means reading every file in the folder plus the old
+file, which a project upgraded from an earlier version still has and which
+is never moved or deleted:
+
+```bash
+{ awk 1 .claude/harness-log.jsonl; find .claude/harness-log -name '*.jsonl' -exec awk 1 {} +; } 2>/dev/null
+```
+
+`awk 1`, not `cat`: it adds a missing final newline, so a file that ends
+without one can't glue its last line to the next file's first. Lines from
+different files are not in time order — sort by `ts` when order
+matters ("the latest line for this gate"). The `find` form, not a
+`.claude/harness-log/*.jsonl` glob, because zsh aborts the whole command on
+a glob that matches nothing.
 
 ## Committing the log (point 4)
 
-`.claude/harness-log.jsonl` was a local, never-committed file before 0.6.0
-— every gate above appended to it, but nothing staged it, so it never
-outlived the machine that wrote it. `SKILL.md` §4 step 6.2 closes that gap:
-right there, after this run's Review trail section is composed and before
-step 6.3 opens (or prints) the PR, stage and commit exactly that path:
+`SKILL.md` §4 step 6.2 commits the log right after this run's Review trail
+section is composed and before step 6.3 opens (or prints) the PR:
 
 ```bash
-git add .claude/harness-log.jsonl
+git add .claude/harness-log/
 git commit -m "chore: log this run's checks"
 git push
 ```
+
+The whole folder, not only this branch's file: the four change-level
+checks write their per-run files while the parent branch is checked out,
+and nothing commits them there. The next run's log commit carries them,
+as it carried them when the log was one file. Each such file has a new
+name, so two runs never carry the same one.
 
 This is the run's closing commit — nothing else in this run commits after
 it. It has to be its own commit rather than folded into an earlier one:
@@ -120,10 +192,7 @@ group is already committed — so by the time this step runs there is no
 earlier, still-open commit left to fold the log into, and this flow never
 amends an already-made commit (see `SKILL.md`'s Exceptions). The `git push` here is a small
 follow-up to the one `SKILL.md` §4 step 4 already did — that push
-happens before this commit exists, so it can't have carried it. `init-harness`
-Step 5 seeds `.gitattributes` with `.claude/harness-log.jsonl merge=union`
-(the same treatment `PROGRESS.md` already gets) so two task-group branches
-that both appended to the log merge without conflict.
+happens before this commit exists, so it can't have carried it.
 
 `spec-clarify` (0.5.0) writes this same line shape too, but on its own
 timing rather than at `opsx-apply-git`'s PR-open point — it runs before
@@ -145,6 +214,7 @@ waved off by the user).
 ## The line
 
 ```bash
+mkdir -p .claude/harness-log
 printf '%s\n' "$(jq -nc \
   --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --arg change "<change-slug>" \
@@ -153,8 +223,13 @@ printf '%s\n' "$(jq -nc \
   --arg outcome "<fixed|rejected|deferred>" \
   --arg ruleNumber "<CR-nn/SR-nn/DR-nn, or empty>" \
   '{ts:$ts,change:$change,kind:"finding",gate:$gate,finding:$finding,outcome:$outcome,ruleNumber:$ruleNumber}')" \
-  >> .claude/harness-log.jsonl
+  >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
+
+The `>>` target above is the branch's own file. `spec-clarify` and
+`spec-review`'s readiness lines replace it with their per-run file
+("Where the log lives": `...--<check>--$(date -u +%Y%m%dT%H%M%SZ).jsonl`),
+everything else in the block stays as written.
 
 If `jq` isn't available, construct the equivalent line with `printf`
 instead. A failed log write never blocks the run — note it and move on.
