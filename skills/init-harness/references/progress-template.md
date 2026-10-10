@@ -44,9 +44,10 @@ anyway. And a clock-out left the tracked file modified between runs, so
 (`git reset --hard`) would have thrown the clock-out away.
 
 `init-harness` appends `PROGRESS.md` to `.gitignore`. Its upgrade mode also
-runs `git rm --cached PROGRESS.md` — the file stays on disk, only git stops
-tracking it — and removes the old `merge=union` line. The user commits that
-together with the rest of the upgrade.
+takes the file out of git on the main branch at once — the file stays on
+disk, only git stops tracking it — and merges that into the current branch
+(`upgrade-mode.md`, "Taking PROGRESS.md out of git on main"), and removes
+the old `merge=union` line.
 
 ## Template
 
