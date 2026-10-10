@@ -81,7 +81,8 @@ again rather than trusted from its first pass.
    - `outcome`: `"fixed"` for clarify, `"deferred"` for defer
    - `ruleNumber`: empty — `devils-advocate` carries no numbered rules
 
-   Append them to a log file of this run's own, not the branch's:
+   Replace that block's `>>` target: append to a log file of this run's
+   own, not the branch's —
    `.claude/harness-log/<branch>--spec-clarify--<UTC time>.jsonl`, the time
    taken at the moment of writing (`log-findings.md`, "Where the log
    lives") — this skill runs on the parent branch, where nothing commits

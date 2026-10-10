@@ -83,8 +83,8 @@ Every artifact required by the OpenSpec schema is `status: "done"` (for the
    `outcome`: `"fixed"` (artifact revised on the spot), `"deferred"`
    (condition 4 only — logged under Open Questions with an owner and due
    date), or `"rejected"` (the user chose to proceed anyway), `ruleNumber`:
-   empty — these conditions aren't numbered rules — appended to the same
-   kind of file as the verdict line below,
+   empty — these conditions aren't numbered rules — with that block's
+   `>>` target replaced by the same kind of file as the verdict line below,
    `.claude/harness-log/<branch>--spec-review--<UTC time>.jsonl`, with the
    time taken at the moment of writing. This is what actually
    makes "how often did work start against incomplete readiness"

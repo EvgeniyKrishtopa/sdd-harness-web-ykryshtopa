@@ -226,6 +226,11 @@ printf '%s\n' "$(jq -nc \
   >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g").jsonl"
 ```
 
+The `>>` target above is the branch's own file. `spec-clarify` and
+`spec-review`'s readiness lines replace it with their per-run file
+("Where the log lives": `...--<check>--$(date -u +%Y%m%dT%H%M%SZ).jsonl`),
+everything else in the block stays as written.
+
 If `jq` isn't available, construct the equivalent line with `printf`
 instead. A failed log write never blocks the run — note it and move on.
 
