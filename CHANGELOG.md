@@ -11,10 +11,10 @@ position.
 
 ## 0.12.0
 
-The fixes a full change cycle on a real project asked for — one large
-change of seven groups from implementation to archive, a long-open change
-closed, and four small tasks outside OpenSpec — plus the findings of an
-independent review of this version before release.
+This release carries the fixes a full change cycle on a real project asked
+for — one large change of seven groups from implementation to archive, a
+long-open change closed, and four small tasks outside OpenSpec — plus the
+findings of an independent review of this version before release.
 
 What broke in real use: two group PRs that both appended to the one
 harness log showed as conflicting on GitHub (it ignores the
