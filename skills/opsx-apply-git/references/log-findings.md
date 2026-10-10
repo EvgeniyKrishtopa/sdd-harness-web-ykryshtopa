@@ -128,8 +128,29 @@ Before 0.12.0 every branch appended to one shared `.claude/harness-log.jsonl`,
 kept mergeable by `merge=union` in `.gitattributes`. That works for a local
 `git merge`, but GitHub ignores merge drivers: two group PRs that both
 appended to the file showed as conflicting, and resolving it in the web UI
-could commit to a protected branch. Two branches never write the same file
+could commit to a protected branch. Only that branch writes its own file
 now, so there is nothing to conflict on.
+
+**The second form: a file per run.** Four checks run at change scope, on
+the change's parent branch — `architecture-review`, `spec-review` (its
+verdict line and its readiness lines), `spec-clarify`, and the scaffold
+review in `opsx-scaffold`. Nothing commits the log on the parent, so their
+lines ride along in the next group's log commit. Written to the parent's
+`<branch>.jsonl`, that broke: a re-run between two groups (the plan
+revised through `opsx-update-review`, `spec-review` again) gave two group
+PRs two different versions of the same new file, and the second PR to
+merge hit an add/add conflict. These four checks append each run to a
+new file instead, named with the time of writing (`date -u`, to the
+second, taken in the same command, so nothing is carried between steps):
+
+```bash
+mkdir -p .claude/harness-log
+printf '%s\n' "<line>" >> ".claude/harness-log/$(git branch --show-current | sed "s#/#--#g")--<check>--$(date -u +%Y%m%dT%H%M%SZ).jsonl"
+```
+
+`<check>` is `architecture-review`, `spec-review`, `spec-clarify` or
+`scaffold-review`. Everything else keeps the branch's own file, which only
+that branch writes and commits.
 
 **Reading the log** means reading every file in the folder plus the old
 file, which a project upgraded from an earlier version still has and which
@@ -157,11 +178,11 @@ git commit -m "chore: log this run's checks"
 git push
 ```
 
-The whole folder, not only this branch's file: `architecture-review`,
-`spec-review` and `spec-clarify` write their lines while the parent branch
-is checked out, into the parent's file, and nothing commits them there. The
-first run's log commit carries them, as it carried them when the log was one
-file.
+The whole folder, not only this branch's file: the four change-level
+checks write their per-run files while the parent branch is checked out,
+and nothing commits them there. The next run's log commit carries them,
+as it carried them when the log was one file. Each such file has a new
+name, so two runs never carry the same one.
 
 This is the run's closing commit — nothing else in this run commits after
 it. It has to be its own commit rather than folded into an earlier one:

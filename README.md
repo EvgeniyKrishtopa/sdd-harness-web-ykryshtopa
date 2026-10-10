@@ -165,8 +165,10 @@ It detects your framework, package manager and test runner, then:
   `review-gates.md`, `laziness-ladder.md` — plus `CONTEXT.md` and
   `PROGRESS.md`. `PROGRESS.md` is local to your machine and gitignored,
   as is `.playwright-mcp/` (the Playwright MCP server's snapshots);
-  the harness log is one file per branch under `.claude/harness-log/`, so
-  task-group branches never commit the same file.
+  the harness log lives under `.claude/harness-log/`: a branch writes only
+  its own file there, and a change-level check (architecture, spec,
+  clarify, scaffold review) writes a new file each time it runs, so two
+  PRs never add the same file.
   `docs/decisions/` is *not* created here — it appears on demand, the first
   time a decision actually outlives its change;
 - **writes `.claude/harness.json`**, the single machine-readable manifest
